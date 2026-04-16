@@ -33,9 +33,8 @@
 }
 
 /* -------------------------------------------------------
-   Headers
+   Headers (order form + dashboard only — application form is headerless)
    ------------------------------------------------------- */
-.slw-application-header,
 .slw-order-form-header,
 .slw-dashboard-header {
     background: #386174;
@@ -45,7 +44,6 @@
     margin-bottom: 0;
 }
 
-.slw-application-header h2,
 .slw-order-form-header h2,
 .slw-dashboard-header h2 {
     font-family: Georgia, 'Times New Roman', serif;
@@ -54,7 +52,6 @@
     color: #F7F6F3;
 }
 
-.slw-application-header p,
 .slw-order-form-header p,
 .slw-dashboard-header p {
     margin: 0;
@@ -82,16 +79,8 @@
 .slw-form {
     background: #F7F6F3;
     padding: 30px 35px;
-    border-radius: 0 0 8px 8px;
-    border: 1px solid #e0ddd8;
-    border-top: none;
-}
-
-/* When rendered without the built-in teal banner (hide_header="true"),
-   round all four corners instead of just the bottom two. */
-.slw-form--no-header {
     border-radius: 8px;
-    border-top: 1px solid #e0ddd8;
+    border: 1px solid #e0ddd8;
 }
 
 /* -------------------------------------------------------

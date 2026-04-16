@@ -30,24 +30,13 @@ class SLW_Application_Form {
      * Render the public-facing application form. If the visitor is already
      * a wholesale customer, show a message instead of the form.
      *
-     * Shortcode attributes:
-     *   hide_header="true" — suppresses the built-in teal banner + welcome
-     *                        paragraph. Useful when the form is embedded on
-     *                        a page that already has its own intro section.
-     *
-     * Example: [sego_wholesale_application hide_header="true"]
+     * The form renders without any built-in header banner — embedding pages
+     * are expected to provide their own intro / heading above the shortcode.
      */
     public static function render_form( $atts = array() ) {
         if ( slw_is_wholesale_user() ) {
             return '<div class="slw-notice slw-notice-info">You already have a wholesale account. <a href="/wholesale-order">Go to the order form</a>.</div>';
         }
-
-        $atts = shortcode_atts( array(
-            'hide_header' => 'false',
-        ), $atts, 'sego_wholesale_application' );
-
-        // Accept "true", "1", "yes" as truthy for the hide_header flag
-        $hide_header = in_array( strtolower( (string) $atts['hide_header'] ), array( 'true', '1', 'yes' ), true );
 
         ob_start();
         include SLW_PLUGIN_DIR . 'templates/application-form.php';

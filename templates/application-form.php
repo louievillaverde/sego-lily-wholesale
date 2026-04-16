@@ -11,9 +11,9 @@
  * payload via AJAX to the same admin-ajax handler — so the server side
  * receives a single POST containing every field, exactly as before.
  *
- * The $hide_header flag (set by the shortcode attribute hide_header="true")
- * suppresses the built-in teal banner. Useful when the form is embedded on
- * a page with its own intro section.
+ * Pages embedding this form are expected to provide their own intro / heading
+ * above the shortcode. The plugin no longer renders a built-in banner, so the
+ * form sits flush to whatever page section it lives in.
  */
 
 if ( ! defined( 'ABSPATH' ) ) exit;
@@ -21,17 +21,9 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 $nonce = wp_create_nonce( 'slw_application_submit' );
 $ajax_url = admin_url( 'admin-ajax.php' );
 $minimum = number_format( (float) slw_get_option( 'first_order_minimum', 300 ), 0 );
-$hide_header = ! empty( $hide_header );
 ?>
 
 <div class="slw-application-wrap">
-    <?php if ( ! $hide_header ) : ?>
-    <div class="slw-application-header">
-        <h2>Become a Wholesale Partner</h2>
-        <p>We love working with boutiques, salons, and shops that share our values. Fill out the form below and Holly will review your application personally. You'll hear back within 2-3 business days.</p>
-    </div>
-    <?php endif; ?>
-
     <div id="slw-form-success" style="display:none;">
         <div class="slw-notice slw-notice-success">
             <h3>Application Received</h3>
@@ -39,7 +31,7 @@ $hide_header = ! empty( $hide_header );
         </div>
     </div>
 
-    <form id="slw-application-form" class="slw-form <?php echo $hide_header ? 'slw-form--no-header' : ''; ?>" novalidate>
+    <form id="slw-application-form" class="slw-form" novalidate>
         <input type="hidden" name="action" value="slw_submit_application" />
         <input type="hidden" name="slw_nonce" value="<?php echo esc_attr( $nonce ); ?>" />
 
