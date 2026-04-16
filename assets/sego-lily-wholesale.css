@@ -87,6 +87,167 @@
     border-top: none;
 }
 
+/* When rendered without the built-in teal banner (hide_header="true"),
+   round all four corners instead of just the bottom two. */
+.slw-form--no-header {
+    border-radius: 8px;
+    border-top: 1px solid #e0ddd8;
+}
+
+/* -------------------------------------------------------
+   Progress Bar (multi-step form)
+   ------------------------------------------------------- */
+.slw-progress {
+    margin-bottom: 28px;
+}
+
+.slw-progress-bar {
+    position: relative;
+    height: 4px;
+    background: #e0ddd8;
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 14px;
+}
+
+.slw-progress-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: linear-gradient(90deg, #386174 0%, #D4AF37 100%);
+    transition: width 0.35s ease;
+}
+
+.slw-progress-steps {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.slw-progress-step {
+    flex: 1;
+    text-align: center;
+    font-size: 12px;
+    color: #8A9499;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    transition: color 0.2s;
+}
+
+.slw-progress-step .slw-progress-dot {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #e0ddd8;
+    color: #8A9499;
+    font-family: Inter, system-ui, sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    transition: background-color 0.2s, color 0.2s, transform 0.2s;
+}
+
+.slw-progress-step .slw-progress-label {
+    display: block;
+    font-family: Inter, system-ui, sans-serif;
+    font-weight: 500;
+}
+
+.slw-progress-step.is-active {
+    color: #386174;
+}
+
+.slw-progress-step.is-active .slw-progress-dot {
+    background: #386174;
+    color: #F7F6F3;
+    transform: scale(1.08);
+}
+
+.slw-progress-step.is-complete .slw-progress-dot {
+    background: #D4AF37;
+    color: #1E2A30;
+}
+
+.slw-progress-step.is-complete {
+    color: #D4AF37;
+}
+
+/* -------------------------------------------------------
+   Steps (show only the active one)
+   ------------------------------------------------------- */
+.slw-step {
+    display: none;
+    animation: slw-fade-in 0.35s ease;
+}
+
+.slw-step.is-active {
+    display: block;
+}
+
+@keyframes slw-fade-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.slw-step-title {
+    font-family: Georgia, 'Times New Roman', serif;
+    color: #1E2A30;
+    font-size: 22px;
+    margin: 0 0 4px 0;
+    font-weight: 700;
+}
+
+.slw-step-subtitle {
+    color: #628393;
+    font-size: 15px;
+    margin: 0 0 22px 0;
+    font-style: italic;
+}
+
+.slw-step-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid #e0ddd8;
+}
+
+/* If there's only one button in the nav (first step), push it right */
+.slw-step-nav:has(> .slw-btn:only-child) {
+    justify-content: flex-end;
+}
+
+/* Fallback for browsers without :has() — first-step nav also uses this */
+.slw-step[data-step="1"] .slw-step-nav {
+    justify-content: flex-end;
+}
+
+.slw-field-hint {
+    color: #628393;
+    display: block;
+    margin-top: 4px;
+    font-size: 13px;
+    font-style: italic;
+}
+
+/* Field-level error highlight (shown when Next clicked with required blanks) */
+.slw-form-field.slw-field-error input,
+.slw-form-field.slw-field-error select,
+.slw-form-field.slw-field-error textarea {
+    border-color: #c62828;
+    box-shadow: 0 0 0 2px rgba(198, 40, 40, 0.12);
+}
+
+.slw-form-field.slw-field-error label {
+    color: #c62828;
+}
+
 .slw-form-row {
     display: flex;
     gap: 20px;
@@ -212,6 +373,55 @@
     opacity: 0.6;
     cursor: not-allowed;
     transform: none;
+}
+
+/* Gold CTA — primary action on the application form. Dark slate text on
+   brand-gold fills the visual gap the old teal button left. Uppercase +
+   letter-spacing picks up the "letterpress labels / gold foil" brand line
+   on the rest of the site. */
+.slw-btn-cta {
+    background: #D4AF37;
+    color: #1E2A30;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    padding: 14px 30px;
+    font-size: 15px;
+    border-radius: 2px;
+    box-shadow: 0 1px 2px rgba(30, 42, 48, 0.15);
+}
+
+.slw-btn-cta:hover {
+    background: #BF9A2C;
+    color: #1E2A30;
+    box-shadow: 0 4px 10px rgba(30, 42, 48, 0.2);
+}
+
+.slw-btn-cta:active {
+    box-shadow: 0 1px 2px rgba(30, 42, 48, 0.15);
+}
+
+.slw-btn-submit {
+    padding: 16px 36px;
+    font-size: 16px;
+}
+
+/* Ghost button for Back links — minimal, secondary weight */
+.slw-btn-ghost {
+    background: transparent;
+    color: #628393;
+    border: 1px solid #e0ddd8;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+    padding: 12px 20px;
+    font-size: 14px;
+}
+
+.slw-btn-ghost:hover {
+    background: #F7F6F3;
+    color: #386174;
+    border-color: #386174;
 }
 
 /* -------------------------------------------------------
