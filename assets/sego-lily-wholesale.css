@@ -1,0 +1,508 @@
+/**
+ * Sego Lily Wholesale - Frontend Styles
+ *
+ * Brand colors:
+ * Primary Teal: #386174
+ * Muted Teal: #628393
+ * Light Cream: #F7F6F3
+ * Text: #2C2C2C
+ * Dark Slate: #1E2A30
+ * Gold Accent: #D4AF37
+ */
+
+/* -------------------------------------------------------
+   Base
+   ------------------------------------------------------- */
+.slw-application-wrap,
+.slw-order-form-wrap,
+.slw-dashboard-wrap {
+    font-family: Georgia, 'Times New Roman', serif;
+    color: #2C2C2C;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 20px;
+    line-height: 1.6;
+}
+
+/* -------------------------------------------------------
+   Headers
+   ------------------------------------------------------- */
+.slw-application-header,
+.slw-order-form-header,
+.slw-dashboard-header {
+    background: #386174;
+    color: #F7F6F3;
+    padding: 30px 35px;
+    border-radius: 8px 8px 0 0;
+    margin-bottom: 0;
+}
+
+.slw-application-header h2,
+.slw-order-form-header h2,
+.slw-dashboard-header h2 {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 28px;
+    margin: 0 0 8px 0;
+    color: #F7F6F3;
+}
+
+.slw-application-header p,
+.slw-order-form-header p,
+.slw-dashboard-header p {
+    margin: 0;
+    opacity: 0.9;
+    font-size: 16px;
+}
+
+.slw-business-name {
+    font-style: italic;
+    opacity: 0.8;
+}
+
+.slw-minimum-note {
+    background: rgba(212, 175, 55, 0.2);
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 4px;
+    margin-top: 8px !important;
+    font-size: 14px !important;
+}
+
+/* -------------------------------------------------------
+   Forms
+   ------------------------------------------------------- */
+.slw-form {
+    background: #F7F6F3;
+    padding: 30px 35px;
+    border-radius: 0 0 8px 8px;
+    border: 1px solid #e0ddd8;
+    border-top: none;
+}
+
+.slw-form-row {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 18px;
+}
+
+.slw-form-field {
+    flex: 1;
+}
+
+.slw-form-field.slw-half {
+    flex: 0 0 calc(50% - 10px);
+}
+
+.slw-form-field label {
+    display: block;
+    font-weight: bold;
+    font-size: 14px;
+    margin-bottom: 6px;
+    color: #386174;
+}
+
+.slw-form-field .required {
+    color: #c0392b;
+}
+
+.slw-form-field input[type="text"],
+.slw-form-field input[type="email"],
+.slw-form-field input[type="tel"],
+.slw-form-field input[type="url"],
+.slw-form-field input[type="number"],
+.slw-form-field select,
+.slw-form-field textarea {
+    width: 100%;
+    padding: 10px 14px;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 15px;
+    color: #2C2C2C;
+    background: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+    transition: border-color 0.2s;
+}
+
+.slw-form-field input:focus,
+.slw-form-field select:focus,
+.slw-form-field textarea:focus {
+    outline: none;
+    border-color: #386174;
+    box-shadow: 0 0 0 2px rgba(56, 97, 116, 0.15);
+}
+
+.slw-checkbox-label {
+    font-weight: normal !important;
+    font-size: 15px !important;
+    color: #2C2C2C !important;
+    cursor: pointer;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.slw-checkbox-label input[type="checkbox"] {
+    margin-top: 4px;
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+/* -------------------------------------------------------
+   Buttons
+   ------------------------------------------------------- */
+.slw-btn {
+    display: inline-block;
+    padding: 12px 28px;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 16px;
+    font-weight: bold;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    text-align: center;
+    transition: background-color 0.2s, transform 0.1s;
+    line-height: 1.4;
+}
+
+.slw-btn:hover {
+    transform: translateY(-1px);
+}
+
+.slw-btn:active {
+    transform: translateY(0);
+}
+
+.slw-btn-primary {
+    background: #386174;
+    color: #F7F6F3;
+}
+
+.slw-btn-primary:hover {
+    background: #2C4F5E;
+    color: #F7F6F3;
+}
+
+.slw-btn-secondary {
+    background: #628393;
+    color: #F7F6F3;
+}
+
+.slw-btn-secondary:hover {
+    background: #4e6e7d;
+    color: #F7F6F3;
+}
+
+.slw-btn-small {
+    padding: 6px 14px;
+    font-size: 13px;
+}
+
+.slw-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* -------------------------------------------------------
+   Notices
+   ------------------------------------------------------- */
+.slw-notice {
+    padding: 16px 20px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    font-size: 15px;
+}
+
+.slw-notice-success {
+    background: #e8f5e9;
+    border: 1px solid #a5d6a7;
+    color: #2e7d32;
+}
+
+.slw-notice-error {
+    background: #fbe9e7;
+    border: 1px solid #ef9a9a;
+    color: #c62828;
+}
+
+.slw-notice-warning {
+    background: #fff8e1;
+    border: 1px solid #ffe082;
+    color: #e65100;
+}
+
+.slw-notice-info {
+    background: #e3f2fd;
+    border: 1px solid #90caf9;
+    color: #1565c0;
+}
+
+.slw-notice h3 {
+    margin: 0 0 8px 0;
+    font-size: 18px;
+}
+
+/* -------------------------------------------------------
+   Product Table (Order Form)
+   ------------------------------------------------------- */
+.slw-product-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #F7F6F3;
+    border: 1px solid #e0ddd8;
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    overflow: hidden;
+}
+
+.slw-product-table thead {
+    background: #1E2A30;
+    color: #F7F6F3;
+}
+
+.slw-product-table th {
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.slw-product-table td {
+    padding: 12px 16px;
+    border-bottom: 1px solid #e0ddd8;
+    vertical-align: middle;
+}
+
+.slw-product-table tbody tr:hover {
+    background: #eeedea;
+}
+
+.slw-product-table img {
+    border-radius: 4px;
+    object-fit: cover;
+}
+
+.slw-col-image {
+    width: 70px;
+}
+
+.slw-col-price {
+    white-space: nowrap;
+    font-weight: bold;
+    color: #386174;
+}
+
+.slw-col-qty {
+    width: 80px;
+}
+
+.slw-col-action {
+    width: 80px;
+}
+
+.slw-qty-input {
+    width: 65px !important;
+    padding: 6px 8px !important;
+    text-align: center;
+    font-size: 14px !important;
+}
+
+.slw-product-meta {
+    font-size: 13px;
+    color: #628393;
+}
+
+.slw-product-sku {
+    font-size: 12px;
+    color: #8A9499;
+}
+
+.slw-out-of-stock {
+    font-size: 13px;
+    color: #c62828;
+    font-style: italic;
+}
+
+.slw-order-form-footer {
+    padding: 20px 0;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+/* -------------------------------------------------------
+   Wholesale Price Label
+   ------------------------------------------------------- */
+.slw-wholesale-label {
+    color: #386174;
+    font-weight: bold;
+    font-size: 0.95em;
+}
+
+/* -------------------------------------------------------
+   Dashboard
+   ------------------------------------------------------- */
+.slw-dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-top: 0;
+}
+
+.slw-dashboard-card {
+    background: #F7F6F3;
+    border: 1px solid #e0ddd8;
+    border-radius: 8px;
+    padding: 24px;
+}
+
+.slw-dashboard-card-wide {
+    grid-column: 1 / -1;
+}
+
+.slw-dashboard-card h3 {
+    font-family: Georgia, 'Times New Roman', serif;
+    color: #386174;
+    font-size: 18px;
+    margin: 0 0 16px 0;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #D4AF37;
+}
+
+.slw-quick-links {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.slw-quick-links li {
+    margin-bottom: 10px;
+}
+
+.slw-quick-links li a:not(.slw-btn) {
+    color: #386174;
+    text-decoration: none;
+    font-size: 15px;
+}
+
+.slw-quick-links li a:not(.slw-btn):hover {
+    text-decoration: underline;
+}
+
+.slw-status-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.slw-status-table td {
+    padding: 8px 0;
+    border-bottom: 1px solid #e0ddd8;
+    font-size: 14px;
+}
+
+.slw-status-table td:first-child {
+    color: #628393;
+    width: 40%;
+}
+
+.slw-orders-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.slw-orders-table th {
+    text-align: left;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: #628393;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    border-bottom: 2px solid #e0ddd8;
+}
+
+.slw-orders-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #e0ddd8;
+    font-size: 14px;
+}
+
+.slw-orders-table a {
+    color: #386174;
+    font-weight: bold;
+    text-decoration: none;
+}
+
+.slw-orders-table a:hover {
+    text-decoration: underline;
+}
+
+.slw-resource-links {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 12px 0;
+}
+
+.slw-resource-links li {
+    margin-bottom: 8px;
+}
+
+.slw-resource-links a {
+    color: #386174;
+    text-decoration: none;
+}
+
+.slw-resource-links a:hover {
+    text-decoration: underline;
+}
+
+.slw-help-text {
+    font-size: 13px;
+    color: #8A9499;
+    font-style: italic;
+    margin: 0;
+}
+
+/* -------------------------------------------------------
+   Responsive
+   ------------------------------------------------------- */
+@media (max-width: 768px) {
+    .slw-form-row {
+        flex-direction: column;
+        gap: 0;
+    }
+
+    .slw-form-field.slw-half {
+        flex: 1;
+        margin-bottom: 18px;
+    }
+
+    .slw-dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .slw-product-table {
+        font-size: 14px;
+    }
+
+    .slw-col-image {
+        display: none;
+    }
+
+    .slw-application-header,
+    .slw-order-form-header,
+    .slw-dashboard-header {
+        padding: 20px;
+    }
+
+    .slw-form {
+        padding: 20px;
+    }
+
+    .slw-order-form-footer {
+        flex-direction: column;
+    }
+}
