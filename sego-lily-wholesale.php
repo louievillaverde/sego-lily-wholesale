@@ -3,7 +3,7 @@
  * Plugin Name:       Sego Lily Wholesale
  * Plugin URI:        https://github.com/louievillaverde/sego-lily-wholesale
  * Description:       Custom wholesale portal for Sego Lily Skincare. Handles wholesale pricing, applications, order minimums, NET 30 terms, tax exemption, tiered pricing, wholesale-only products, category pricing, wholesale-only coupons, shipping restrictions, bulk user import, and AIOS webhook integration.
- * Version:           1.3.1
+ * Version:           1.3.2
  * Author:            Lead Piranha
  * Author URI:        https://leadpiranha.com
  * Requires at least: 6.0
@@ -27,7 +27,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SLW_VERSION', '1.3.1' );
+define( 'SLW_VERSION', '1.3.2' );
 define( 'SLW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SLW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 

@@ -364,30 +364,36 @@
     transform: none;
 }
 
-/* Gold CTA — primary action on the application form. Dark slate text on
-   brand-gold fills the visual gap the old teal button left. Uppercase +
-   letter-spacing picks up the "letterpress labels / gold foil" brand line
-   on the rest of the site. */
-.slw-btn-cta {
-    background: #D4AF37;
-    color: #1E2A30;
+/* Primary CTA — brand teal with cream text. Solid, high-contrast against
+   the cream form background so it reads as the obvious next action
+   immediately. Uppercase + letter-spacing picks up the site's typographic
+   style. !important protects the background + color from theme overrides
+   (some WP themes blanket-style button elements). */
+.slw-btn-cta,
+button.slw-btn-cta,
+.slw-form button.slw-btn-cta {
+    background: #386174 !important;
+    color: #F7F6F3 !important;
     font-weight: 700;
-    letter-spacing: 0.6px;
+    letter-spacing: 0.8px;
     text-transform: uppercase;
-    padding: 14px 30px;
+    padding: 15px 32px;
     font-size: 15px;
-    border-radius: 2px;
-    box-shadow: 0 1px 2px rgba(30, 42, 48, 0.15);
+    border: none;
+    border-radius: 3px;
+    box-shadow: 0 2px 4px rgba(30, 42, 48, 0.18);
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.08);
 }
 
-.slw-btn-cta:hover {
-    background: #BF9A2C;
-    color: #1E2A30;
-    box-shadow: 0 4px 10px rgba(30, 42, 48, 0.2);
+.slw-btn-cta:hover,
+button.slw-btn-cta:hover {
+    background: #2C4F5E !important;
+    color: #F7F6F3 !important;
+    box-shadow: 0 4px 12px rgba(30, 42, 48, 0.28);
 }
 
 .slw-btn-cta:active {
-    box-shadow: 0 1px 2px rgba(30, 42, 48, 0.15);
+    box-shadow: 0 1px 2px rgba(30, 42, 48, 0.15) !important;
 }
 
 .slw-btn-submit {
