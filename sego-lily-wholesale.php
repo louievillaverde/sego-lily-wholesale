@@ -3,7 +3,7 @@
  * Plugin Name:       Sego Lily Wholesale
  * Plugin URI:        https://github.com/louievillaverde/sego-lily-wholesale
  * Description:       Custom wholesale portal for Sego Lily Skincare. Handles wholesale pricing, applications, order minimums, NET 30 terms, tax exemption, tiered pricing, wholesale-only products, category pricing, wholesale-only coupons, shipping restrictions, bulk user import, and AIOS webhook integration.
- * Version:           1.3.2
+ * Version:           1.4.0
  * Author:            Lead Piranha
  * Author URI:        https://leadpiranha.com
  * Requires at least: 6.0
@@ -27,7 +27,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SLW_VERSION', '1.3.2' );
+define( 'SLW_VERSION', '1.4.0' );
 define( 'SLW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SLW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -62,6 +62,7 @@ add_action( 'plugins_loaded', function() {
     require_once SLW_PLUGIN_DIR . 'includes/class-dashboard.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-webhooks.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-premium-features.php';
+    require_once SLW_PLUGIN_DIR . 'includes/class-updater.php';
 
     // Initialize
     SLW_Wholesale_Role::init();
@@ -72,6 +73,7 @@ add_action( 'plugins_loaded', function() {
     SLW_Dashboard::init();
     SLW_Webhooks::init();
     SLW_Premium_Features::init();
+    SLW_Updater::init();
 
     // Enqueue frontend styles on pages that use our shortcodes
     add_action( 'wp_enqueue_scripts', function() {
@@ -253,39 +255,17 @@ add_action( 'admin_init', function() {
 });
 
 /**
- * Show a friendly admin notice if Git Updater is NOT installed, pointing
- * Holly to the one-time setup. Once Git Updater is active, this notice
- * goes away and future updates flow automatically through the standard
- * WordPress Plugins > Updates screen.
+ * Clean up the dismissed-notice user meta from pre-1.4.0 versions that
+ * showed a "please install Git Updater" nag. The plugin now has a built-in
+ * updater (SLW_Updater) that hooks into the native WP update system, so
+ * no third-party git plugin is required. This cleanup runs once per user
+ * and is harmless if the meta key doesn't exist.
  */
-add_action( 'admin_notices', function() {
-    if ( ! current_user_can( 'update_plugins' ) ) return;
-    if ( get_user_meta( get_current_user_id(), 'slw_dismissed_git_updater_notice', true ) ) return;
-    if ( class_exists( 'Fragen\\Git_Updater\\Bootstrap' ) || function_exists( 'git_updater' ) ) return;
-    ?>
-    <div class="notice notice-warning is-dismissible" data-slw-notice="git-updater">
-        <p>
-            <strong>Sego Lily Wholesale:</strong> install the free
-            <a href="<?php echo esc_url( admin_url( 'plugin-install.php?s=git-updater&tab=search&type=term' ) ); ?>">Git Updater</a>
-            plugin once and every future release lands in your native Plugins &gt; Updates screen (click "Update Now" like any other plugin). Without Git Updater you'll need to upload new ZIPs manually.
-        </p>
-    </div>
-    <script>
-    (function(){
-        var n = document.querySelector('[data-slw-notice="git-updater"] .notice-dismiss');
-        if (!n) return;
-        n.addEventListener('click', function(){
-            fetch(ajaxurl, { method:'POST', body: new URLSearchParams({ action:'slw_dismiss_git_updater_notice' }), credentials:'same-origin' });
-        });
-    })();
-    </script>
-    <?php
-});
-
-add_action( 'wp_ajax_slw_dismiss_git_updater_notice', function() {
-    update_user_meta( get_current_user_id(), 'slw_dismissed_git_updater_notice', 1 );
-    wp_send_json_success();
-});
+add_action( 'admin_init', function() {
+    if ( get_user_meta( get_current_user_id(), 'slw_dismissed_git_updater_notice', true ) ) {
+        delete_user_meta( get_current_user_id(), 'slw_dismissed_git_updater_notice' );
+    }
+}, 99 );
 
 /**
  * Helper: check if the current user (or a given user) has the wholesale role.
