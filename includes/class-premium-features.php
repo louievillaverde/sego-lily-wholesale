@@ -390,23 +390,22 @@ class SLW_Premium_Features {
     }
 
     private static function send_bulk_welcome_email( $user, $password, $business_name ) {
-        $login_url = wp_login_url( home_url( '/wholesale-dashboard' ) );
-        $first_name = $user->first_name ?: 'there';
-        $subject = 'Welcome to Sego Lily Wholesale!';
+        $login_url     = wp_login_url( home_url( '/wholesale-dashboard' ) );
+        $first_name    = $user->first_name ?: 'there';
+        $brand_name    = SLW_Email_Settings::get_business_name();
+        $reply_email   = SLW_Email_Settings::get( 'reply_to' );
+        $subject       = 'Welcome to ' . $brand_name . ' Wholesale!';
+
         $body  = "Hi {$first_name},\n\n";
-        $body .= "You have been granted wholesale partner access to Sego Lily Skincare.\n\n";
+        $body .= "You have been granted wholesale partner access to " . $brand_name . ".\n\n";
         $body .= "Your login details:\n";
         $body .= "Username: {$user->user_login}\n";
         $body .= "Password: {$password}\n";
         $body .= "Login: {$login_url}\n\n";
         $body .= "You can place orders at " . home_url( '/wholesale-order' ) . " once logged in.\n\n";
-        $body .= "Questions? Reply to this email or reach out at wholesale@segolilyskincare.com.\n\n";
-        $body .= "Welcome,\nHolly Stoltz\nSego Lily Skincare";
+        $body .= "Questions? Reply to this email or reach out at {$reply_email}.\n\n";
+        $body .= "Welcome,\n" . SLW_Email_Settings::get_signature();
 
-        $headers = array(
-            'From: Sego Lily Skincare <wholesale@segolilyskincare.com>',
-            'Reply-To: wholesale@segolilyskincare.com',
-        );
-        wp_mail( $user->user_email, $subject, $body, $headers );
+        wp_mail( $user->user_email, $subject, $body, SLW_Email_Settings::get_headers() );
     }
 }

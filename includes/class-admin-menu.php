@@ -30,14 +30,14 @@ class SLW_Admin_Menu {
 
         // -----------------------------------------------------------
         // Top-level menu: "Wholesale"
-        // Landing page = Applications (until we build a Dashboard)
+        // Landing page = Dashboard
         // -----------------------------------------------------------
         add_menu_page(
             'Wholesale',
             'Wholesale',
             'manage_woocommerce',
-            'slw-applications',
-            array( 'SLW_Application_Form', 'render_admin_page' ),
+            'slw-dashboard',
+            array( 'SLW_Admin_Dashboard', 'render_page' ),
             $icon_svg,
             56
         );
@@ -46,9 +46,19 @@ class SLW_Admin_Menu {
         // Sub-pages — ORDER MATTERS (this is the sidebar order)
         // -----------------------------------------------------------
 
-        // 1. Applications (replaces auto-generated first item)
+        // 1. Dashboard (replaces auto-generated first item)
         add_submenu_page(
-            'slw-applications',
+            'slw-dashboard',
+            'Wholesale Dashboard',
+            'Dashboard',
+            'manage_woocommerce',
+            'slw-dashboard',
+            array( 'SLW_Admin_Dashboard', 'render_page' )
+        );
+
+        // 2. Applications
+        add_submenu_page(
+            'slw-dashboard',
             'Wholesale Applications',
             'Applications',
             'manage_woocommerce',
@@ -56,10 +66,22 @@ class SLW_Admin_Menu {
             array( 'SLW_Application_Form', 'render_admin_page' )
         );
 
-        // 2. Quote Requests
+        // 3. Orders
+        if ( class_exists( 'SLW_Wholesale_Orders' ) ) {
+            add_submenu_page(
+                'slw-dashboard',
+                'Wholesale Orders',
+                'Orders',
+                'manage_woocommerce',
+                'slw-orders',
+                array( 'SLW_Wholesale_Orders', 'render_page' )
+            );
+        }
+
+        // 4. Quote Requests
         if ( class_exists( 'SLW_RFQ' ) ) {
             add_submenu_page(
-                'slw-applications',
+                'slw-dashboard',
                 'Quote Requests',
                 'Quotes',
                 'manage_woocommerce',
@@ -68,10 +90,10 @@ class SLW_Admin_Menu {
             );
         }
 
-        // 3. Tiers
+        // 4. Tiers
         if ( class_exists( 'SLW_Tier_Settings' ) ) {
             add_submenu_page(
-                'slw-applications',
+                'slw-dashboard',
                 'Wholesale Tiers',
                 'Tiers',
                 'manage_woocommerce',
@@ -80,10 +102,22 @@ class SLW_Admin_Menu {
             );
         }
 
-        // 4. Import Users
+        // 5. Lead Capture
+        if ( class_exists( 'SLW_Lead_Capture' ) ) {
+            add_submenu_page(
+                'slw-dashboard',
+                'Lead Capture',
+                'Leads',
+                'manage_woocommerce',
+                'slw-leads',
+                array( 'SLW_Lead_Capture', 'render_admin_page' )
+            );
+        }
+
+        // 6. Import Users
         if ( class_exists( 'SLW_Premium_Features' ) ) {
             add_submenu_page(
-                'slw-applications',
+                'slw-dashboard',
                 'Import Wholesale Users',
                 'Import',
                 'manage_woocommerce',
@@ -92,9 +126,9 @@ class SLW_Admin_Menu {
             );
         }
 
-        // 5. Settings
+        // 7. Settings
         add_submenu_page(
-            'slw-applications',
+            'slw-dashboard',
             'Wholesale Settings',
             'Settings',
             'manage_woocommerce',
@@ -102,10 +136,10 @@ class SLW_Admin_Menu {
             array( 'SLW_Settings', 'render_page' )
         );
 
-        // 6. Invoices
+        // 8. Invoices
         if ( class_exists( 'SLW_Invoice_Settings' ) ) {
             add_submenu_page(
-                'slw-applications',
+                'slw-dashboard',
                 'Invoice Settings',
                 'Invoices',
                 'manage_woocommerce',
@@ -113,5 +147,15 @@ class SLW_Admin_Menu {
                 array( 'SLW_Invoice_Settings', 'render_page' )
             );
         }
+
+        // 9. Help (always last)
+        add_submenu_page(
+            'slw-dashboard',
+            'Help & Getting Started',
+            'Help',
+            'manage_woocommerce',
+            'slw-help',
+            array( 'SLW_Help', 'render_page' )
+        );
     }
 }

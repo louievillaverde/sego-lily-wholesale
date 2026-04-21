@@ -1348,3 +1348,972 @@ button.slw-btn-cta:hover {
     background: rgba(198, 40, 40, 0.10);
     color: #c62828;
 }
+
+/* -------------------------------------------------------
+   Wholesale Orders Admin Page
+   ------------------------------------------------------- */
+.slw-wholesale-orders {
+    max-width: 1400px;
+}
+
+.slw-wholesale-orders .wp-heading-inline {
+    margin-right: 12px;
+}
+
+/* Summary Stat Cards */
+.slw-orders-summary {
+    display: flex;
+    gap: 16px;
+    margin: 20px 0;
+}
+
+.slw-orders-stat-card {
+    background: #fff;
+    border: 1px solid #e0ddd8;
+    border-radius: 8px;
+    padding: 20px 28px;
+    flex: 1;
+    box-shadow: 0 1px 3px rgba(30, 42, 48, 0.06);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.slw-orders-stat-label {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #628393;
+}
+
+.slw-orders-stat-value {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1E2A30;
+    line-height: 1.2;
+}
+
+/* Filter Bar */
+.slw-orders-filters {
+    background: #fff;
+    border: 1px solid #e0ddd8;
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(30, 42, 48, 0.06);
+}
+
+.slw-orders-filters form {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.slw-orders-filters label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #628393;
+}
+
+.slw-orders-filters input[type="date"],
+.slw-orders-filters select {
+    padding: 4px 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 13px;
+    background: #fff;
+    line-height: 1.6;
+}
+
+.slw-orders-search {
+    padding: 4px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 13px;
+    min-width: 180px;
+}
+
+.slw-orders-filters .button {
+    margin: 0 !important;
+}
+
+/* Orders Table */
+.slw-orders-table {
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(30, 42, 48, 0.06);
+}
+
+.slw-orders-table thead th {
+    background: #f8f7f5;
+    color: #628393;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    border-bottom: 2px solid #e0ddd8;
+}
+
+.slw-orders-table tbody td {
+    vertical-align: middle;
+    font-size: 13px;
+    color: #1E2A30;
+}
+
+.slw-orders-order-link {
+    text-decoration: none;
+    color: #386174;
+}
+
+.slw-orders-order-link:hover {
+    color: #1E2A30;
+    text-decoration: underline;
+}
+
+/* Empty State */
+.slw-orders-empty {
+    background: #fff;
+    border: 1px solid #e0ddd8;
+    border-radius: 8px;
+    padding: 48px 24px;
+    text-align: center;
+    color: #628393;
+    margin-top: 20px;
+    box-shadow: 0 1px 3px rgba(30, 42, 48, 0.06);
+}
+
+/* Pagination */
+.slw-orders-pagination {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 16px;
+    padding: 12px 0;
+    flex-wrap: wrap;
+}
+
+.slw-orders-pagination .page-numbers {
+    display: inline-block;
+    padding: 4px 10px;
+    background: #fff;
+    border: 1px solid #e0ddd8;
+    border-radius: 4px;
+    text-decoration: none;
+    color: #386174;
+    font-size: 13px;
+}
+
+.slw-orders-pagination .page-numbers.current {
+    background: #386174;
+    color: #fff;
+    border-color: #386174;
+}
+
+.slw-orders-pagination .page-numbers:hover:not(.current) {
+    background: #f0efec;
+}
+
+.slw-orders-pagination-info {
+    font-size: 13px;
+    color: #628393;
+    font-style: italic;
+    margin-left: auto;
+}
+
+@media (max-width: 1200px) {
+    .slw-orders-summary {
+        flex-wrap: wrap;
+    }
+    .slw-orders-stat-card {
+        min-width: 160px;
+    }
+}
+
+@media (max-width: 782px) {
+    .slw-orders-filters form {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .slw-orders-search {
+        min-width: auto;
+    }
+}
+
+/* =======================================================
+   Admin Dashboard, Lead Capture Admin, Help Page
+   Modern SaaS-style admin UI
+   ======================================================= */
+
+/* -------------------------------------------------------
+   Admin Dashboard — Layout
+   ------------------------------------------------------- */
+.slw-admin-dashboard {
+    max-width: 1200px;
+    margin: 20px 20px 20px 0;
+}
+
+.slw-admin-dashboard__title {
+    font-size: 28px;
+    font-weight: 600;
+    color: #1E2A30;
+    margin: 0 0 4px 0;
+    padding: 0;
+    line-height: 1.3;
+}
+
+.slw-admin-dashboard__subtitle {
+    font-size: 14px;
+    color: #628393;
+    margin: 0 0 24px 0;
+}
+
+.slw-admin-dashboard__grid {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 24px;
+    align-items: start;
+}
+
+@media (max-width: 960px) {
+    .slw-admin-dashboard__grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* -------------------------------------------------------
+   Admin Cards — Shared
+   ------------------------------------------------------- */
+.slw-admin-card {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    padding: 24px;
+    margin-bottom: 20px;
+}
+
+.slw-admin-card__heading {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1E2A30;
+    margin: 0 0 16px 0;
+    padding: 0;
+    line-height: 1.4;
+}
+
+.slw-admin-card__empty {
+    color: #628393;
+    font-style: italic;
+    margin: 0;
+}
+
+.slw-admin-card__progress {
+    font-size: 13px;
+    color: #628393;
+    margin: -8px 0 12px 0;
+}
+
+.slw-admin-card__version {
+    font-size: 12px;
+    color: #9ca3af;
+    margin: 12px 0 0 0;
+}
+
+/* -------------------------------------------------------
+   Quick Stats Row
+   ------------------------------------------------------- */
+.slw-admin-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+@media (max-width: 768px) {
+    .slw-admin-stats {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+.slw-admin-stats__card {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    border-left: 4px solid #386174;
+    overflow: hidden;
+    transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.slw-admin-stats__card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    transform: translateY(-1px);
+}
+
+.slw-admin-stats__card--teal { border-left-color: #386174; }
+.slw-admin-stats__card--green { border-left-color: #2e7d32; }
+.slw-admin-stats__card--gold { border-left-color: #D4AF37; }
+.slw-admin-stats__card--slate { border-left-color: #628393; }
+
+.slw-admin-stats__link {
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    text-decoration: none;
+    color: inherit;
+}
+
+.slw-admin-stats__icon {
+    font-size: 20px;
+    margin-bottom: 8px;
+    opacity: 0.5;
+}
+
+.slw-admin-stats__card--teal .slw-admin-stats__icon { color: #386174; }
+.slw-admin-stats__card--green .slw-admin-stats__icon { color: #2e7d32; }
+.slw-admin-stats__card--gold .slw-admin-stats__icon { color: #D4AF37; }
+.slw-admin-stats__card--slate .slw-admin-stats__icon { color: #628393; }
+
+.slw-admin-stats__number {
+    font-size: 32px;
+    font-weight: 700;
+    color: #1E2A30;
+    line-height: 1.1;
+    margin-bottom: 4px;
+}
+
+.slw-admin-stats__label {
+    font-size: 13px;
+    color: #628393;
+    line-height: 1.3;
+}
+
+/* -------------------------------------------------------
+   Recent Activity
+   ------------------------------------------------------- */
+.slw-admin-activity {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.slw-admin-activity__item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.slw-admin-activity__item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.slw-admin-activity__icon {
+    color: #628393;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.slw-admin-activity__text {
+    flex: 1;
+    font-size: 13px;
+    color: #1E2A30;
+}
+
+.slw-admin-activity__time {
+    font-size: 12px;
+    color: #9ca3af;
+    white-space: nowrap;
+}
+
+/* -------------------------------------------------------
+   Quick Actions
+   ------------------------------------------------------- */
+.slw-admin-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.slw-admin-actions__btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.slw-admin-actions__btn .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    line-height: 16px;
+}
+
+/* -------------------------------------------------------
+   Checklist (sidebar)
+   ------------------------------------------------------- */
+.slw-admin-checklist-bar {
+    height: 6px;
+    background: #f0f0f0;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 16px;
+}
+
+.slw-admin-checklist-bar__fill {
+    height: 100%;
+    background: #386174;
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+.slw-admin-checklist {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.slw-admin-checklist__item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    font-size: 13px;
+    color: #1E2A30;
+    border-bottom: 1px solid #f5f5f5;
+}
+
+.slw-admin-checklist__item:last-child {
+    border-bottom: none;
+}
+
+.slw-admin-checklist__check {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: #9ca3af;
+}
+
+.slw-admin-checklist__item--done .slw-admin-checklist__check {
+    color: #2e7d32;
+    font-weight: bold;
+}
+
+.slw-admin-checklist__item--done .slw-admin-checklist__text {
+    text-decoration: line-through;
+    color: #9ca3af;
+}
+
+/* -------------------------------------------------------
+   Resources (sidebar)
+   ------------------------------------------------------- */
+.slw-admin-resources {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.slw-admin-resources li {
+    margin-bottom: 8px;
+}
+
+.slw-admin-resources a {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #386174;
+    text-decoration: none;
+    font-size: 13px;
+    padding: 6px 0;
+}
+
+.slw-admin-resources a:hover {
+    color: #1E2A30;
+}
+
+.slw-admin-resources .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    opacity: 0.6;
+}
+
+/* =======================================================
+   Lead Capture — Frontend Form
+   ======================================================= */
+.slw-lead-capture {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.slw-lead-capture__form-wrap {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    padding: 32px;
+}
+
+.slw-lead-capture__heading {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 24px;
+    color: #386174;
+    margin: 0 0 8px 0;
+}
+
+.slw-lead-capture__intro {
+    color: #628393;
+    font-size: 14px;
+    margin: 0 0 24px 0;
+    line-height: 1.5;
+}
+
+.slw-lead-capture__field {
+    margin-bottom: 16px;
+}
+
+.slw-lead-capture__field label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1E2A30;
+    margin-bottom: 6px;
+}
+
+.slw-lead-capture__field input,
+.slw-lead-capture__field select,
+.slw-lead-capture__field textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #d0d5dd;
+    border-radius: 6px;
+    font-size: 14px;
+    color: #1E2A30;
+    background: #fafafa;
+    transition: border-color 0.15s ease;
+    box-sizing: border-box;
+}
+
+.slw-lead-capture__field input:focus,
+.slw-lead-capture__field select:focus,
+.slw-lead-capture__field textarea:focus {
+    border-color: #386174;
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(56, 97, 116, 0.1);
+    background: #fff;
+}
+
+.slw-lead-capture__row {
+    display: flex;
+    gap: 16px;
+}
+
+@media (max-width: 500px) {
+    .slw-lead-capture__row {
+        flex-direction: column;
+        gap: 0;
+    }
+}
+
+.slw-lead-capture__submit {
+    margin-top: 8px;
+    width: 100%;
+    padding: 12px 24px;
+    font-size: 15px;
+}
+
+.slw-lead-capture__message {
+    margin-top: 16px;
+    padding: 12px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.slw-lead-capture__message--success {
+    background: rgba(46, 125, 50, 0.1);
+    color: #2e7d32;
+    border: 1px solid rgba(46, 125, 50, 0.2);
+}
+
+.slw-lead-capture__message--error {
+    background: rgba(198, 40, 40, 0.08);
+    color: #c62828;
+    border: 1px solid rgba(198, 40, 40, 0.15);
+}
+
+.slw-optional {
+    font-weight: 400;
+    color: #9ca3af;
+    font-size: 12px;
+}
+
+.slw-required {
+    color: #c62828;
+}
+
+/* =======================================================
+   Lead Capture — Admin List
+   ======================================================= */
+.slw-lead-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 16px;
+    border-bottom: 2px solid #f0f0f0;
+    padding-bottom: 0;
+}
+
+.slw-lead-tabs__tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #628393;
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.slw-lead-tabs__tab:hover {
+    color: #386174;
+}
+
+.slw-lead-tabs__tab--active {
+    color: #386174;
+    border-bottom-color: #386174;
+    font-weight: 600;
+}
+
+.slw-lead-tabs__badge {
+    background: #f0f0f0;
+    color: #628393;
+    font-size: 11px;
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+.slw-lead-tabs__tab--active .slw-lead-tabs__badge {
+    background: rgba(56, 97, 116, 0.12);
+    color: #386174;
+}
+
+.slw-lead-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    gap: 12px;
+}
+
+.slw-lead-toolbar__select {
+    padding: 6px 12px;
+    border: 1px solid #d0d5dd;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+.slw-lead-toolbar__apply {
+    font-size: 13px;
+}
+
+.slw-lead-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+}
+
+.slw-lead-table thead {
+    background: #fafafa;
+}
+
+.slw-lead-table th {
+    text-align: left;
+    padding: 12px 16px;
+    font-weight: 600;
+    color: #628393;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.slw-lead-table td {
+    padding: 12px 16px;
+    color: #1E2A30;
+    border-bottom: 1px solid #f5f5f5;
+    vertical-align: middle;
+}
+
+.slw-lead-table tbody tr:hover {
+    background: #fafbfc;
+}
+
+.slw-lead-table__check {
+    width: 40px;
+}
+
+.slw-lead-table__empty {
+    text-align: center;
+    color: #9ca3af;
+    padding: 40px 16px !important;
+    font-style: italic;
+}
+
+.slw-lead-status {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.slw-lead-status--new {
+    background: rgba(56, 97, 116, 0.12);
+    color: #386174;
+}
+
+.slw-lead-status--contacted {
+    background: rgba(212, 175, 55, 0.15);
+    color: #b8960e;
+}
+
+.slw-lead-status--converted {
+    background: rgba(46, 125, 50, 0.12);
+    color: #2e7d32;
+}
+
+.slw-lead-status--archived {
+    background: #f0f0f0;
+    color: #9ca3af;
+}
+
+.slw-lead-back {
+    display: inline-block;
+    margin-bottom: 12px;
+    color: #386174;
+    text-decoration: none;
+    font-size: 13px;
+}
+
+.slw-lead-back:hover {
+    color: #1E2A30;
+}
+
+.slw-lead-detail-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.slw-lead-detail-table th {
+    text-align: left;
+    padding: 10px 16px 10px 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #628393;
+    width: 120px;
+    vertical-align: top;
+    border-bottom: 1px solid #f5f5f5;
+}
+
+.slw-lead-detail-table td {
+    padding: 10px 0;
+    font-size: 13px;
+    color: #1E2A30;
+    border-bottom: 1px solid #f5f5f5;
+}
+
+/* =======================================================
+   Help Page
+   ======================================================= */
+
+/* Accordion */
+.slw-help__accordion {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.slw-help__step {
+    border: 1px solid #f0f0f0;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: border-color 0.15s ease;
+}
+
+.slw-help__step:hover {
+    border-color: #d0d5dd;
+}
+
+.slw-help__step-toggle {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    padding: 16px 20px;
+    background: #fafbfc;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    color: #1E2A30;
+    text-align: left;
+    transition: background 0.15s ease;
+}
+
+.slw-help__step-toggle:hover {
+    background: #f5f6f8;
+}
+
+.slw-help__step-num {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #386174;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.slw-help__step-title {
+    flex: 1;
+    font-weight: 500;
+}
+
+.slw-help__step-arrow {
+    color: #9ca3af;
+    transition: transform 0.2s ease;
+}
+
+.slw-help__step--open .slw-help__step-arrow {
+    transform: rotate(180deg);
+}
+
+.slw-help__step-body {
+    display: none;
+    padding: 0 20px 20px 60px;
+}
+
+.slw-help__step--open .slw-help__step-body {
+    display: block;
+}
+
+.slw-help__step-body p {
+    font-size: 13px;
+    color: #628393;
+    line-height: 1.6;
+    margin: 0 0 12px 0;
+}
+
+.slw-help__step-btn {
+    font-size: 13px;
+}
+
+/* Quick Links Grid */
+.slw-help__links-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+}
+
+.slw-help__link-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 20px 16px;
+    background: #fafbfc;
+    border: 1px solid #f0f0f0;
+    border-radius: 8px;
+    text-decoration: none;
+    color: #1E2A30;
+    font-size: 13px;
+    font-weight: 500;
+    text-align: center;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.slw-help__link-card:hover {
+    border-color: #386174;
+    box-shadow: 0 2px 8px rgba(56, 97, 116, 0.1);
+    transform: translateY(-1px);
+    color: #386174;
+}
+
+.slw-help__link-icon {
+    font-size: 24px;
+    color: #628393;
+}
+
+.slw-help__link-card:hover .slw-help__link-icon {
+    color: #386174;
+}
+
+/* System Info */
+.slw-help__sysinfo {
+    padding: 0;
+}
+
+.slw-help__sysinfo-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 20px 24px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+}
+
+.slw-help__sysinfo-toggle:hover {
+    background: #fafbfc;
+}
+
+.slw-help__sysinfo-toggle .dashicons {
+    color: #9ca3af;
+    transition: transform 0.2s ease;
+}
+
+.slw-help__sysinfo-body {
+    display: none;
+    padding: 0 24px 24px;
+}
+
+.slw-help__sysinfo-body--open {
+    display: block;
+}
+
+.slw-help__sysinfo-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.slw-help__sysinfo-table th {
+    text-align: left;
+    padding: 8px 16px 8px 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #628393;
+    width: 180px;
+    border-bottom: 1px solid #f5f5f5;
+}
+
+.slw-help__sysinfo-table td {
+    padding: 8px 0;
+    font-size: 13px;
+    color: #1E2A30;
+    border-bottom: 1px solid #f5f5f5;
+}

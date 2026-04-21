@@ -118,14 +118,14 @@ class SLW_Settings {
                         </td>
                     </tr>
                     <tr>
-                        <th scope="row"><label for="slw_net30_enabled">Enable NET 30 Option</label></th>
+                        <th scope="row"><label for="slw_net30_enabled">Enable NET Payment Terms</label></th>
                         <td>
                             <label>
                                 <input type="checkbox" id="slw_net30_enabled" name="slw_net30_enabled"
                                        value="1" <?php checked( get_option( 'slw_net30_enabled', false ) ); ?> />
-                                Allow admins to grant NET 30 payment terms to individual wholesale customers
+                                Allow admins to grant NET 30, 60, or 90 day payment terms to individual wholesale customers
                             </label>
-                            <p class="description">When enabled, a "NET 30 Terms" checkbox appears on wholesale user profiles.</p>
+                            <p class="description">When enabled, a NET terms dropdown appears on wholesale user profiles where you can assign NET 30, 60, or 90 day terms per customer.</p>
                         </td>
                     </tr>
                     <tr>

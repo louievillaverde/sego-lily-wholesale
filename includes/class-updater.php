@@ -64,7 +64,7 @@ class SLW_Updater {
                 ),
                 'banners'      => array(),
                 'requires'     => '6.0',
-                'tested'       => '6.8',
+                'tested'       => get_bloginfo( 'version' ),
                 'requires_php' => '7.4',
             );
         } else {

@@ -14,7 +14,7 @@ class SLW_Invoice_Settings {
 	/** All option keys with their defaults. */
 	private static $defaults = array(
 		'slw_invoice_logo_id'        => 0,
-		'slw_invoice_business_name'  => 'Sego Lily Skincare',
+		'slw_invoice_business_name'  => '',
 		'slw_invoice_business_address' => '',
 		'slw_invoice_business_phone' => '',
 		'slw_invoice_business_email' => '',
@@ -40,6 +40,12 @@ class SLW_Invoice_Settings {
 		$full_key = strpos( $key, 'slw_invoice_' ) === 0 ? $key : 'slw_invoice_' . $key;
 		$default  = isset( self::$defaults[ $full_key ] ) ? self::$defaults[ $full_key ] : '';
 		$value    = get_option( $full_key );
+
+		// Dynamic default for business_name: use site name
+		if ( $full_key === 'slw_invoice_business_name' && ( $value === false || $value === '' ) && $default === '' ) {
+			return get_bloginfo( 'name' );
+		}
+
 		return ( $value !== false && $value !== '' ) ? $value : $default;
 	}
 
@@ -69,7 +75,7 @@ class SLW_Invoice_Settings {
 		register_setting( 'slw_invoice_settings_group', 'slw_invoice_business_name', array(
 			'type'              => 'string',
 			'sanitize_callback' => 'sanitize_text_field',
-			'default'           => 'Sego Lily Skincare',
+			'default'           => '',
 		));
 		register_setting( 'slw_invoice_settings_group', 'slw_invoice_business_address', array(
 			'type'              => 'string',
@@ -112,6 +118,11 @@ class SLW_Invoice_Settings {
 	 * Enqueue the WP media uploader and color picker on our settings page only.
 	 */
 	public static function enqueue_admin_assets( $hook ) {
+		// Load modern admin CSS on all plugin pages
+		if ( strpos( $hook, 'slw-' ) !== false || strpos( $hook, 'slw_' ) !== false ) {
+			wp_enqueue_style( 'slw-admin', SLW_PLUGIN_URL . 'assets/admin.css', array(), SLW_VERSION );
+		}
+
 		if ( $hook !== 'settings_page_slw-invoice-settings' ) {
 			return;
 		}
@@ -235,8 +246,31 @@ class SLW_Invoice_Settings {
 					</tr>
 				</table>
 
+				<?php
+				// Email settings section (white-label)
+				if ( class_exists( 'SLW_Email_Settings' ) ) {
+					SLW_Email_Settings::render_settings_section();
+				}
+				?>
+
 				<?php submit_button( 'Save Invoice Settings' ); ?>
 			</form>
+
+			<!-- Invoice Preview -->
+			<div class="slw-invoice-preview-card">
+				<h3>Invoice Preview</h3>
+				<p>Preview shows how your invoice looks with the current saved settings. Save changes above first, then refresh the preview.</p>
+				<iframe id="slw-invoice-preview-iframe"
+						class="slw-invoice-preview-frame"
+						src="<?php echo esc_url( add_query_arg( 'slw_invoice_preview', '1', home_url( '/' ) ) ); ?>"
+						frameborder="0"
+						loading="lazy"></iframe>
+				<div class="slw-preview-actions">
+					<button type="button" class="button" id="slw-refresh-preview">Refresh Preview</button>
+					<a href="<?php echo esc_url( add_query_arg( 'slw_invoice_preview', '1', home_url( '/' ) ) ); ?>"
+					   target="_blank" class="button">Open in New Tab</a>
+				</div>
+			</div>
 		</div>
 
 		<script>
@@ -284,6 +318,15 @@ class SLW_Invoice_Settings {
 				});
 			}
 			bindRemove();
+
+			// Refresh invoice preview
+			$('#slw-refresh-preview').on('click', function(e) {
+				e.preventDefault();
+				var iframe = document.getElementById('slw-invoice-preview-iframe');
+				if (iframe) {
+					iframe.src = iframe.src;
+				}
+			});
 		});
 		</script>
 		<?php

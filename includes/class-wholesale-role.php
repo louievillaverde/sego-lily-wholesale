@@ -229,11 +229,11 @@ class SLW_Wholesale_Role {
     public static function render_user_column( $value, $column_name, $user_id ) {
         if ( $column_name !== 'slw_wholesale' ) return $value;
         if ( slw_is_wholesale_user( $user_id ) ) {
-            $verified = get_user_meta( $user_id, 'slw_resale_cert_verified', true ) === '1';
-            $net30    = get_user_meta( $user_id, 'slw_net30_approved', true ) === '1';
+            $verified  = get_user_meta( $user_id, 'slw_resale_cert_verified', true ) === '1';
+            $net_terms = class_exists( 'SLW_Gateway_Net30' ) ? SLW_Gateway_Net30::get_user_net_terms( $user_id ) : 0;
             $badges = array( '<span style="color:#386174;font-weight:600;">Wholesale</span>' );
-            if ( $verified ) $badges[] = '<span style="color:#628393;">Tax Exempt</span>';
-            if ( $net30 )    $badges[] = '<span style="color:#D4AF37;">NET 30</span>';
+            if ( $verified )    $badges[] = '<span style="color:#628393;">Tax Exempt</span>';
+            if ( $net_terms > 0 ) $badges[] = '<span style="color:#D4AF37;">NET ' . esc_html( $net_terms ) . '</span>';
             return implode( '<br>', $badges );
         }
         return '<span style="color:#999;">Retail</span>';
@@ -249,7 +249,13 @@ class SLW_Wholesale_Role {
         if ( ! current_user_can( 'edit_users' ) ) return;
         $is_wholesale = slw_is_wholesale_user( $user->ID );
         $resale_verified = get_user_meta( $user->ID, 'slw_resale_cert_verified', true ) === '1';
-        $net30 = get_user_meta( $user->ID, 'slw_net30_approved', true ) === '1';
+        // NET terms: read new meta first, fall back to legacy checkbox
+        $net_terms = get_user_meta( $user->ID, 'slw_net_terms', true );
+        if ( $net_terms === '' || $net_terms === false ) {
+            $legacy_net30 = get_user_meta( $user->ID, 'slw_net30_approved', true );
+            $net_terms = ( $legacy_net30 === '1' ) ? 30 : 0;
+        }
+        $net_terms = absint( $net_terms );
         $resale_number = get_user_meta( $user->ID, 'slw_resale_certificate_number', true );
         ?>
         <h2>Wholesale Portal</h2>
@@ -275,10 +281,15 @@ class SLW_Wholesale_Role {
                 </td>
             </tr>
             <tr>
-                <th><label>NET 30 Terms</label></th>
+                <th><label for="slw_net_terms">NET Payment Terms</label></th>
                 <td>
-                    <label><input type="checkbox" name="slw_net30_approved" value="1" <?php checked( $net30 ); ?> /> Approved for NET 30 payment terms</label>
-                    <p class="description">When approved, this customer can choose NET 30 at checkout instead of paying upfront.</p>
+                    <select name="slw_net_terms" id="slw_net_terms">
+                        <option value="0" <?php selected( $net_terms, 0 ); ?>>No NET terms</option>
+                        <option value="30" <?php selected( $net_terms, 30 ); ?>>NET 30</option>
+                        <option value="60" <?php selected( $net_terms, 60 ); ?>>NET 60</option>
+                        <option value="90" <?php selected( $net_terms, 90 ); ?>>NET 90</option>
+                    </select>
+                    <p class="description">Grant this customer NET payment terms at checkout. They can place orders and pay within the selected number of days.</p>
                 </td>
             </tr>
         </table>
@@ -300,7 +311,16 @@ class SLW_Wholesale_Role {
         }
 
         update_user_meta( $user_id, 'slw_resale_cert_verified', ! empty( $_POST['slw_resale_cert_verified'] ) ? '1' : '0' );
-        update_user_meta( $user_id, 'slw_net30_approved', ! empty( $_POST['slw_net30_approved'] ) ? '1' : '0' );
+
+        // Save NET terms (new dropdown) and keep legacy meta in sync
+        $net_terms = absint( $_POST['slw_net_terms'] ?? 0 );
+        if ( ! in_array( $net_terms, array( 0, 30, 60, 90 ), true ) ) {
+            $net_terms = 0;
+        }
+        update_user_meta( $user_id, 'slw_net_terms', $net_terms );
+        // Keep legacy slw_net30_approved in sync for backward compat
+        update_user_meta( $user_id, 'slw_net30_approved', $net_terms > 0 ? '1' : '0' );
+
         update_user_meta( $user_id, 'slw_resale_certificate_number', sanitize_text_field( $_POST['slw_resale_certificate_number'] ?? '' ) );
     }
 

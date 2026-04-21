@@ -19,6 +19,7 @@ class SLW_PDF_Invoices {
 		// Register the query var and intercept requests
 		add_filter( 'query_vars', array( __CLASS__, 'register_query_vars' ) );
 		add_action( 'template_redirect', array( __CLASS__, 'handle_invoice_request' ) );
+		add_action( 'template_redirect', array( __CLASS__, 'handle_invoice_preview' ) );
 
 		// Add "Download Invoice" to WooCommerce My Account > Orders
 		add_filter( 'woocommerce_my_account_my_orders_actions', array( __CLASS__, 'add_my_orders_action' ), 10, 2 );
@@ -33,6 +34,7 @@ class SLW_PDF_Invoices {
 	 */
 	public static function register_query_vars( $vars ) {
 		$vars[] = 'slw_invoice';
+		$vars[] = 'slw_invoice_preview';
 		return $vars;
 	}
 
@@ -248,7 +250,7 @@ class SLW_PDF_Invoices {
 	}
 
 	/**
-	 * Determine if the order used NET 30 payment terms.
+	 * Determine if the order used NET payment terms.
 	 *
 	 * @param WC_Order $order
 	 * @return bool
@@ -264,15 +266,45 @@ class SLW_PDF_Invoices {
 	}
 
 	/**
+	 * Get the NET term days for an order. Checks order meta first, falls
+	 * back to the user's current term, then defaults to 30.
+	 *
+	 * @param WC_Order $order
+	 * @return int
+	 */
+	private static function get_order_net_days( $order ) {
+		// 1. Check order-level meta (set at checkout time)
+		$days = absint( $order->get_meta( '_slw_net_terms_days' ) );
+		if ( $days > 0 ) {
+			return $days;
+		}
+
+		// 2. Fall back to user's current setting
+		$user_id = $order->get_user_id();
+		if ( $user_id && class_exists( 'SLW_Gateway_Net30' ) ) {
+			$user_days = SLW_Gateway_Net30::get_user_net_terms( $user_id );
+			if ( $user_days > 0 ) {
+				return $user_days;
+			}
+		}
+
+		// 3. Default to 30 for legacy orders
+		return 30;
+	}
+
+	/**
 	 * Get payment status label and badge color.
 	 *
 	 * @param WC_Order $order
 	 * @return array { label: string, color: string, bg: string }
 	 */
 	private static function get_payment_status( $order ) {
-		$status = $order->get_status();
+		$status   = $order->get_status();
+		$is_net   = self::is_net30_order( $order );
+		$net_days = $is_net ? self::get_order_net_days( $order ) : 0;
+		$net_label = $net_days > 0 ? 'NET ' . $net_days : 'NET 30';
 
-		if ( in_array( $status, array( 'completed', 'processing' ), true ) && ! self::is_net30_order( $order ) ) {
+		if ( in_array( $status, array( 'completed', 'processing' ), true ) && ! $is_net ) {
 			return array(
 				'label' => 'Paid',
 				'color' => '#2e7d32',
@@ -288,17 +320,17 @@ class SLW_PDF_Invoices {
 			);
 		}
 
-		if ( self::is_net30_order( $order ) && in_array( $status, array( 'processing', 'completed' ), true ) ) {
+		if ( $is_net && in_array( $status, array( 'processing', 'completed' ), true ) ) {
 			return array(
-				'label' => 'NET 30 - Paid',
+				'label' => $net_label . ' - Paid',
 				'color' => '#2e7d32',
 				'bg'    => '#e8f5e9',
 			);
 		}
 
-		if ( self::is_net30_order( $order ) ) {
+		if ( $is_net ) {
 			return array(
-				'label' => 'NET 30 - Unpaid',
+				'label' => $net_label . ' - Unpaid',
 				'color' => '#e65100',
 				'bg'    => '#fff8e1',
 			);
@@ -320,6 +352,358 @@ class SLW_PDF_Invoices {
 	}
 
 	/**
+	 * Handle invoice preview requests from the settings page.
+	 * Renders a sample invoice using dummy data. Admin only.
+	 */
+	public static function handle_invoice_preview() {
+		if ( ! get_query_var( 'slw_invoice_preview' ) ) {
+			return;
+		}
+
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_die( esc_html__( 'You do not have permission to preview invoices.', 'sego-lily-wholesale' ), 403 );
+		}
+
+		self::render_preview_invoice();
+		exit;
+	}
+
+	/**
+	 * Render a sample invoice with dummy data for the settings preview.
+	 * Uses the exact same HTML template as real invoices.
+	 */
+	private static function render_preview_invoice() {
+		// Gather settings (same as real invoice)
+		$logo_id        = absint( SLW_Invoice_Settings::get( 'logo_id' ) );
+		$logo_url       = $logo_id ? wp_get_attachment_image_url( $logo_id, 'medium' ) : '';
+		$business_name  = SLW_Invoice_Settings::get( 'business_name' );
+		$business_addr  = SLW_Invoice_Settings::get( 'business_address' );
+		$business_phone = SLW_Invoice_Settings::get( 'business_phone' );
+		$business_email = SLW_Invoice_Settings::get( 'business_email' );
+		$accent         = SLW_Invoice_Settings::get( 'accent_color' );
+		$footer_text    = SLW_Invoice_Settings::get( 'footer_text' );
+		$terms_note     = SLW_Invoice_Settings::get( 'payment_terms' );
+		$prefix         = SLW_Invoice_Settings::get( 'number_prefix' );
+		$invoice_number = $prefix . '1234';
+
+		// Dummy data
+		$invoice_date   = date_i18n( 'F j, Y' );
+		$due_date       = date_i18n( 'F j, Y', time() + ( 30 * DAY_IN_SECONDS ) );
+		$billing_name   = 'Jane Doe';
+		$billing_company = 'Acme Beauty Boutique';
+		$billing_address = '123 Main Street<br>Suite 200<br>Salt Lake City, UT 84101';
+		$billing_email  = 'jane@acmebeauty.com';
+		$is_net30       = true;
+
+		$payment_status = array(
+			'label' => 'NET 30 - Unpaid',
+			'color' => '#e65100',
+			'bg'    => '#fff8e1',
+		);
+
+		// Dummy line items
+		$dummy_items = array(
+			array( 'name' => 'Hydrating Face Serum - 1oz', 'sku' => 'HFS-001', 'qty' => 24, 'price' => 18.00 ),
+			array( 'name' => 'Gentle Cleansing Balm - 2oz', 'sku' => 'GCB-002', 'qty' => 12, 'price' => 14.50 ),
+			array( 'name' => 'Daily Moisturizer SPF 30 - 1.7oz', 'sku' => 'DM-030', 'qty' => 36, 'price' => 22.00 ),
+		);
+
+		$subtotal = 0;
+		foreach ( $dummy_items as $item ) {
+			$subtotal += $item['qty'] * $item['price'];
+		}
+		$shipping = 12.50;
+		$total    = $subtotal + $shipping;
+
+		// Compute accent-light (10% opacity)
+		$accent_light = $accent . '1a';
+
+		header( 'Content-Type: text/html; charset=utf-8' );
+		?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Preview - <?php echo esc_html( $invoice_number ); ?></title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+	font-family: Inter, system-ui, -apple-system, sans-serif;
+	font-size: 14px;
+	line-height: 1.6;
+	color: #1E2A30;
+	background: #f5f5f5;
+	-webkit-print-color-adjust: exact;
+	print-color-adjust: exact;
+}
+.invoice-container {
+	max-width: 800px;
+	margin: 24px auto;
+	background: #fff;
+	border-radius: 8px;
+	box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+	overflow: hidden;
+}
+.invoice-preview-badge {
+	display: block;
+	background: #D4AF37;
+	color: #fff;
+	text-align: center;
+	padding: 6px;
+	font-size: 11px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 1px;
+}
+.invoice-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	padding: 40px 48px 32px;
+	border-bottom: 3px solid <?php echo esc_attr( $accent ); ?>;
+}
+.invoice-logo img { max-width: 180px; max-height: 64px; display: block; }
+.invoice-logo-text {
+	font-family: Georgia, 'Times New Roman', serif;
+	font-size: 24px;
+	font-weight: 700;
+	color: <?php echo esc_attr( $accent ); ?>;
+}
+.invoice-business-info {
+	text-align: right;
+	font-size: 13px;
+	color: #628393;
+	line-height: 1.7;
+}
+.invoice-business-info strong {
+	color: #1E2A30;
+	font-size: 15px;
+	display: block;
+	margin-bottom: 4px;
+}
+.invoice-title-bar {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 24px 48px;
+	background: <?php echo esc_attr( $accent_light ); ?>;
+}
+.invoice-title {
+	font-family: Georgia, 'Times New Roman', serif;
+	font-size: 28px;
+	font-weight: 700;
+	color: <?php echo esc_attr( $accent ); ?>;
+	letter-spacing: 2px;
+	text-transform: uppercase;
+}
+.invoice-meta { text-align: right; font-size: 13px; line-height: 1.8; }
+.invoice-meta strong { color: #1E2A30; }
+.invoice-meta span { color: #628393; }
+.invoice-body { padding: 32px 48px; }
+.invoice-parties {
+	display: flex;
+	justify-content: space-between;
+	align-items: flex-start;
+	margin-bottom: 32px;
+}
+.invoice-bill-to h3 {
+	font-family: Georgia, 'Times New Roman', serif;
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 1.5px;
+	color: #628393;
+	margin-bottom: 8px;
+	font-weight: 600;
+}
+.invoice-bill-to .bill-to-name { font-size: 16px; font-weight: 700; color: #1E2A30; margin-bottom: 2px; }
+.invoice-bill-to .bill-to-company { font-size: 14px; color: #386174; margin-bottom: 4px; }
+.invoice-bill-to .bill-to-detail { font-size: 13px; color: #628393; line-height: 1.6; }
+.invoice-status-badge {
+	display: inline-block;
+	padding: 8px 20px;
+	border-radius: 20px;
+	font-size: 13px;
+	font-weight: 700;
+	letter-spacing: 0.5px;
+	text-transform: uppercase;
+}
+.invoice-table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+.invoice-table thead th {
+	font-size: 11px;
+	text-transform: uppercase;
+	letter-spacing: 1px;
+	color: #628393;
+	font-weight: 600;
+	padding: 12px 0;
+	border-bottom: 2px solid #e0ddd8;
+	text-align: left;
+}
+.invoice-table thead th.text-right { text-align: right; }
+.invoice-table tbody td {
+	padding: 14px 0;
+	border-bottom: 1px solid #f0eeea;
+	font-size: 14px;
+	vertical-align: top;
+}
+.invoice-table tbody td.text-right { text-align: right; }
+.invoice-table .item-name { font-weight: 600; color: #1E2A30; }
+.invoice-table .item-sku { font-size: 12px; color: #8A9499; margin-top: 2px; }
+.invoice-totals { display: flex; justify-content: flex-end; margin-bottom: 32px; }
+.invoice-totals-table { width: 280px; }
+.invoice-totals-table .total-row {
+	display: flex;
+	justify-content: space-between;
+	padding: 8px 0;
+	font-size: 14px;
+	color: #628393;
+}
+.invoice-totals-table .total-row.grand-total {
+	border-top: 2px solid <?php echo esc_attr( $accent ); ?>;
+	margin-top: 8px;
+	padding-top: 12px;
+	font-size: 18px;
+	font-weight: 700;
+	color: #1E2A30;
+}
+.invoice-totals-table .total-row.grand-total .total-amount {
+	color: <?php echo esc_attr( $accent ); ?>;
+}
+.invoice-terms {
+	background: #fffdf5;
+	border: 1px solid #f0e6c0;
+	border-radius: 6px;
+	padding: 16px 20px;
+	margin-bottom: 24px;
+	font-size: 13px;
+	color: #8B6914;
+}
+.invoice-terms strong { display: block; margin-bottom: 4px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+.invoice-footer {
+	border-top: 1px solid #e0ddd8;
+	padding: 24px 48px;
+	text-align: center;
+	font-size: 13px;
+	color: #628393;
+	line-height: 1.8;
+}
+</style>
+</head>
+<body>
+
+<div class="invoice-container">
+	<div class="invoice-preview-badge">Sample Preview &mdash; Not a Real Invoice</div>
+
+	<div class="invoice-header">
+		<div class="invoice-logo">
+			<?php if ( $logo_url ) : ?>
+				<img src="<?php echo esc_url( $logo_url ); ?>" alt="<?php echo esc_attr( $business_name ); ?>" />
+			<?php else : ?>
+				<div class="invoice-logo-text"><?php echo esc_html( $business_name ); ?></div>
+			<?php endif; ?>
+		</div>
+		<div class="invoice-business-info">
+			<strong><?php echo esc_html( $business_name ); ?></strong>
+			<?php if ( $business_addr ) : ?>
+				<?php echo nl2br( esc_html( $business_addr ) ); ?><br>
+			<?php endif; ?>
+			<?php if ( $business_phone ) : ?>
+				<?php echo esc_html( $business_phone ); ?><br>
+			<?php endif; ?>
+			<?php if ( $business_email ) : ?>
+				<?php echo esc_html( $business_email ); ?>
+			<?php endif; ?>
+		</div>
+	</div>
+
+	<div class="invoice-title-bar">
+		<div class="invoice-title">Invoice</div>
+		<div class="invoice-meta">
+			<span>Invoice #:</span> <strong><?php echo esc_html( $invoice_number ); ?></strong><br>
+			<span>Date:</span> <strong><?php echo esc_html( $invoice_date ); ?></strong><br>
+			<span>Due:</span> <strong><?php echo esc_html( $due_date ); ?></strong>
+		</div>
+	</div>
+
+	<div class="invoice-body">
+		<div class="invoice-parties">
+			<div class="invoice-bill-to">
+				<h3>Bill To</h3>
+				<div class="bill-to-name"><?php echo esc_html( $billing_name ); ?></div>
+				<div class="bill-to-company"><?php echo esc_html( $billing_company ); ?></div>
+				<div class="bill-to-detail"><?php echo wp_kses_post( $billing_address ); ?></div>
+				<div class="bill-to-detail"><?php echo esc_html( $billing_email ); ?></div>
+			</div>
+			<div>
+				<span class="invoice-status-badge"
+					  style="color:<?php echo esc_attr( $payment_status['color'] ); ?>;background:<?php echo esc_attr( $payment_status['bg'] ); ?>;">
+					<?php echo esc_html( $payment_status['label'] ); ?>
+				</span>
+			</div>
+		</div>
+
+		<table class="invoice-table">
+			<thead>
+				<tr>
+					<th style="width:45%;">Product</th>
+					<th style="width:15%;">SKU</th>
+					<th class="text-right" style="width:10%;">Qty</th>
+					<th class="text-right" style="width:15%;">Unit Price</th>
+					<th class="text-right" style="width:15%;">Total</th>
+				</tr>
+			</thead>
+			<tbody>
+				<?php foreach ( $dummy_items as $item ) : ?>
+				<tr>
+					<td>
+						<div class="item-name"><?php echo esc_html( $item['name'] ); ?></div>
+						<div class="item-sku"><?php echo esc_html( $item['sku'] ); ?></div>
+					</td>
+					<td><?php echo esc_html( $item['sku'] ); ?></td>
+					<td class="text-right"><?php echo esc_html( $item['qty'] ); ?></td>
+					<td class="text-right">$<?php echo esc_html( number_format( $item['price'], 2 ) ); ?></td>
+					<td class="text-right">$<?php echo esc_html( number_format( $item['qty'] * $item['price'], 2 ) ); ?></td>
+				</tr>
+				<?php endforeach; ?>
+			</tbody>
+		</table>
+
+		<div class="invoice-totals">
+			<div class="invoice-totals-table">
+				<div class="total-row">
+					<span>Subtotal</span>
+					<span>$<?php echo esc_html( number_format( $subtotal, 2 ) ); ?></span>
+				</div>
+				<div class="total-row">
+					<span>Shipping</span>
+					<span>$<?php echo esc_html( number_format( $shipping, 2 ) ); ?></span>
+				</div>
+				<div class="total-row grand-total">
+					<span>Total</span>
+					<span class="total-amount">$<?php echo esc_html( number_format( $total, 2 ) ); ?></span>
+				</div>
+			</div>
+		</div>
+
+		<?php if ( $terms_note ) : ?>
+		<div class="invoice-terms">
+			<strong>Payment Terms</strong>
+			<?php echo esc_html( $terms_note ); ?>
+		</div>
+		<?php endif; ?>
+	</div>
+
+	<div class="invoice-footer">
+		<?php echo nl2br( esc_html( $footer_text ) ); ?>
+	</div>
+</div>
+
+</body>
+</html>
+		<?php
+	}
+
+	/**
 	 * Render the full standalone HTML invoice page and exit.
 	 *
 	 * @param WC_Order $order
@@ -337,13 +721,14 @@ class SLW_PDF_Invoices {
 		$terms_note     = SLW_Invoice_Settings::get( 'payment_terms' );
 		$invoice_number = self::get_invoice_number( $order );
 		$is_net30       = self::is_net30_order( $order );
+		$net_days       = $is_net30 ? self::get_order_net_days( $order ) : 0;
 		$payment_status = self::get_payment_status( $order );
 
 		// Dates
 		$order_date = $order->get_date_created();
 		$invoice_date = $order_date ? $order_date->date_i18n( 'F j, Y' ) : date_i18n( 'F j, Y' );
 		$due_date = $is_net30 && $order_date
-			? date_i18n( 'F j, Y', $order_date->getTimestamp() + ( 30 * DAY_IN_SECONDS ) )
+			? date_i18n( 'F j, Y', $order_date->getTimestamp() + ( $net_days * DAY_IN_SECONDS ) )
 			: 'Due on receipt';
 
 		// Billing

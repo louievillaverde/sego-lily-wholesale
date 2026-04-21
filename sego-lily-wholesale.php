@@ -3,10 +3,11 @@
  * Plugin Name:       Wholesale Portal
  * Plugin URI:        https://github.com/louievillaverde/sego-lily-wholesale
  * Description:       Turn any WooCommerce store into a full B2B wholesale operation. Tiered wholesale pricing, application-based onboarding, order minimums, NET payment terms, tax exemption, customizable PDF invoices, downloadable line sheets, request-for-quote, automated reorder reminders, lead capture, bulk user import, and CRM webhook integration. Built by Lead Piranha.
- * Version:           2.2.0
+ * Version:           2.3.0
  * Author:            Lead Piranha
  * Author URI:        https://leadpiranha.com
  * Requires at least: 6.0
+ * Tested up to:      6.9.4
  * Requires PHP:      7.4
  * WooCommerce requires at least: 8.0
  * License:           Proprietary
@@ -27,7 +28,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SLW_VERSION', '2.2.0' );
+define( 'SLW_VERSION', '2.3.0' );
 define( 'SLW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SLW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -64,6 +65,11 @@ add_action( 'plugins_loaded', function() {
     require_once SLW_PLUGIN_DIR . 'includes/class-premium-features.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-updater.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-admin-menu.php';
+    require_once SLW_PLUGIN_DIR . 'includes/class-admin-dashboard.php';
+    require_once SLW_PLUGIN_DIR . 'includes/class-lead-capture.php';
+    require_once SLW_PLUGIN_DIR . 'includes/class-help.php';
+    require_once SLW_PLUGIN_DIR . 'includes/class-wholesale-orders.php';
+    require_once SLW_PLUGIN_DIR . 'includes/class-email-settings.php';
 
     // Load v2.0 modules — tiers, invoices, reminders, RFQ
     require_once SLW_PLUGIN_DIR . 'includes/class-tiers.php';
@@ -88,6 +94,11 @@ add_action( 'plugins_loaded', function() {
     SLW_Premium_Features::init();
     SLW_Updater::init();
     SLW_Admin_Menu::init();
+    SLW_Admin_Dashboard::init();
+    SLW_Lead_Capture::init();
+    SLW_Help::init();
+    SLW_Wholesale_Orders::init();
+    SLW_Email_Settings::init();
 
     // Initialize — v2.0 modules (order matters: tiers before groups)
     SLW_Tiers::init();
@@ -106,7 +117,8 @@ add_action( 'plugins_loaded', function() {
         if ( is_page() || has_shortcode( get_post()->post_content ?? '', 'sego_wholesale_application' )
             || has_shortcode( get_post()->post_content ?? '', 'sego_wholesale_order_form' )
             || has_shortcode( get_post()->post_content ?? '', 'sego_wholesale_dashboard' )
-            || has_shortcode( get_post()->post_content ?? '', 'sego_wholesale_rfq' ) ) {
+            || has_shortcode( get_post()->post_content ?? '', 'sego_wholesale_rfq' )
+            || has_shortcode( get_post()->post_content ?? '', 'wholesale_lead_capture' ) ) {
             wp_enqueue_style(
                 'sego-lily-wholesale',
                 SLW_PLUGIN_URL . 'assets/sego-lily-wholesale.css',
@@ -146,6 +158,10 @@ register_activation_hook( __FILE__, function() {
         'wholesale-rfq' => array(
             'title'   => 'Request a Quote',
             'content' => '[sego_wholesale_rfq]',
+        ),
+        'wholesale-leads' => array(
+            'title'   => 'Become a Wholesale Partner',
+            'content' => '[wholesale_lead_capture]',
         ),
     );
 
@@ -192,6 +208,25 @@ register_activation_hook( __FILE__, function() {
     require_once ABSPATH . 'wp-admin/includes/upgrade.php';
     dbDelta( $sql );
 
+    // Create the leads table
+    $leads_table = $wpdb->prefix . 'slw_leads';
+    $leads_sql = "CREATE TABLE {$leads_table} (
+        id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+        name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) NOT NULL,
+        business_name VARCHAR(255) DEFAULT '',
+        phone VARCHAR(50) DEFAULT '',
+        how_heard TEXT DEFAULT '',
+        source VARCHAR(50) DEFAULT 'shortcode',
+        status VARCHAR(20) DEFAULT 'new',
+        captured_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        notes TEXT DEFAULT '',
+        PRIMARY KEY (id),
+        KEY status (status),
+        KEY email (email)
+    ) {$charset_collate};";
+    dbDelta( $leads_sql );
+
     // Set default options
     if ( get_option( 'slw_discount_percent' ) === false ) {
         update_option( 'slw_discount_percent', 50 );
@@ -232,7 +267,7 @@ register_deactivation_hook( __FILE__, function() {
  * once the table exists (option cached in memory).
  */
 add_action( 'admin_init', function() {
-    if ( get_option( 'slw_db_version' ) === '1.0' ) {
+    if ( get_option( 'slw_db_version' ) === '1.1' ) {
         return;  // already verified
     }
     global $wpdb;
@@ -265,6 +300,25 @@ add_action( 'admin_init', function() {
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
         dbDelta( $sql );
 
+        // Leads table
+        $leads_table = $wpdb->prefix . 'slw_leads';
+        $leads_sql = "CREATE TABLE {$leads_table} (
+            id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            name VARCHAR(255) NOT NULL,
+            email VARCHAR(255) NOT NULL,
+            business_name VARCHAR(255) DEFAULT '',
+            phone VARCHAR(50) DEFAULT '',
+            how_heard TEXT DEFAULT '',
+            source VARCHAR(50) DEFAULT 'shortcode',
+            status VARCHAR(20) DEFAULT 'new',
+            captured_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            notes TEXT DEFAULT '',
+            PRIMARY KEY (id),
+            KEY status (status),
+            KEY email (email)
+        ) {$charset_collate};";
+        dbDelta( $leads_sql );
+
         // Also ensure role + pages exist in case activation never ran
         if ( ! get_role( 'wholesale_customer' ) ) {
             $customer_role = get_role( 'customer' );
@@ -276,6 +330,7 @@ add_action( 'admin_init', function() {
             'wholesale-order'     => array( 'Wholesale Order Form',  '[sego_wholesale_order_form]' ),
             'wholesale-dashboard' => array( 'My Wholesale Account',  '[sego_wholesale_dashboard]' ),
             'wholesale-rfq'       => array( 'Request a Quote',       '[sego_wholesale_rfq]' ),
+            'wholesale-leads'     => array( 'Become a Wholesale Partner', '[wholesale_lead_capture]' ),
         ) as $slug => $data ) {
             if ( ! get_page_by_path( $slug ) ) {
                 wp_insert_post( array(
@@ -288,7 +343,7 @@ add_action( 'admin_init', function() {
             }
         }
     }
-    update_option( 'slw_db_version', '1.0' );
+    update_option( 'slw_db_version', '1.1' );
 });
 
 /**

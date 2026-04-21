@@ -1,0 +1,694 @@
+/**
+ * Wholesale Portal — Admin Stylesheet
+ *
+ * Modern SaaS-style admin UI for all plugin pages.
+ * Only loaded on pages with slw- or slw_ in the hook.
+ *
+ * Brand colors:
+ *   Teal:       #386174
+ *   Cream:      #F7F6F3
+ *   Dark Slate: #1E2A30
+ *   Gold:       #D4AF37
+ *   Muted Teal: #628393
+ */
+
+/* ──────────────────────────────────────────────────────────────────────
+   1. Layout & Typography
+   ────────────────────────────────────────────────────────────────────── */
+
+.wrap {
+	max-width: 1200px;
+	padding: 24px 0;
+}
+
+.wrap > h1,
+.wrap > h1:first-of-type {
+	font-family: Georgia, 'Times New Roman', serif;
+	font-size: 28px;
+	font-weight: 700;
+	color: #1E2A30;
+	margin-bottom: 4px;
+	letter-spacing: -0.3px;
+}
+
+.wrap > h1 .page-title-action,
+.wrap > h1:first-of-type .page-title-action {
+	display: inline-flex;
+	align-items: center;
+	padding: 6px 14px;
+	font-size: 13px;
+	font-weight: 600;
+	color: #386174;
+	border: 1px solid #386174;
+	border-radius: 6px;
+	background: transparent;
+	text-decoration: none;
+	transition: all 0.15s ease;
+	vertical-align: middle;
+	margin-left: 12px;
+}
+
+.wrap > h1 .page-title-action:hover,
+.wrap > h1:first-of-type .page-title-action:hover {
+	background: #386174;
+	color: #fff;
+}
+
+.wrap > p {
+	color: #628393;
+	font-size: 14px;
+	margin-bottom: 20px;
+}
+
+h2.title,
+.wrap h2 {
+	font-family: Georgia, 'Times New Roman', serif;
+	font-size: 18px;
+	font-weight: 700;
+	color: #1E2A30;
+	margin: 28px 0 12px;
+	padding-bottom: 8px;
+	border-bottom: 2px solid #e0ddd8;
+}
+
+p.description,
+.form-table td p.description {
+	color: #628393;
+	font-size: 13px;
+	font-style: normal;
+	margin-top: 6px;
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   2. Card Component
+   ────────────────────────────────────────────────────────────────────── */
+
+.slw-admin-card {
+	background: #fff;
+	border-radius: 8px;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+	padding: 24px;
+	margin-bottom: 20px;
+}
+
+.slw-admin-card h3 {
+	font-family: Georgia, 'Times New Roman', serif;
+	font-size: 16px;
+	font-weight: 700;
+	color: #1E2A30;
+	margin: 0 0 12px;
+}
+
+.slw-admin-card p {
+	color: #628393;
+	font-size: 14px;
+	line-height: 1.6;
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   3. Stat Cards
+   ────────────────────────────────────────────────────────────────────── */
+
+.slw-stats-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+	gap: 16px;
+	margin-bottom: 24px;
+}
+
+.slw-stat-card {
+	display: block;
+	background: #fff;
+	border-radius: 8px;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+	padding: 20px 24px;
+	border-left: 4px solid #386174;
+	transition: box-shadow 0.15s ease;
+}
+
+.slw-stat-card:hover {
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+
+.slw-stat-card .stat-number {
+	display: block;
+	font-size: 32px;
+	font-weight: 800;
+	color: #1E2A30;
+	line-height: 1.2;
+	margin-bottom: 4px;
+}
+
+.slw-stat-card .stat-label {
+	display: block;
+	font-size: 13px;
+	color: #628393;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	font-weight: 600;
+}
+
+.slw-stat-card.accent-gold {
+	border-left-color: #D4AF37;
+}
+
+.slw-stat-card.accent-green {
+	border-left-color: #2e7d32;
+}
+
+.slw-stat-card.accent-red {
+	border-left-color: #c62828;
+}
+
+.slw-stat-card.accent-teal {
+	border-left-color: #386174;
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   4. Form Tables & Inputs
+   ────────────────────────────────────────────────────────────────────── */
+
+.form-table {
+	border-collapse: separate;
+	border-spacing: 0;
+}
+
+.form-table th {
+	font-weight: 600;
+	color: #1E2A30;
+	padding: 16px 10px 16px 0;
+	font-size: 14px;
+	vertical-align: top;
+}
+
+.form-table td {
+	padding: 12px 10px;
+}
+
+.form-table input[type="text"],
+.form-table input[type="email"],
+.form-table input[type="url"],
+.form-table input[type="number"],
+.form-table input[type="password"],
+.form-table input[type="tel"],
+.form-table select,
+.form-table textarea {
+	border: 1px solid #d0cdc8;
+	border-radius: 6px;
+	padding: 8px 12px;
+	font-size: 14px;
+	color: #1E2A30;
+	background: #fff;
+	transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.form-table input[type="text"]:focus,
+.form-table input[type="email"]:focus,
+.form-table input[type="url"]:focus,
+.form-table input[type="number"]:focus,
+.form-table input[type="password"]:focus,
+.form-table input[type="tel"]:focus,
+.form-table select:focus,
+.form-table textarea:focus {
+	border-color: #386174;
+	box-shadow: 0 0 0 2px rgba(56, 97, 116, 0.15);
+	outline: none;
+}
+
+.form-table textarea {
+	min-height: 80px;
+}
+
+.form-table .regular-text {
+	width: 100%;
+	max-width: 400px;
+}
+
+.form-table .large-text {
+	width: 100%;
+	max-width: 600px;
+}
+
+.form-table .small-text {
+	width: 80px;
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   5. Buttons
+   ────────────────────────────────────────────────────────────────────── */
+
+.wrap .button,
+.wrap .button-secondary {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 7px 16px;
+	font-size: 13px;
+	font-weight: 600;
+	border: 1px solid #d0cdc8;
+	border-radius: 6px;
+	background: #fff;
+	color: #1E2A30;
+	cursor: pointer;
+	text-decoration: none;
+	transition: all 0.15s ease;
+	line-height: 1.5;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.wrap .button:hover,
+.wrap .button-secondary:hover {
+	background: #F7F6F3;
+	border-color: #386174;
+	color: #386174;
+}
+
+.wrap .button-primary,
+.wrap input[type="submit"].button-primary,
+.wrap button.button-primary {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 8px 20px;
+	font-size: 13px;
+	font-weight: 600;
+	border: none;
+	border-radius: 6px;
+	background: #386174;
+	color: #fff;
+	cursor: pointer;
+	text-decoration: none;
+	transition: all 0.15s ease;
+	line-height: 1.5;
+	box-shadow: 0 1px 3px rgba(56, 97, 116, 0.3);
+}
+
+.wrap .button-primary:hover,
+.wrap input[type="submit"].button-primary:hover,
+.wrap button.button-primary:hover {
+	background: #2d5061;
+	box-shadow: 0 2px 6px rgba(56, 97, 116, 0.4);
+}
+
+.wrap .button-primary:active,
+.wrap input[type="submit"].button-primary:active,
+.wrap button.button-primary:active {
+	background: #243f4e;
+	transform: translateY(1px);
+}
+
+.wrap .button-primary:focus,
+.wrap input[type="submit"].button-primary:focus,
+.wrap button.button-primary:focus {
+	box-shadow: 0 0 0 2px rgba(56, 97, 116, 0.3);
+	outline: none;
+}
+
+/* Submit button row */
+.wrap .submit {
+	margin-top: 24px;
+	padding-top: 20px;
+	border-top: 1px solid #e0ddd8;
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   6. Data Tables (Applications, Quotes, Orders)
+   ────────────────────────────────────────────────────────────────────── */
+
+.wrap .wp-list-table {
+	border-collapse: separate;
+	border-spacing: 0;
+	border: 1px solid #e0ddd8;
+	border-radius: 8px;
+	overflow: hidden;
+	background: #fff;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.wrap .wp-list-table thead th {
+	background: #1E2A30;
+	color: #fff;
+	font-size: 11px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.8px;
+	padding: 12px 16px;
+	border-bottom: none;
+}
+
+.wrap .wp-list-table thead th a {
+	color: #fff;
+}
+
+.wrap .wp-list-table thead th a:hover {
+	color: #D4AF37;
+}
+
+.wrap .wp-list-table tbody td {
+	padding: 12px 16px;
+	font-size: 14px;
+	color: #1E2A30;
+	border-bottom: 1px solid #f0eeea;
+	vertical-align: middle;
+}
+
+.wrap .wp-list-table tbody tr:last-child td {
+	border-bottom: none;
+}
+
+.wrap .wp-list-table tbody tr:nth-child(even) {
+	background: #fcfbfa;
+}
+
+.wrap .wp-list-table tbody tr:hover {
+	background: #f5f3f0;
+}
+
+.wrap .wp-list-table tbody td a {
+	color: #386174;
+	font-weight: 600;
+	text-decoration: none;
+}
+
+.wrap .wp-list-table tbody td a:hover {
+	color: #2d5061;
+	text-decoration: underline;
+}
+
+/* Striped override — already handled above */
+.wrap .wp-list-table.striped > tbody > :nth-child(odd) {
+	background: #fff;
+}
+
+.wrap .wp-list-table.striped > tbody > :nth-child(even) {
+	background: #fcfbfa;
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   7. Status Badges
+   ────────────────────────────────────────────────────────────────────── */
+
+.slw-status-pending,
+.slw-status-quoted,
+.slw-status-approved,
+.slw-status-accepted,
+.slw-status-declined {
+	display: inline-block;
+	padding: 3px 10px;
+	border-radius: 12px;
+	font-size: 12px;
+	font-weight: 700;
+	letter-spacing: 0.3px;
+	text-transform: uppercase;
+	line-height: 1.5;
+}
+
+.slw-status-pending {
+	color: #8B6914;
+	background: #FFF8E1;
+}
+
+.slw-status-quoted {
+	color: #386174;
+	background: #e3f0f5;
+}
+
+.slw-status-approved,
+.slw-status-accepted {
+	color: #1b5e20;
+	background: #e8f5e9;
+}
+
+.slw-status-declined {
+	color: #b71c1c;
+	background: #fbe9e7;
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   8. Navigation — Subsubsub Filter Tabs
+   ────────────────────────────────────────────────────────────────────── */
+
+.wrap .subsubsub {
+	margin: 8px 0 0;
+	padding: 0;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	list-style: none;
+	float: none;
+}
+
+.wrap .subsubsub li {
+	margin: 0;
+}
+
+.wrap .subsubsub li::after {
+	content: '';
+}
+
+.wrap .subsubsub a {
+	display: inline-block;
+	padding: 6px 14px;
+	font-size: 13px;
+	font-weight: 600;
+	color: #628393;
+	text-decoration: none;
+	border-radius: 6px;
+	border: 1px solid transparent;
+	transition: all 0.15s ease;
+}
+
+.wrap .subsubsub a:hover {
+	background: #F7F6F3;
+	color: #386174;
+	border-color: #e0ddd8;
+}
+
+.wrap .subsubsub a.current {
+	background: #386174;
+	color: #fff;
+	border-color: #386174;
+}
+
+/* Hide the pipe separators that WP adds between tab items */
+.wrap .subsubsub li .separator,
+.wrap .subsubsub li::after {
+	display: none;
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   9. Invoice Preview Section
+   ────────────────────────────────────────────────────────────────────── */
+
+.slw-invoice-preview-card {
+	background: #fff;
+	border-radius: 8px;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+	padding: 24px;
+	margin: 24px 0;
+}
+
+.slw-invoice-preview-card h3 {
+	font-family: Georgia, 'Times New Roman', serif;
+	font-size: 16px;
+	font-weight: 700;
+	color: #1E2A30;
+	margin: 0 0 8px;
+}
+
+.slw-invoice-preview-card > p {
+	color: #628393;
+	font-size: 13px;
+	margin: 0 0 16px;
+}
+
+.slw-invoice-preview-frame {
+	width: 100%;
+	height: 600px;
+	border: 1px solid #e0ddd8;
+	border-radius: 6px;
+	background: #f5f5f5;
+}
+
+.slw-preview-actions {
+	margin-top: 12px;
+	display: flex;
+	gap: 8px;
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   10. Notices & Alerts
+   ────────────────────────────────────────────────────────────────────── */
+
+.wrap .notice {
+	border-radius: 6px;
+	border-left-width: 4px;
+	margin: 16px 0;
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   11. Color Picker Override
+   ────────────────────────────────────────────────────────────────────── */
+
+.form-table .wp-picker-container {
+	display: flex;
+	align-items: flex-start;
+	gap: 8px;
+}
+
+.form-table .wp-picker-container .wp-color-result {
+	border-radius: 6px;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   12. Toggle Switches
+   ────────────────────────────────────────────────────────────────────── */
+
+.slw-toggle {
+	position: relative;
+	display: inline-block;
+	width: 44px;
+	height: 24px;
+	vertical-align: middle;
+}
+
+.slw-toggle input {
+	opacity: 0;
+	width: 0;
+	height: 0;
+}
+
+.slw-toggle .slider {
+	position: absolute;
+	cursor: pointer;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: #d0cdc8;
+	border-radius: 24px;
+	transition: background 0.2s ease;
+}
+
+.slw-toggle .slider::before {
+	content: '';
+	position: absolute;
+	height: 18px;
+	width: 18px;
+	left: 3px;
+	bottom: 3px;
+	background: #fff;
+	border-radius: 50%;
+	transition: transform 0.2s ease;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+.slw-toggle input:checked + .slider {
+	background: #386174;
+}
+
+.slw-toggle input:checked + .slider::before {
+	transform: translateX(20px);
+}
+
+.slw-toggle input:focus + .slider {
+	box-shadow: 0 0 0 2px rgba(56, 97, 116, 0.2);
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   13. Media Upload Buttons
+   ────────────────────────────────────────────────────────────────────── */
+
+#slw-logo-preview {
+	display: inline-block;
+	padding: 12px;
+	background: #f9f9f7;
+	border: 1px dashed #d0cdc8;
+	border-radius: 8px;
+	margin-bottom: 12px;
+	min-width: 200px;
+	min-height: 40px;
+	text-align: center;
+}
+
+#slw-logo-preview img {
+	border-radius: 4px;
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   14. HR Separator
+   ────────────────────────────────────────────────────────────────────── */
+
+.wrap hr {
+	border: none;
+	border-top: 1px solid #e0ddd8;
+	margin: 28px 0;
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   15. Responsive
+   ────────────────────────────────────────────────────────────────────── */
+
+@media screen and (max-width: 1024px) {
+	.wrap {
+		max-width: 100%;
+		padding: 16px 0;
+	}
+
+	.slw-stats-grid {
+		grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+		gap: 12px;
+	}
+
+	.form-table th {
+		display: block;
+		padding-bottom: 4px;
+	}
+
+	.form-table td {
+		display: block;
+		padding-left: 0;
+	}
+
+	.form-table .regular-text {
+		max-width: 100%;
+	}
+
+	.form-table .large-text {
+		max-width: 100%;
+	}
+}
+
+@media screen and (max-width: 782px) {
+	.wrap > h1,
+	.wrap > h1:first-of-type {
+		font-size: 22px;
+	}
+
+	.wrap .subsubsub {
+		flex-direction: column;
+	}
+
+	.wrap .subsubsub a {
+		display: block;
+		text-align: center;
+	}
+
+	.slw-stats-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.wrap .wp-list-table {
+		font-size: 13px;
+	}
+
+	.wrap .wp-list-table thead th,
+	.wrap .wp-list-table tbody td {
+		padding: 8px 10px;
+	}
+
+	.slw-invoice-preview-frame {
+		height: 400px;
+	}
+}

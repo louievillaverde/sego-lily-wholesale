@@ -55,7 +55,11 @@ class SLW_Application_Form {
         // Honeypot: this field should be empty (bots fill it in)
         if ( ! empty( $_POST['slw_hp_confirm'] ?? '' ) ) {
             // Pretend success so the bot doesn't know it was caught
-            wp_send_json_success( array( 'message' => 'Thanks for applying! Holly reviews applications personally and you\'ll hear back within 2-3 business days.' ) );
+            $owner = SLW_Email_Settings::get( 'owner_name' );
+            $review_msg = $owner
+                ? sprintf( 'Thanks for applying! %s reviews applications personally and you\'ll hear back within 2-3 business days.', $owner )
+                : 'Thanks for applying! We review applications personally and you\'ll hear back within 2-3 business days.';
+            wp_send_json_success( array( 'message' => $review_msg ) );
         }
 
         // Rate limiting: max 10 submissions per IP per hour. The cap exists
@@ -116,20 +120,22 @@ class SLW_Application_Form {
             // instead of pretending success. This prevents the silent-fail
             // where submissions vanish and the prospect thinks they applied.
             error_log( 'SLW: Application insert failed. DB error: ' . $wpdb->last_error );
+            $fallback_email = SLW_Email_Settings::get( 'from_address' );
             wp_send_json_error( array(
-                'message' => 'Sorry, we could not save your application right now. Please try again or email wholesale@segolilyskincare.com directly.',
+                'message' => sprintf(
+                    'Sorry, we could not save your application right now. Please try again or email %s directly.',
+                    $fallback_email
+                ),
             ));
         }
 
-        // Notify admin via email. Route through wholesale@segolilyskincare.com
-        // (a real mailbox with proper SPF/DKIM) rather than relying on
-        // wp_mail's default wordpress@{domain} sender, which gets filtered as
-        // spam on most hosts. The admin recipient can be overridden via the
-        // slw_admin_notification_email option; otherwise falls back to the
-        // Settings > General admin_email.
+        // Notify admin via email. Uses configured email settings for the
+        // From header so deliverability is good (proper SPF/DKIM). The admin
+        // recipient can be overridden via the slw_admin_notification_email
+        // option; otherwise falls back to the Settings > General admin_email.
         $admin_email = get_option( 'slw_admin_notification_email', get_option( 'admin_email' ) );
         if ( ! $admin_email ) {
-            $admin_email = 'wholesale@segolilyskincare.com';
+            $admin_email = SLW_Email_Settings::get( 'from_address' );
         }
 
         $subject = 'New Wholesale Application: ' . $data['business_name'];
@@ -141,18 +147,21 @@ class SLW_Application_Form {
         $body .= "Review it in your WordPress admin under Wholesale Applications:\n";
         $body .= admin_url( 'admin.php?page=slw-applications' ) . "\n";
 
-        $headers = array(
-            'From: Sego Lily Wholesale <wholesale@segolilyskincare.com>',
-            'Reply-To: ' . $data['email'],
-        );
+        $email_headers = SLW_Email_Settings::get_headers();
+        $email_headers[] = 'Reply-To: ' . $data['email']; // Override reply-to with applicant's email
 
-        $sent = wp_mail( $admin_email, $subject, $body, $headers );
+        $sent = wp_mail( $admin_email, $subject, $body, $email_headers );
         if ( ! $sent ) {
             error_log( 'SLW: Failed to send admin notification to ' . $admin_email );
         }
 
+        $owner = SLW_Email_Settings::get( 'owner_name' );
+        $success_msg = $owner
+            ? sprintf( 'Thanks for applying! %s reviews applications personally and you\'ll hear back within 2-3 business days.', $owner )
+            : 'Thanks for applying! We review applications personally and you\'ll hear back within 2-3 business days.';
+
         wp_send_json_success( array(
-            'message' => 'Thanks for applying! Holly reviews applications personally and you\'ll hear back within 2-3 business days.'
+            'message' => $success_msg,
         ) );
     }
 
@@ -474,13 +483,15 @@ class SLW_Application_Form {
         ), array( 'id' => $app->id ) );
 
         // Send welcome email with login details
-        $site_url = home_url();
-        $login_url = wp_login_url( home_url( '/wholesale-dashboard' ) );
-        $subject = 'Welcome to Sego Lily Wholesale!';
+        $site_url      = home_url();
+        $login_url     = wp_login_url( home_url( '/wholesale-dashboard' ) );
+        $business_name = SLW_Email_Settings::get_business_name();
+        $reply_email   = SLW_Email_Settings::get( 'reply_to' );
+        $subject       = 'Welcome to ' . $business_name . ' Wholesale!';
 
         $body  = "Hi {$first_name},\n\n";
         $body .= "Great news! Your wholesale application for {$app->business_name} has been approved.\n\n";
-        $body .= "You now have access to wholesale pricing on all Sego Lily products at 50% off retail.\n\n";
+        $body .= "You now have access to wholesale pricing on all " . $business_name . " products at 50% off retail.\n\n";
         if ( ! $existing_user ) {
             $body .= "Your login details:\n";
             $body .= "Username: {$username}\n";
@@ -492,14 +503,10 @@ class SLW_Application_Form {
         }
         $body .= "Your first order has a \$300 minimum. After that, you can reorder any amount.\n\n";
         $body .= "Once you're logged in, head to {$site_url}/wholesale-order to browse products and place your order.\n\n";
-        $body .= "Questions? Reply to this email or reach out at wholesale@segolilyskincare.com.\n\n";
-        $body .= "Welcome to the family,\nHolly Stoltz\nSego Lily Skincare";
+        $body .= "Questions? Reply to this email or reach out at {$reply_email}.\n\n";
+        $body .= "Welcome to the family,\n" . SLW_Email_Settings::get_signature();
 
-        $headers = array(
-            'From: Sego Lily Skincare <wholesale@segolilyskincare.com>',
-            'Reply-To: wholesale@segolilyskincare.com',
-        );
-        wp_mail( $app->email, $subject, $body, $headers );
+        wp_mail( $app->email, $subject, $body, SLW_Email_Settings::get_headers() );
 
         // Fire AIOS webhook for Mautic onboarding sequence
         SLW_Webhooks::fire( 'wholesale-approved', array(
@@ -525,20 +532,19 @@ class SLW_Application_Form {
         $name_parts = explode( ' ', $app->contact_name, 2 );
         $first_name = $name_parts[0];
 
-        $subject = 'Regarding Your Sego Lily Wholesale Application';
+        $business_name = SLW_Email_Settings::get_business_name();
+        $site_domain   = wp_parse_url( home_url(), PHP_URL_HOST );
+
+        $subject = 'Regarding Your ' . $business_name . ' Wholesale Application';
         $body  = "Hi {$first_name},\n\n";
-        $body .= "Thank you for your interest in carrying Sego Lily Skincare.\n\n";
+        $body .= "Thank you for your interest in carrying " . $business_name . ".\n\n";
         $body .= "After reviewing your application, we're not able to move forward with a wholesale partnership at this time. ";
         $body .= "This could be due to territory overlap, business fit, or other factors.\n\n";
-        $body .= "You're always welcome to shop our retail products at segolilyskincare.com, ";
+        $body .= "You're always welcome to shop our retail products at " . $site_domain . ", ";
         $body .= "and we'd be happy to reconsider if your situation changes.\n\n";
-        $body .= "Wishing you the best,\nHolly Stoltz\nSego Lily Skincare";
+        $body .= "Wishing you the best,\n" . SLW_Email_Settings::get_signature();
 
-        $headers = array(
-            'From: Sego Lily Skincare <wholesale@segolilyskincare.com>',
-            'Reply-To: wholesale@segolilyskincare.com',
-        );
-        wp_mail( $app->email, $subject, $body, $headers );
+        wp_mail( $app->email, $subject, $body, SLW_Email_Settings::get_headers() );
     }
 
     /**

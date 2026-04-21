@@ -168,8 +168,12 @@ class SLW_RFQ {
 
 		if ( $inserted === false ) {
 			error_log( 'SLW: RFQ insert failed. DB error: ' . $wpdb->last_error );
+			$fallback_email = SLW_Email_Settings::get( 'from_address' );
 			wp_send_json_error( array(
-				'message' => 'Sorry, we could not save your quote request right now. Please try again or email wholesale@segolilyskincare.com directly.',
+				'message' => sprintf(
+					'Sorry, we could not save your quote request right now. Please try again or email %s directly.',
+					$fallback_email
+				),
 			) );
 		}
 
@@ -178,8 +182,13 @@ class SLW_RFQ {
 		// Notify admin
 		self::send_admin_notification( $rfq_id, $user_id, $products );
 
+		$owner = SLW_Email_Settings::get( 'owner_name' );
+		$rfq_msg = $owner
+			? sprintf( 'Your quote request has been submitted! %s will review it and get back to you within 1-2 business days.', $owner )
+			: 'Your quote request has been submitted! We will review it and get back to you within 1-2 business days.';
+
 		wp_send_json_success( array(
-			'message' => 'Your quote request has been submitted! Holly will review it and get back to you within 1-2 business days.',
+			'message' => $rfq_msg,
 		) );
 	}
 
@@ -193,7 +202,7 @@ class SLW_RFQ {
 	private static function send_admin_notification( $rfq_id, $user_id, $products ) {
 		$admin_email = get_option( 'slw_admin_notification_email', get_option( 'admin_email' ) );
 		if ( ! $admin_email ) {
-			$admin_email = 'wholesale@segolilyskincare.com';
+			$admin_email = SLW_Email_Settings::get( 'from_address' );
 		}
 
 		$user      = get_userdata( $user_id );
@@ -223,12 +232,10 @@ class SLW_RFQ {
 		$body .= "\nReview it in your WordPress admin:\n";
 		$body .= admin_url( 'admin.php?page=slw-rfq&rfq_id=' . $rfq_id ) . "\n";
 
-		$headers = array(
-			'From: Sego Lily Wholesale <wholesale@segolilyskincare.com>',
-			'Reply-To: ' . $user->user_email,
-		);
+		$email_headers = SLW_Email_Settings::get_headers();
+		$email_headers[] = 'Reply-To: ' . $user->user_email;
 
-		$sent = wp_mail( $admin_email, $subject, $body, $headers );
+		$sent = wp_mail( $admin_email, $subject, $body, $email_headers );
 		if ( ! $sent ) {
 			error_log( 'SLW: Failed to send RFQ admin notification for RFQ #' . $rfq_id );
 		}
@@ -243,10 +250,12 @@ class SLW_RFQ {
 			return;
 		}
 
-		$first_name = $user->first_name ?: $user->display_name;
-		$products   = json_decode( $rfq->products, true );
+		$first_name    = $user->first_name ?: $user->display_name;
+		$products      = json_decode( $rfq->products, true );
+		$business_name = SLW_Email_Settings::get_business_name();
+		$owner         = SLW_Email_Settings::get( 'owner_name' );
 
-		$subject = 'Your Quote Request #' . $rfq->id . ' — Sego Lily Wholesale';
+		$subject = 'Your Quote Request #' . $rfq->id . ' — ' . $business_name . ' Wholesale';
 
 		$body  = "Hi {$first_name},\n\n";
 		$body .= "Great news! We've reviewed your quote request and here's your custom pricing:\n\n";
@@ -268,20 +277,16 @@ class SLW_RFQ {
 		}
 
 		if ( $rfq->admin_response ) {
-			$body .= "\nMessage from Holly:\n" . $rfq->admin_response . "\n";
+			$msg_from = $owner ? "Message from {$owner}" : 'Message';
+			$body .= "\n{$msg_from}:\n" . $rfq->admin_response . "\n";
 		}
 
 		$body .= "\nTo accept this quote, log in to your wholesale account and visit:\n";
 		$body .= home_url( '/wholesale-rfq' ) . "\n\n";
 		$body .= "Or simply reply to this email.\n\n";
-		$body .= "Thank you,\nHolly Stoltz\nSego Lily Skincare";
+		$body .= "Thank you,\n" . SLW_Email_Settings::get_signature();
 
-		$headers = array(
-			'From: Sego Lily Skincare <wholesale@segolilyskincare.com>',
-			'Reply-To: wholesale@segolilyskincare.com',
-		);
-
-		wp_mail( $user->user_email, $subject, $body, $headers );
+		wp_mail( $user->user_email, $subject, $body, SLW_Email_Settings::get_headers() );
 	}
 
 	/* ---------------------------------------------------------------
