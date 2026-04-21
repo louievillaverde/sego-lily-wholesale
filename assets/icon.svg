@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Sego Lily Wholesale — Stylized lily with 3 petals in brand teal -->
+  <!-- Center petal -->
+  <path d="M64 8C64 8 48 28 48 52C48 72 56 88 64 96C72 88 80 72 80 52C80 28 64 8 64 8Z" fill="#386174"/>
+  <!-- Left petal -->
+  <path d="M28 48C28 48 36 32 52 28C64 25 64 40 56 56C48 72 32 80 28 72C24 64 28 48 28 48Z" fill="#386174" opacity="0.75"/>
+  <!-- Right petal -->
+  <path d="M100 48C100 48 92 32 76 28C64 25 64 40 72 56C80 72 96 80 100 72C104 64 100 48 100 48Z" fill="#386174" opacity="0.75"/>
+  <!-- Stem -->
+  <path d="M64 96L64 120" stroke="#386174" stroke-width="4" stroke-linecap="round"/>
+  <!-- Small leaf left -->
+  <path d="M64 108C64 108 52 104 48 96" stroke="#386174" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+  <!-- Gold accent dot (stamen) -->
+  <circle cx="64" cy="44" r="4" fill="#D4AF37"/>
+</svg>

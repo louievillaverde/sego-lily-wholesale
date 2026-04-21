@@ -44,12 +44,13 @@ class SLW_Invoice_Settings {
 	}
 
 	/**
-	 * Register the sub-menu page under Settings.
+	 * Register the sub-menu page under Sego Lily Wholesale.
 	 */
 	public static function add_settings_page() {
-		add_options_page(
-			'Wholesale Invoices',
-			'Wholesale Invoices',
+		add_submenu_page(
+			'slw-applications',
+			'Invoice Settings',
+			'Invoices',
 			'manage_woocommerce',
 			'slw-invoice-settings',
 			array( __CLASS__, 'render_page' )

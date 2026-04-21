@@ -17,9 +17,10 @@ class SLW_Settings {
     }
 
     public static function add_settings_page() {
-        add_options_page(
-            'Sego Lily Wholesale',
-            'Sego Lily Wholesale',
+        add_submenu_page(
+            'slw-applications',
+            'Wholesale Settings',
+            'Settings',
             'manage_woocommerce',
             'slw-settings',
             array( __CLASS__, 'render_page' )

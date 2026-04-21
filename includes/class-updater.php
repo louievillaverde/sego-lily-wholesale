@@ -59,7 +59,9 @@ class SLW_Updater {
                 'new_version'  => $remote['version'],
                 'url'          => 'https://github.com/' . self::$github_repo,
                 'package'      => $remote['download_url'],
-                'icons'        => array(),
+                'icons'        => array(
+                    'svg' => SLW_PLUGIN_URL . 'assets/icon.svg',
+                ),
                 'banners'      => array(),
                 'requires'     => '6.0',
                 'tested'       => '6.8',

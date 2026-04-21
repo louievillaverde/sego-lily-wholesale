@@ -161,14 +161,36 @@ class SLW_Application_Form {
      * Add the "Wholesale Applications" admin menu item.
      */
     public static function add_admin_menu() {
+        // SVG icon for the admin sidebar — white lily on transparent bg.
+        // WordPress tints it to match the current admin color scheme.
+        $icon_svg = 'data:image/svg+xml;base64,' . base64_encode(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">'
+            . '<path d="M10 1.5C10 1.5 7.5 4.5 7.5 8.2C7.5 11.3 8.8 13.7 10 15C11.2 13.7 12.5 11.3 12.5 8.2C12.5 4.5 10 1.5 10 1.5Z" fill="currentColor"/>'
+            . '<path d="M4.5 7.5C4.5 7.5 5.5 5 8.1 4.4C9.6 4.1 9.6 5.3 8.8 8.8C8 11.3 5 13.8 4.5 11.2C4 9.6 4.5 7.5 4.5 7.5Z" fill="currentColor" opacity="0.75"/>'
+            . '<path d="M15.5 7.5C15.5 7.5 14.5 5 11.9 4.4C10.4 4.1 10.4 5.3 11.2 8.8C12 11.3 15 13.8 15.5 11.2C16 9.6 15.5 7.5 15.5 7.5Z" fill="currentColor" opacity="0.75"/>'
+            . '<path d="M10 15L10 18.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>'
+            . '<circle cx="10" cy="6.8" r="0.7" fill="currentColor" opacity="0.5"/>'
+            . '</svg>'
+        );
+
         add_menu_page(
-            'Wholesale Applications',
-            'Wholesale Applications',
+            'Sego Lily Wholesale',
+            'Sego Lily',
             'manage_woocommerce',
             'slw-applications',
             array( __CLASS__, 'render_admin_page' ),
-            'dashicons-groups',
+            $icon_svg,
             56
+        );
+
+        // Rename the auto-generated first sub-menu item from "Sego Lily" to "Applications"
+        add_submenu_page(
+            'slw-applications',
+            'Wholesale Applications',
+            'Applications',
+            'manage_woocommerce',
+            'slw-applications',
+            array( __CLASS__, 'render_admin_page' )
         );
     }
 
