@@ -36,6 +36,55 @@ $products = wc_get_products( array(
 
     <div id="slw-order-message" class="slw-notice" style="display:none;"></div>
 
+    <?php
+    // New Arrivals section — show recently published products in a card layout
+    $new_arrivals = class_exists( 'SLW_New_Arrivals' ) ? SLW_New_Arrivals::get_products() : array();
+    if ( ! empty( $new_arrivals ) ) :
+    ?>
+    <div class="slw-new-arrivals">
+        <div class="slw-new-arrivals-header">
+            <h3>New Arrivals</h3>
+        </div>
+        <div class="slw-new-arrivals-grid">
+            <?php foreach ( $new_arrivals as $na_product ) :
+                if ( ! $na_product->is_type( 'simple' ) && ! $na_product->is_type( 'variable' ) ) continue;
+
+                $na_image = wp_get_attachment_image_url( $na_product->get_image_id(), 'medium' );
+                if ( ! $na_image ) {
+                    $na_image = wc_placeholder_img_src( 'medium' );
+                }
+
+                if ( $na_product->is_type( 'variable' ) ) {
+                    $na_price_html = $na_product->get_price_html();
+                } else {
+                    $na_price_html = wc_price( $na_product->get_price() );
+                }
+            ?>
+            <div class="slw-new-arrival-card">
+                <span class="slw-new-badge">NEW</span>
+                <div class="slw-new-arrival-image">
+                    <img src="<?php echo esc_url( $na_image ); ?>" alt="<?php echo esc_attr( $na_product->get_name() ); ?>" />
+                </div>
+                <div class="slw-new-arrival-info">
+                    <h4><?php echo esc_html( $na_product->get_name() ); ?></h4>
+                    <div class="slw-new-arrival-price"><?php echo $na_price_html; ?></div>
+                    <?php if ( $na_product->is_type( 'simple' ) && $na_product->is_in_stock() ) : ?>
+                        <div class="slw-new-arrival-actions">
+                            <input type="number" class="slw-na-qty-input" min="1" max="999" value="1" data-product-id="<?php echo esc_attr( $na_product->get_id() ); ?>" />
+                            <button type="button" class="slw-btn slw-btn-small slw-btn-primary slw-na-add-btn" data-product-id="<?php echo esc_attr( $na_product->get_id() ); ?>">Add to Cart</button>
+                        </div>
+                    <?php elseif ( ! $na_product->is_in_stock() ) : ?>
+                        <span class="slw-out-of-stock">Out of stock</span>
+                    <?php else : ?>
+                        <a href="<?php echo esc_url( $na_product->get_permalink() ); ?>" class="slw-btn slw-btn-small slw-btn-primary">Select Options</a>
+                    <?php endif; ?>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <?php endif; ?>
+
     <?php if ( empty( $products ) ) : ?>
         <p>No products available right now. Check back soon!</p>
     <?php else : ?>
@@ -196,6 +245,47 @@ $products = wc_get_products( array(
                 qty = 1;
             }
             addToCart([{ product_id: productId, quantity: qty }], this);
+        });
+    });
+
+    // New Arrivals: individual "Add to Cart" buttons
+    document.querySelectorAll('.slw-na-add-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var productId = this.getAttribute('data-product-id');
+            var input = document.querySelector('.slw-na-qty-input[data-product-id="' + productId + '"]');
+            var qty = parseInt(input.value) || 1;
+            if (qty < 1) { qty = 1; input.value = 1; }
+
+            var origText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Adding...';
+
+            var formData = new FormData();
+            formData.append('action', 'slw_new_arrival_add_to_cart');
+            formData.append('nonce', nonce);
+            formData.append('product_id', productId);
+            formData.append('quantity', qty);
+
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', ajaxUrl);
+            xhr.onload = function() {
+                var resp;
+                try { resp = JSON.parse(xhr.responseText); } catch(e) { resp = null; }
+                if (resp && resp.success) {
+                    showMessage(resp.data.message, 'success');
+                } else {
+                    var msg = (resp && resp.data && resp.data.message) ? resp.data.message : 'Could not add to cart.';
+                    showMessage(msg, 'error');
+                }
+                btn.disabled = false;
+                btn.textContent = origText;
+            };
+            xhr.onerror = function() {
+                showMessage('Network error. Please try again.', 'error');
+                btn.disabled = false;
+                btn.textContent = origText;
+            };
+            xhr.send(formData);
         });
     });
 

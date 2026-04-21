@@ -3,7 +3,7 @@
  * Plugin Name:       Sego Lily Wholesale
  * Plugin URI:        https://github.com/louievillaverde/sego-lily-wholesale
  * Description:       Custom wholesale portal for Sego Lily Skincare. Handles wholesale pricing, applications, order minimums, NET 30 terms, tax exemption, tiered pricing, wholesale-only products, category pricing, wholesale-only coupons, shipping restrictions, bulk user import, and AIOS webhook integration.
- * Version:           1.4.0
+ * Version:           2.0.0
  * Author:            Lead Piranha
  * Author URI:        https://leadpiranha.com
  * Requires at least: 6.0
@@ -27,7 +27,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SLW_VERSION', '1.4.0' );
+define( 'SLW_VERSION', '2.0.0' );
 define( 'SLW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SLW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -53,7 +53,7 @@ add_action( 'plugins_loaded', function() {
         return;
     }
 
-    // Load all modules
+    // Load all modules — core
     require_once SLW_PLUGIN_DIR . 'includes/class-wholesale-role.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-settings.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-application-form.php';
@@ -64,7 +64,19 @@ add_action( 'plugins_loaded', function() {
     require_once SLW_PLUGIN_DIR . 'includes/class-premium-features.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-updater.php';
 
-    // Initialize
+    // Load v2.0 modules — tiers, invoices, reminders, RFQ
+    require_once SLW_PLUGIN_DIR . 'includes/class-tiers.php';
+    require_once SLW_PLUGIN_DIR . 'includes/class-tier-settings.php';
+    require_once SLW_PLUGIN_DIR . 'includes/class-product-minimums.php';
+    require_once SLW_PLUGIN_DIR . 'includes/class-customer-groups.php';
+    require_once SLW_PLUGIN_DIR . 'includes/class-invoice-settings.php';
+    require_once SLW_PLUGIN_DIR . 'includes/class-pdf-invoices.php';
+    require_once SLW_PLUGIN_DIR . 'includes/class-pdf-linesheet.php';
+    require_once SLW_PLUGIN_DIR . 'includes/class-new-arrivals.php';
+    require_once SLW_PLUGIN_DIR . 'includes/class-reminders.php';
+    require_once SLW_PLUGIN_DIR . 'includes/class-rfq.php';
+
+    // Initialize — core
     SLW_Wholesale_Role::init();
     SLW_Settings::init();
     SLW_Application_Form::init();
@@ -75,11 +87,24 @@ add_action( 'plugins_loaded', function() {
     SLW_Premium_Features::init();
     SLW_Updater::init();
 
+    // Initialize — v2.0 modules (order matters: tiers before groups)
+    SLW_Tiers::init();
+    SLW_Tier_Settings::init();
+    SLW_Product_Minimums::init();
+    SLW_Customer_Groups::init();
+    SLW_Invoice_Settings::init();
+    SLW_PDF_Invoices::init();
+    SLW_PDF_Linesheet::init();
+    SLW_New_Arrivals::init();
+    SLW_Reminders::init();
+    SLW_RFQ::init();
+
     // Enqueue frontend styles on pages that use our shortcodes
     add_action( 'wp_enqueue_scripts', function() {
         if ( is_page() || has_shortcode( get_post()->post_content ?? '', 'sego_wholesale_application' )
             || has_shortcode( get_post()->post_content ?? '', 'sego_wholesale_order_form' )
-            || has_shortcode( get_post()->post_content ?? '', 'sego_wholesale_dashboard' ) ) {
+            || has_shortcode( get_post()->post_content ?? '', 'sego_wholesale_dashboard' )
+            || has_shortcode( get_post()->post_content ?? '', 'sego_wholesale_rfq' ) ) {
             wp_enqueue_style(
                 'sego-lily-wholesale',
                 SLW_PLUGIN_URL . 'assets/sego-lily-wholesale.css',
@@ -115,6 +140,10 @@ register_activation_hook( __FILE__, function() {
         'wholesale-dashboard' => array(
             'title'   => 'My Wholesale Account',
             'content' => '[sego_wholesale_dashboard]',
+        ),
+        'wholesale-rfq' => array(
+            'title'   => 'Request a Quote',
+            'content' => '[sego_wholesale_rfq]',
         ),
     );
 
@@ -179,10 +208,15 @@ register_activation_hook( __FILE__, function() {
 });
 
 /**
- * Deactivation: flush rewrite rules but do NOT delete data.
+ * Deactivation: flush rewrite rules and unschedule cron, but do NOT delete data.
  * Roles, users, orders, and applications all survive deactivation.
  */
 register_deactivation_hook( __FILE__, function() {
+    // Unschedule the daily reorder reminder check
+    $timestamp = wp_next_scheduled( 'slw_daily_reorder_check' );
+    if ( $timestamp ) {
+        wp_unschedule_event( $timestamp, 'slw_daily_reorder_check' );
+    }
     flush_rewrite_rules();
 });
 
@@ -239,6 +273,7 @@ add_action( 'admin_init', function() {
             'wholesale-partners'  => array( 'Wholesale Partners',    '[sego_wholesale_application]' ),
             'wholesale-order'     => array( 'Wholesale Order Form',  '[sego_wholesale_order_form]' ),
             'wholesale-dashboard' => array( 'My Wholesale Account',  '[sego_wholesale_dashboard]' ),
+            'wholesale-rfq'       => array( 'Request a Quote',       '[sego_wholesale_rfq]' ),
         ) as $slug => $data ) {
             if ( ! get_page_by_path( $slug ) ) {
                 wp_insert_post( array(

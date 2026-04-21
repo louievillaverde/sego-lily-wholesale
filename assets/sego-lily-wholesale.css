@@ -719,3 +719,632 @@ button.slw-btn-cta:hover {
         flex-direction: column;
     }
 }
+
+/* -------------------------------------------------------
+   Order History Table
+   ------------------------------------------------------- */
+.slw-order-history-table-wrap {
+    overflow-x: auto;
+}
+
+.slw-order-history-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.slw-order-history-table thead {
+    background: #1E2A30;
+    color: #F7F6F3;
+}
+
+.slw-order-history-table th {
+    padding: 10px 14px;
+    text-align: left;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    font-family: Georgia, 'Times New Roman', serif;
+}
+
+.slw-order-history-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid #e0ddd8;
+    font-size: 14px;
+    vertical-align: middle;
+}
+
+.slw-order-history-table tbody tr:hover {
+    background: #eeedea;
+}
+
+.slw-order-history-table a {
+    color: #386174;
+    font-weight: bold;
+    text-decoration: none;
+}
+
+.slw-order-history-table a:hover {
+    text-decoration: underline;
+}
+
+.slw-order-actions {
+    white-space: nowrap;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.slw-empty-orders {
+    color: #628393;
+    font-style: italic;
+    font-size: 15px;
+}
+
+.slw-empty-orders a {
+    color: #386174;
+    font-weight: bold;
+}
+
+/* -------------------------------------------------------
+   Status Badges
+   ------------------------------------------------------- */
+.slw-status-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 0.3px;
+    text-transform: capitalize;
+    line-height: 1.5;
+}
+
+.slw-status-processing {
+    background: rgba(56, 97, 116, 0.12);
+    color: #386174;
+}
+
+.slw-status-completed {
+    background: rgba(46, 125, 50, 0.12);
+    color: #2e7d32;
+}
+
+.slw-status-on-hold {
+    background: rgba(212, 175, 55, 0.15);
+    color: #8a7320;
+}
+
+.slw-status-cancelled,
+.slw-status-failed {
+    background: rgba(198, 40, 40, 0.10);
+    color: #c62828;
+}
+
+.slw-status-refunded {
+    background: rgba(98, 131, 147, 0.12);
+    color: #628393;
+}
+
+.slw-status-pending {
+    background: rgba(212, 175, 55, 0.12);
+    color: #8a7320;
+}
+
+/* -------------------------------------------------------
+   Reorder Button
+   ------------------------------------------------------- */
+.slw-reorder-btn {
+    background: #D4AF37;
+    color: #1E2A30;
+    border: none;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s;
+}
+
+.slw-reorder-btn:hover {
+    background: #c49e2e;
+    transform: translateY(-1px);
+}
+
+.slw-reorder-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* -------------------------------------------------------
+   Pagination
+   ------------------------------------------------------- */
+.slw-pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid #e0ddd8;
+}
+
+.slw-pagination-info {
+    font-size: 13px;
+    color: #628393;
+    font-style: italic;
+}
+
+.slw-pagination-disabled {
+    opacity: 0.4;
+    cursor: default;
+    pointer-events: none;
+}
+
+/* -------------------------------------------------------
+   Account Summary (definition list)
+   ------------------------------------------------------- */
+.slw-account-summary {
+    margin: 0;
+    padding: 0;
+}
+
+.slw-account-summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 8px 0;
+    border-bottom: 1px solid #e0ddd8;
+}
+
+.slw-account-summary-row:last-child {
+    border-bottom: none;
+}
+
+.slw-account-summary dt {
+    color: #628393;
+    font-size: 14px;
+    flex-shrink: 0;
+    margin: 0;
+}
+
+.slw-account-summary dd {
+    font-size: 14px;
+    font-weight: bold;
+    color: #2C2C2C;
+    text-align: right;
+    margin: 0;
+}
+
+.slw-summary-completed {
+    color: #2e7d32;
+}
+
+.slw-summary-pending {
+    color: #996800;
+}
+
+/* -------------------------------------------------------
+   Order History — Responsive
+   ------------------------------------------------------- */
+@media (max-width: 768px) {
+    .slw-order-history-table th:nth-child(4),
+    .slw-order-history-table td:nth-child(4) {
+        display: none;
+    }
+
+    .slw-order-history-table th,
+    .slw-order-history-table td {
+        padding: 8px 8px;
+        font-size: 13px;
+    }
+
+    .slw-order-actions {
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .slw-pagination {
+        gap: 8px;
+    }
+}
+
+/* -------------------------------------------------------
+   Invoice Link (My Account > Orders + Dashboard)
+   ------------------------------------------------------- */
+.slw-invoice-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: #386174;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    padding: 4px 10px;
+    border: 1px solid #e0ddd8;
+    border-radius: 4px;
+    transition: background-color 0.15s, border-color 0.15s;
+    white-space: nowrap;
+}
+
+.slw-invoice-link:hover {
+    background: #386174;
+    color: #F7F6F3;
+    border-color: #386174;
+    text-decoration: none;
+}
+
+.slw-invoice-link svg {
+    flex-shrink: 0;
+}
+
+/* Line Sheet download button in dashboard */
+.slw-linesheet-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 20px;
+    background: #386174;
+    color: #F7F6F3;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 14px;
+    font-weight: bold;
+    text-decoration: none;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.1s;
+}
+
+.slw-linesheet-btn:hover {
+    background: #2C4F5E;
+    color: #F7F6F3;
+    text-decoration: none;
+    transform: translateY(-1px);
+}
+
+.slw-linesheet-btn svg {
+    flex-shrink: 0;
+}
+
+/* -------------------------------------------------------
+   Wholesale Tier Badges
+   ------------------------------------------------------- */
+.slw-tier-badge {
+    display: inline-block;
+    padding: 3px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    line-height: 1.5;
+    color: #F7F6F3;
+}
+
+.slw-tier-badge--standard {
+    background: #628393;
+}
+
+.slw-tier-badge--preferred {
+    background: #386174;
+}
+
+.slw-tier-badge--vip {
+    background: #D4AF37;
+    color: #1E2A30;
+}
+
+/* -------------------------------------------------------
+   Tier Upgrade Progress Bar
+   ------------------------------------------------------- */
+.slw-tier-progress {
+    margin: 8px 0;
+}
+
+.slw-tier-progress-label {
+    font-size: 13px;
+    color: #628393;
+    margin-bottom: 4px;
+}
+
+.slw-tier-progress-bar {
+    background: #e0ddd8;
+    border-radius: 3px;
+    height: 8px;
+    max-width: 300px;
+    overflow: hidden;
+}
+
+.slw-tier-progress-fill {
+    background: #386174;
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.35s ease;
+}
+
+.slw-tier-progress--vip .slw-tier-progress-fill {
+    background: linear-gradient(90deg, #386174 0%, #D4AF37 100%);
+}
+
+/* -------------------------------------------------------
+   Per-Product Minimum Qty Notice (Order Form)
+   ------------------------------------------------------- */
+.slw-product-minimum {
+    display: inline-block;
+    font-size: 11px;
+    color: #628393;
+    font-style: italic;
+    margin-top: 2px;
+}
+
+/* -------------------------------------------------------
+   Tier Visibility Tag (Admin Product List)
+   ------------------------------------------------------- */
+.slw-visibility-tag {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    background: rgba(56, 97, 116, 0.1);
+    color: #386174;
+    margin-left: 4px;
+}
+
+/* -------------------------------------------------------
+   New Arrivals Section (Order Form)
+   ------------------------------------------------------- */
+.slw-new-arrivals {
+    margin-bottom: 28px;
+}
+
+.slw-new-arrivals-header {
+    background: linear-gradient(135deg, #386174 0%, #1E2A30 100%);
+    padding: 18px 24px;
+    border-radius: 8px 8px 0 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.slw-new-arrivals-header h3 {
+    font-family: Georgia, 'Times New Roman', serif;
+    color: #D4AF37;
+    font-size: 22px;
+    margin: 0;
+    letter-spacing: 0.3px;
+}
+
+.slw-new-arrivals-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    padding: 20px;
+    background: #F7F6F3;
+    border: 1px solid #e0ddd8;
+    border-top: 2px solid #D4AF37;
+    border-radius: 0 0 8px 8px;
+}
+
+.slw-new-arrival-card {
+    position: relative;
+    background: #fff;
+    border: 1px solid #e0ddd8;
+    border-radius: 8px;
+    overflow: hidden;
+    transition: box-shadow 0.2s, transform 0.15s;
+}
+
+.slw-new-arrival-card:hover {
+    box-shadow: 0 4px 16px rgba(30, 42, 48, 0.12);
+    transform: translateY(-2px);
+}
+
+.slw-new-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: #D4AF37;
+    color: #1E2A30;
+    font-family: Inter, system-ui, -apple-system, sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    padding: 3px 10px;
+    border-radius: 3px;
+    z-index: 1;
+    text-transform: uppercase;
+}
+
+.slw-new-arrival-image {
+    width: 100%;
+    aspect-ratio: 1;
+    overflow: hidden;
+    background: #f0efec;
+}
+
+.slw-new-arrival-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.slw-new-arrival-info {
+    padding: 14px 16px 16px;
+}
+
+.slw-new-arrival-info h4 {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 15px;
+    margin: 0 0 6px 0;
+    color: #1E2A30;
+    line-height: 1.3;
+}
+
+.slw-new-arrival-price {
+    font-weight: bold;
+    color: #386174;
+    font-size: 15px;
+    margin-bottom: 12px;
+}
+
+.slw-new-arrival-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.slw-na-qty-input {
+    width: 56px !important;
+    padding: 6px 8px !important;
+    text-align: center;
+    font-size: 14px !important;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+@media (max-width: 768px) {
+    .slw-new-arrivals-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+    .slw-new-arrivals-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* -------------------------------------------------------
+   RFQ Form
+   ------------------------------------------------------- */
+.slw-rfq-wrap {
+    font-family: Georgia, 'Times New Roman', serif;
+    color: #2C2C2C;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    line-height: 1.6;
+}
+
+.slw-rfq-header {
+    background: #386174;
+    color: #F7F6F3;
+    padding: 30px 35px;
+    border-radius: 8px 8px 0 0;
+    margin-bottom: 0;
+}
+
+.slw-rfq-header h2 {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 28px;
+    margin: 0 0 8px 0;
+    color: #F7F6F3;
+}
+
+.slw-rfq-header p {
+    margin: 0;
+    opacity: 0.9;
+    font-size: 16px;
+}
+
+.slw-rfq-form {
+    border-radius: 0 0 8px 8px;
+    border-top: none;
+}
+
+.slw-rfq-product-row {
+    padding: 12px 0;
+    border-bottom: 1px solid #e0ddd8;
+}
+
+.slw-rfq-product-row:last-child {
+    border-bottom: none;
+}
+
+.slw-rfq-product-row .slw-form-row {
+    margin-bottom: 0;
+}
+
+.slw-rfq-remove-row {
+    background: none;
+    border: 1px solid #ef9a9a;
+    color: #c62828;
+    font-size: 18px;
+    line-height: 1;
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+    margin-bottom: 6px;
+}
+
+.slw-rfq-remove-row:hover {
+    background: #fbe9e7;
+}
+
+.slw-rfq-add-row {
+    margin-top: 12px;
+    background: transparent;
+    color: #386174;
+    border: 1px dashed #386174;
+    font-family: Inter, system-ui, -apple-system, sans-serif;
+    font-weight: 600;
+    padding: 8px 16px;
+    font-size: 13px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.slw-rfq-add-row:hover {
+    background: #386174;
+    color: #F7F6F3;
+}
+
+@media (max-width: 768px) {
+    .slw-rfq-product-row .slw-form-row {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .slw-rfq-product-row .slw-form-field {
+        flex: 1 1 auto !important;
+    }
+
+    .slw-rfq-remove-col {
+        align-self: flex-start !important;
+    }
+
+    .slw-rfq-wrap {
+        padding: 10px;
+    }
+
+    .slw-rfq-header {
+        padding: 20px;
+    }
+}
+
+/* -------------------------------------------------------
+   RFQ Admin Status Badges
+   ------------------------------------------------------- */
+.slw-status-quoted {
+    background: rgba(56, 97, 116, 0.12);
+    color: #386174;
+}
+
+.slw-status-accepted {
+    background: rgba(46, 125, 50, 0.12);
+    color: #2e7d32;
+}
+
+.slw-status-declined {
+    background: rgba(198, 40, 40, 0.10);
+    color: #c62828;
+}
