@@ -25,7 +25,7 @@ class SLW_Invoice_Settings {
 	);
 
 	public static function init() {
-		add_action( 'admin_menu', array( __CLASS__, 'add_settings_page' ), 20 );
+		// Admin menu is registered centrally by SLW_Admin_Menu
 		add_action( 'admin_init', array( __CLASS__, 'register_settings' ) );
 		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_admin_assets' ) );
 	}

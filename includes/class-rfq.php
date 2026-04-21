@@ -24,8 +24,7 @@ class SLW_RFQ {
 		// AJAX handlers
 		add_action( 'wp_ajax_slw_submit_rfq', array( __CLASS__, 'handle_submission' ) );
 
-		// Admin menu (sub-page under Wholesale Applications)
-		add_action( 'admin_menu', array( __CLASS__, 'add_admin_menu' ), 20 );
+		// Admin menu is registered centrally by SLW_Admin_Menu
 
 		// Handle admin actions (quote, accept, decline)
 		add_action( 'admin_init', array( __CLASS__, 'handle_admin_action' ) );

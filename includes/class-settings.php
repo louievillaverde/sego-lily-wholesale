@@ -2,92 +2,84 @@
 /**
  * Plugin Settings Page
  *
- * Provides a simple admin settings page under Settings > Sego Lily Wholesale.
- * Holly or her admin can adjust discount percentage, order minimums, the AIOS
- * webhook URL, and toggle NET 30 availability from here.
+ * Self-handling form (no options.php dependency) so it works correctly
+ * as a sub-page under the custom Wholesale top-level menu. The old
+ * Settings API approach broke when moved from add_options_page to
+ * add_submenu_page because options.php's whitelist check is tied to
+ * the page registration context.
  */
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 class SLW_Settings {
 
+    /** @var array All settings with their sanitize callbacks and defaults */
+    private static $fields = array(
+        'slw_discount_percent'              => array( 'sanitize' => 'absint',              'default' => 50 ),
+        'slw_first_order_minimum'           => array( 'sanitize' => 'floatval',            'default' => 300 ),
+        'slw_reorder_minimum'               => array( 'sanitize' => 'floatval',            'default' => 0 ),
+        'slw_webhook_url'                   => array( 'sanitize' => 'esc_url_raw',         'default' => '' ),
+        'slw_net30_enabled'                 => array( 'sanitize' => 'rest_sanitize_boolean','default' => false ),
+        'slw_wholesale_tax_exempt_default'  => array( 'sanitize' => 'rest_sanitize_boolean','default' => false ),
+        'slw_wholesale_shipping_methods'    => array( 'sanitize' => 'array',               'default' => array() ),
+        'slw_retail_shipping_methods'       => array( 'sanitize' => 'array',               'default' => array() ),
+    );
+
     public static function init() {
-        add_action( 'admin_menu', array( __CLASS__, 'add_settings_page' ), 20 );
-        add_action( 'admin_init', array( __CLASS__, 'register_settings' ) );
+        // Admin menu is registered centrally by SLW_Admin_Menu
     }
 
-    public static function add_settings_page() {
-        add_submenu_page(
-            'slw-applications',
-            'Wholesale Settings',
-            'Settings',
-            'manage_woocommerce',
-            'slw-settings',
-            array( __CLASS__, 'render_page' )
-        );
-    }
-
-    public static function register_settings() {
-        register_setting( 'slw_settings_group', 'slw_discount_percent', array(
-            'type'              => 'integer',
-            'sanitize_callback' => 'absint',
-            'default'           => 50,
-        ));
-        register_setting( 'slw_settings_group', 'slw_first_order_minimum', array(
-            'type'              => 'number',
-            'sanitize_callback' => array( __CLASS__, 'sanitize_float' ),
-            'default'           => 300,
-        ));
-        register_setting( 'slw_settings_group', 'slw_reorder_minimum', array(
-            'type'              => 'number',
-            'sanitize_callback' => array( __CLASS__, 'sanitize_float' ),
-            'default'           => 0,
-        ));
-        register_setting( 'slw_settings_group', 'slw_webhook_url', array(
-            'type'              => 'string',
-            'sanitize_callback' => 'esc_url_raw',
-            'default'           => '',
-        ));
-        register_setting( 'slw_settings_group', 'slw_net30_enabled', array(
-            'type'              => 'boolean',
-            'sanitize_callback' => 'rest_sanitize_boolean',
-            'default'           => false,
-        ));
-        register_setting( 'slw_settings_group', 'slw_wholesale_tax_exempt_default', array(
-            'type'              => 'boolean',
-            'sanitize_callback' => 'rest_sanitize_boolean',
-            'default'           => false,
-        ));
-        register_setting( 'slw_settings_group', 'slw_wholesale_shipping_methods', array(
-            'type'              => 'array',
-            'sanitize_callback' => array( __CLASS__, 'sanitize_method_array' ),
-            'default'           => array(),
-        ));
-        register_setting( 'slw_settings_group', 'slw_retail_shipping_methods', array(
-            'type'              => 'array',
-            'sanitize_callback' => array( __CLASS__, 'sanitize_method_array' ),
-            'default'           => array(),
-        ));
-    }
-
-    public static function sanitize_method_array( $value ) {
+    /**
+     * Sanitize an array of shipping method IDs.
+     */
+    private static function sanitize_method_array( $value ) {
         if ( ! is_array( $value ) ) return array();
         return array_values( array_filter( array_map( 'sanitize_text_field', $value ) ) );
     }
 
-    public static function sanitize_float( $value ) {
-        return floatval( $value );
-    }
-
+    /**
+     * Handle form save + render the settings page.
+     */
     public static function render_page() {
         if ( ! current_user_can( 'manage_woocommerce' ) ) {
             return;
         }
+
+        $saved = false;
+
+        // Handle form submission
+        if ( isset( $_POST['slw_settings_save'] ) && check_admin_referer( 'slw_settings_nonce' ) ) {
+            foreach ( self::$fields as $key => $config ) {
+                if ( $config['sanitize'] === 'array' ) {
+                    $value = isset( $_POST[ $key ] ) ? self::sanitize_method_array( $_POST[ $key ] ) : array();
+                } elseif ( $config['sanitize'] === 'rest_sanitize_boolean' ) {
+                    $value = ! empty( $_POST[ $key ] );
+                } elseif ( $config['sanitize'] === 'absint' ) {
+                    $value = absint( $_POST[ $key ] ?? $config['default'] );
+                } elseif ( $config['sanitize'] === 'floatval' ) {
+                    $value = floatval( $_POST[ $key ] ?? $config['default'] );
+                } elseif ( $config['sanitize'] === 'esc_url_raw' ) {
+                    $value = esc_url_raw( $_POST[ $key ] ?? '' );
+                } else {
+                    $value = sanitize_text_field( $_POST[ $key ] ?? '' );
+                }
+                update_option( $key, $value );
+            }
+            $saved = true;
+        }
+
         ?>
         <div class="wrap">
             <h1>Wholesale Settings</h1>
-            <form method="post" action="options.php">
-                <?php settings_fields( 'slw_settings_group' ); ?>
+
+            <?php if ( $saved ) : ?>
+                <div class="notice notice-success is-dismissible"><p>Settings saved.</p></div>
+            <?php endif; ?>
+
+            <form method="post">
+                <?php wp_nonce_field( 'slw_settings_nonce' ); ?>
+                <input type="hidden" name="slw_settings_save" value="1" />
+
                 <table class="form-table">
                     <tr>
                         <th scope="row"><label for="slw_discount_percent">Wholesale Discount (%)</label></th>
@@ -117,12 +109,12 @@ class SLW_Settings {
                         </td>
                     </tr>
                     <tr>
-                        <th scope="row"><label for="slw_webhook_url">AIOS Webhook URL</label></th>
+                        <th scope="row"><label for="slw_webhook_url">Automation Webhook URL</label></th>
                         <td>
                             <input type="url" id="slw_webhook_url" name="slw_webhook_url"
                                    value="<?php echo esc_attr( get_option( 'slw_webhook_url', '' ) ); ?>"
-                                   class="regular-text" placeholder="https://your-aios-url.com/webhooks/wholesale-approved" />
-                            <p class="description">Webhook endpoint for Lead Piranha AIOS. Fires on application approval and first order placed.</p>
+                                   class="regular-text" placeholder="https://your-webhook-url.com/wholesale" />
+                            <p class="description">Webhook endpoint for CRM/email automation. Fires on application approval and first order placed.</p>
                         </td>
                     </tr>
                     <tr>
@@ -160,9 +152,7 @@ class SLW_Settings {
     }
 
     /**
-     * Render checkbox lists for the two shipping method restriction settings.
-     * Enumerates every shipping method across every shipping zone so Holly
-     * can pick which apply to wholesale vs retail.
+     * Render checkbox lists for shipping method restrictions.
      */
     private static function render_shipping_restrictions() {
         if ( ! class_exists( 'WC_Shipping_Zones' ) ) {
@@ -170,13 +160,11 @@ class SLW_Settings {
             return;
         }
 
-        // Collect all configured shipping methods across all zones
         $all_methods = array();
         $zones = WC_Shipping_Zones::get_zones();
-        // Include the "Locations not covered" zone (id 0)
         $zones[] = array(
-            'id'             => 0,
-            'zone_name'      => 'Locations not covered by your other zones',
+            'id'               => 0,
+            'zone_name'        => 'Locations not covered by your other zones',
             'shipping_methods' => WC_Shipping_Zones::get_zone( 0 )->get_shipping_methods(),
         );
 

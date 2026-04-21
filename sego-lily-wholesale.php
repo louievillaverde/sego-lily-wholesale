@@ -2,8 +2,8 @@
 /**
  * Plugin Name:       Wholesale Portal
  * Plugin URI:        https://github.com/louievillaverde/sego-lily-wholesale
- * Description:       Complete B2B wholesale portal for WooCommerce. Wholesale pricing, tiered discounts, applications with admin approval, order minimums, NET 30/60/90 terms, tax exemption, PDF invoices, line sheets, RFQ system, reorder reminders, bulk user import, and automation webhooks.
- * Version:           2.1.0
+ * Description:       Turn any WooCommerce store into a full B2B wholesale operation. Tiered wholesale pricing, application-based onboarding, order minimums, NET payment terms, tax exemption, customizable PDF invoices, downloadable line sheets, request-for-quote, automated reorder reminders, lead capture, bulk user import, and CRM webhook integration. Built by Lead Piranha.
+ * Version:           2.2.0
  * Author:            Lead Piranha
  * Author URI:        https://leadpiranha.com
  * Requires at least: 6.0
@@ -27,7 +27,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SLW_VERSION', '2.1.0' );
+define( 'SLW_VERSION', '2.2.0' );
 define( 'SLW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SLW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -63,6 +63,7 @@ add_action( 'plugins_loaded', function() {
     require_once SLW_PLUGIN_DIR . 'includes/class-webhooks.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-premium-features.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-updater.php';
+    require_once SLW_PLUGIN_DIR . 'includes/class-admin-menu.php';
 
     // Load v2.0 modules — tiers, invoices, reminders, RFQ
     require_once SLW_PLUGIN_DIR . 'includes/class-tiers.php';
@@ -86,6 +87,7 @@ add_action( 'plugins_loaded', function() {
     SLW_Webhooks::init();
     SLW_Premium_Features::init();
     SLW_Updater::init();
+    SLW_Admin_Menu::init();
 
     // Initialize — v2.0 modules (order matters: tiers before groups)
     SLW_Tiers::init();

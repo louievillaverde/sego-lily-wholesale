@@ -32,8 +32,7 @@ class SLW_Premium_Features {
         add_action( 'woocommerce_shipping_zone_method_added', array( __CLASS__, 'clear_shipping_cache' ) );
         // Admin UI for shipping restrictions lives under plugin settings
 
-        // 4. Bulk user import
-        add_action( 'admin_menu', array( __CLASS__, 'add_import_menu' ), 20 );
+        // 4. Bulk user import (admin menu registered centrally by SLW_Admin_Menu)
         add_action( 'admin_post_slw_bulk_import', array( __CLASS__, 'handle_csv_upload' ) );
         add_action( 'admin_post_slw_download_import_template', array( __CLASS__, 'download_csv_template' ) );
     }
