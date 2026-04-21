@@ -1,9 +1,9 @@
 <?php
 /**
- * Plugin Name:       Sego Lily Wholesale
+ * Plugin Name:       Wholesale Portal
  * Plugin URI:        https://github.com/louievillaverde/sego-lily-wholesale
- * Description:       Custom wholesale portal for Sego Lily Skincare. Handles wholesale pricing, applications, order minimums, NET 30 terms, tax exemption, tiered pricing, wholesale-only products, category pricing, wholesale-only coupons, shipping restrictions, bulk user import, and AIOS webhook integration.
- * Version:           2.0.1
+ * Description:       Complete B2B wholesale portal for WooCommerce. Wholesale pricing, tiered discounts, applications with admin approval, order minimums, NET 30/60/90 terms, tax exemption, PDF invoices, line sheets, RFQ system, reorder reminders, bulk user import, and automation webhooks.
+ * Version:           2.1.0
  * Author:            Lead Piranha
  * Author URI:        https://leadpiranha.com
  * Requires at least: 6.0
@@ -27,7 +27,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SLW_VERSION', '2.0.1' );
+define( 'SLW_VERSION', '2.1.0' );
 define( 'SLW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SLW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -48,7 +48,7 @@ add_action( 'before_woocommerce_init', function() {
 add_action( 'plugins_loaded', function() {
     if ( ! class_exists( 'WooCommerce' ) ) {
         add_action( 'admin_notices', function() {
-            echo '<div class="notice notice-error"><p><strong>Sego Lily Wholesale</strong> requires WooCommerce to be installed and active.</p></div>';
+            echo '<div class="notice notice-error"><p><strong>Wholesale Portal</strong> requires WooCommerce to be installed and active.</p></div>';
         });
         return;
     }

@@ -100,7 +100,7 @@ class SLW_Updater {
         $changelog_url = 'https://github.com/' . self::$github_repo . '/releases/tag/v' . $remote['version'];
 
         return (object) array(
-            'name'          => 'Sego Lily Wholesale',
+            'name'          => 'Wholesale Portal',
             'slug'          => 'sego-lily-wholesale',
             'version'       => $remote['version'],
             'author'        => '<a href="https://leadpiranha.com">Lead Piranha</a>',

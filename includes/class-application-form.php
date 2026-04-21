@@ -20,7 +20,7 @@ class SLW_Application_Form {
         add_action( 'wp_ajax_slw_submit_application', array( __CLASS__, 'handle_submission' ) );
 
         // Admin menu
-        add_action( 'admin_menu', array( __CLASS__, 'add_admin_menu' ) );
+        add_action( 'admin_menu', array( __CLASS__, 'add_admin_menu' ), 5 );
 
         // Handle approve/decline actions
         add_action( 'admin_init', array( __CLASS__, 'handle_admin_action' ) );
@@ -174,8 +174,8 @@ class SLW_Application_Form {
         );
 
         add_menu_page(
-            'Sego Lily Wholesale',
-            'Sego Lily',
+            'Wholesale',
+            'Wholesale',
             'manage_woocommerce',
             'slw-applications',
             array( __CLASS__, 'render_admin_page' ),

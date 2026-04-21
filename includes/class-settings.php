@@ -12,7 +12,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 class SLW_Settings {
 
     public static function init() {
-        add_action( 'admin_menu', array( __CLASS__, 'add_settings_page' ) );
+        add_action( 'admin_menu', array( __CLASS__, 'add_settings_page' ), 20 );
         add_action( 'admin_init', array( __CLASS__, 'register_settings' ) );
     }
 
@@ -85,7 +85,7 @@ class SLW_Settings {
         }
         ?>
         <div class="wrap">
-            <h1>Sego Lily Wholesale Settings</h1>
+            <h1>Wholesale Settings</h1>
             <form method="post" action="options.php">
                 <?php settings_fields( 'slw_settings_group' ); ?>
                 <table class="form-table">

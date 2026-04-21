@@ -252,7 +252,7 @@ class SLW_Wholesale_Role {
         $net30 = get_user_meta( $user->ID, 'slw_net30_approved', true ) === '1';
         $resale_number = get_user_meta( $user->ID, 'slw_resale_certificate_number', true );
         ?>
-        <h2>Sego Lily Wholesale</h2>
+        <h2>Wholesale Portal</h2>
         <table class="form-table">
             <tr>
                 <th><label>Wholesale Status</label></th>

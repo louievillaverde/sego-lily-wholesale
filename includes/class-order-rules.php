@@ -154,7 +154,7 @@ class SLW_Order_Rules {
 
         $net30 = get_user_meta( $user->ID, 'slw_net30_approved', true );
         ?>
-        <h3>Sego Lily Wholesale</h3>
+        <h3>Wholesale Portal</h3>
         <table class="form-table">
             <tr>
                 <th><label for="slw_net30_approved">NET 30 Payment Terms</label></th>
