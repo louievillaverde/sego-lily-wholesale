@@ -36,6 +36,13 @@ class SLW_Updater {
         // Clear cached release data when the admin manually checks for updates
         add_action( 'load-update-core.php', array( __CLASS__, 'flush_cache_on_manual_check' ) );
 
+        // One-time flush: clear stale icon data from pre-3.0.1 transients
+        if ( get_option( 'slw_icon_cache_version' ) !== '3.0.1' ) {
+            delete_transient( self::$cache_key );
+            delete_site_transient( 'update_plugins' );
+            update_option( 'slw_icon_cache_version', '3.0.1' );
+        }
+
         // Flush stale icon/transient data after plugin updates so the new
         // icon renders immediately instead of showing the old cached one.
         add_action( 'upgrader_process_complete', array( __CLASS__, 'flush_after_update' ), 10, 2 );
@@ -72,26 +79,29 @@ class SLW_Updater {
             return $transient;
         }
 
+        $icons = self::get_icon_urls();
+
         if ( version_compare( SLW_VERSION, $remote['version'], '<' ) ) {
             $transient->response[ self::$plugin_file ] = (object) array(
                 'slug'         => 'sego-lily-wholesale',
                 'plugin'       => self::$plugin_file,
                 'new_version'  => $remote['version'],
-                'url'          => 'https://github.com/' . self::$github_repo,
+                'url'          => 'https://leadpiranha.com',
                 'package'      => $remote['download_url'],
-                'icons'        => self::get_icon_urls(),
+                'icons'        => $icons,
                 'banners'      => array(),
                 'requires'     => '6.0',
                 'tested'       => get_bloginfo( 'version' ),
                 'requires_php' => '7.4',
             );
         } else {
-            // Tell WP we're current so it doesn't keep re-checking
+            // Tell WP we're current — include icons so the Plugins page shows them
             $transient->no_update[ self::$plugin_file ] = (object) array(
                 'slug'        => 'sego-lily-wholesale',
                 'plugin'      => self::$plugin_file,
                 'new_version' => SLW_VERSION,
-                'url'         => 'https://github.com/' . self::$github_repo,
+                'url'         => 'https://leadpiranha.com',
+                'icons'       => $icons,
             );
         }
 
