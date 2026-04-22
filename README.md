@@ -1,111 +1,88 @@
-# Sego Lily Wholesale Plugin
+# Wholesale Portal
 
-Custom wholesale portal for Sego Lily Skincare. Replaces Wholesale Suite with a zero-cost, purpose-built solution.
+Complete B2B wholesale solution for WooCommerce. Turn any store into a full wholesale operation with tiered pricing, application-based onboarding, invoicing, and automation.
 
-Built by Lead Piranha. Current version maintained at https://github.com/louievillaverde/sego-lily-wholesale
-
-## First-time installation (one time only)
-
-### Step 1: Install Git Updater (so future updates are automatic)
-
-1. WP Admin > Plugins > Add New
-2. Search for **Git Updater**
-3. Install and activate it
-
-After Git Updater is active, every future Sego Lily Wholesale release appears in your native WP Plugins > Updates screen and updates with one click. You never have to upload a ZIP manually again.
-
-### Step 2: Install Sego Lily Wholesale
-
-1. Download the latest ZIP from https://github.com/louievillaverde/sego-lily-wholesale/releases/latest
-2. WP Admin > Plugins > Add New > Upload Plugin > choose the ZIP > Install Now
-3. Activate
-
-The plugin auto-creates three pages:
-
-| URL | Purpose |
-|---|---|
-| `/wholesale-partners` | Public application form |
-| `/wholesale-order` | Product catalog + order form (wholesale users only) |
-| `/wholesale-dashboard` | Customer dashboard (wholesale users only) |
-
-### Step 3: Configure
-
-Go to **Settings > Sego Lily Wholesale** and set:
-
-- **Wholesale Discount %** (default: 50%)
-- **First Order Minimum** (default: $300)
-- **Reorder Minimum** (default: $0)
-- **AIOS Webhook URL** (paste the URL provided by Lead Piranha)
-- **Enable NET 30** (toggle, then approve per user on their profile)
-- **Default wholesale tax exemption** (applies to all wholesale users automatically)
-- **Shipping method restrictions** (which methods each role can use at checkout)
-
-## How updates work from this point on
-
-1. When Lead Piranha releases a new version (bug fix, new feature), it gets published on GitHub
-2. Within hours, your WP Admin shows an update notification in Plugins > Updates
-3. Click **Update Now**. WordPress downloads the new version and replaces the plugin files.
-4. Your settings, users, orders, and applications are preserved across every update.
-
-No FTP, no File Manager, no ZIP uploads.
+Built by [Lead Piranha](https://leadpiranha.com).
 
 ## Features
 
-### Wholesale pricing
-- Role-based pricing: wholesale users see the discounted price everywhere
-- Retail users see the regular price (no change to their experience)
-- Per-product price overrides (set a custom wholesale price on any product)
-- Category-level discount overrides (different discount % per product category)
-- Tiered quantity pricing (buy 12+ for $X, buy 24+ for $Y, etc.)
+### Pricing
+- Role-based wholesale pricing (retail customers see regular prices)
+- Multiple wholesale tiers (Standard, Preferred, VIP) with auto-upgrade
+- Per-product price overrides
+- Category-level discount overrides
+- Tiered quantity pricing (buy 12+ for $X, buy 24+ for $Y)
+- Per-product minimum wholesale quantities
 
-### Application flow
-- Public application form at `/wholesale-partners`
-- Admin approval workflow
-- Welcome email with login credentials sent automatically on approval
-- Polite decline email on rejection
-- Honeypot + rate limiting for bot protection
-
-### Order rules
-- First order minimum ($300 default)
-- No reorder minimum (or configurable)
-- NET 30 payment terms (toggle per user)
-- Tax exemption (per user or global default)
-- Shipping method restrictions per role
-
-### Admin tools
-- Wholesale Applications admin page with approve/decline
-- Users list column showing wholesale status + badges
-- User profile section for wholesale/tax-exempt/NET 30 toggles
+### Application & Onboarding
+- Public application form with 3-step wizard
+- Admin approval/decline workflow with email notifications
+- Automatic WooCommerce account creation on approval
+- Lead capture form for prospects not ready to apply
 - Bulk user import via CSV
-- CSV export of all applications
-- Self-healing database (auto-creates table if missing)
+- Manual single-customer creation
 
-### Integrations
-- AIOS webhook on approval (fires `wholesale-active` Mautic tag)
-- AIOS webhook on first order (fires `first-order-placed` Mautic tag)
-- HPOS (High-Performance Order Storage) compatible
-- Elementor compatible
+### Orders & Payments
+- First order minimum + reorder minimum
+- NET 30/60/90 payment terms (per customer)
+- Tax exemption (per customer or global default)
+- Shipping method restrictions per role
+- Wholesale-only products and coupons
+- Quick reorder from past orders
 
-## NET 30 setup
+### Invoicing
+- Customizable PDF invoices (logo, colors, business info, footer)
+- Live invoice preview in settings
+- Download/print from WooCommerce orders
+- Send invoice to customer via email
+- Downloadable wholesale price list / line sheet
 
-1. Enable NET 30 in plugin settings
-2. Edit a wholesale user's profile
-3. Check "NET 30 Payment Terms" under the Sego Lily Wholesale section
-4. That customer now sees "NET 30 Terms" as a payment option at checkout
+### Automation
+- Webhook integration for CRM/email automation
+- Automated reorder reminders (configurable 45/75/120 day thresholds)
+- Tier auto-upgrade based on order count or lifetime spend
 
-## Bulk user import
+### Admin Tools
+- Dashboard with quick stats, activity feed, and getting started guide
+- Wholesale-only orders view with filters and CSV export
+- Request for Quote (RFQ) system
+- Lead capture management with status tracking
+- Application management with CSV export
+- White-label email settings (From name, address, signature)
+- Modern admin UI
 
-Go to **Wholesale Applications > Import Users**. Upload a CSV with these columns:
+## Requirements
 
-- Required: `email`, `first_name`, `last_name`, `business_name`
-- Optional: `phone`, `address`, `ein`, `business_type`, `net30_approved` (yes/no), `tax_exempt` (yes/no), `send_welcome_email` (yes/no)
+- WordPress 6.0+
+- WooCommerce 8.0+
+- PHP 7.4+
 
-Existing users matched by email are promoted to wholesale. New emails create new accounts. Welcome emails with login credentials send automatically if the CSV row says yes (or you check the "send to all" box).
+## Installation
 
-## Deactivation and uninstall
+1. Upload the plugin ZIP via Plugins > Add New > Upload Plugin
+2. Activate
+3. The plugin auto-creates four pages: `/wholesale-partners`, `/wholesale-order`, `/wholesale-dashboard`, `/wholesale-rfq`
+4. Configure at Wholesale > Settings
 
-Deactivating the plugin does NOT delete data. Users, orders, applications, settings, and the wholesale role all survive deactivation and can be reactivated later without losing anything.
+## Updates
+
+The plugin has a built-in updater. New versions appear in Dashboard > Updates automatically. Click "Update Now" — settings, users, orders, and applications are preserved across updates.
+
+## Admin Menu
+
+After activation, "Wholesale" appears in your admin sidebar:
+
+- **Dashboard** — Quick stats, recent activity, setup checklist
+- **Applications** — Review and approve/decline wholesale applications
+- **Orders** — Wholesale-only order view with filters and export
+- **Quotes** — Request for Quote submissions
+- **Tiers** — Configure wholesale tier discounts and auto-upgrade thresholds
+- **Leads** — Manage captured wholesale prospects
+- **Import** — Add individual customers or bulk import via CSV
+- **Settings** — Discounts, minimums, payment terms, webhooks, shipping
+- **Invoices** — Logo, colors, business info, email settings, preview
+- **Help** — Setup guide, system info, quick links
 
 ## Support
 
-Contact Lead Piranha if you run into issues. When a fix or new feature is released, it appears in your Plugins > Updates screen automatically.
+Contact Lead Piranha for support, feature requests, or to set up the plugin for a new client.

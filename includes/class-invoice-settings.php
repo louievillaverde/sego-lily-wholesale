@@ -118,12 +118,15 @@ class SLW_Invoice_Settings {
 	 * Enqueue the WP media uploader and color picker on our settings page only.
 	 */
 	public static function enqueue_admin_assets( $hook ) {
-		// Load modern admin CSS on all plugin pages
+		// Load modern admin CSS on all plugin pages.
+		// Hook names vary: "toplevel_page_slw-applications", "wholesale_page_slw-rfq",
+		// "settings_page_slw-invoice-settings", etc. All contain "slw-" or "slw_".
 		if ( strpos( $hook, 'slw-' ) !== false || strpos( $hook, 'slw_' ) !== false ) {
 			wp_enqueue_style( 'slw-admin', SLW_PLUGIN_URL . 'assets/admin.css', array(), SLW_VERSION );
 		}
 
-		if ( $hook !== 'settings_page_slw-invoice-settings' ) {
+		// Media uploader + color picker only on the invoice settings page
+		if ( strpos( $hook, 'slw-invoice-settings' ) === false ) {
 			return;
 		}
 		wp_enqueue_media();

@@ -27,7 +27,13 @@ $minimum = number_format( (float) slw_get_option( 'first_order_minimum', 300 ), 
     <div id="slw-form-success" style="display:none;">
         <div class="slw-notice slw-notice-success">
             <h3>Application Received</h3>
-            <p>Thanks for applying! Holly reviews applications personally and you'll hear back within 2-3 business days.</p>
+            <?php
+            $owner_name = class_exists( 'SLW_Email_Settings' ) ? SLW_Email_Settings::get( 'owner_name' ) : '';
+            $review_msg = $owner_name
+                ? sprintf( 'Thanks for applying! %s reviews applications personally and you\'ll hear back within 2-3 business days.', esc_html( $owner_name ) )
+                : 'Thanks for applying! We review applications personally and you\'ll hear back within 2-3 business days.';
+            ?>
+            <p><?php echo $review_msg; ?></p>
         </div>
     </div>
 
@@ -112,7 +118,11 @@ $minimum = number_format( (float) slw_get_option( 'first_order_minimum', 300 ), 
         <!-- STEP 2: Contact Info -->
         <div class="slw-step" data-step="2">
             <h3 class="slw-step-title">Contact Info</h3>
-            <p class="slw-step-subtitle">How can Holly reach you?</p>
+            <?php
+            $contact_owner = class_exists( 'SLW_Email_Settings' ) ? SLW_Email_Settings::get( 'owner_name' ) : '';
+            $contact_label = $contact_owner ? sprintf( 'How can %s reach you?', esc_html( $contact_owner ) ) : 'How can we reach you?';
+            ?>
+            <p class="slw-step-subtitle"><?php echo $contact_label; ?></p>
 
             <div class="slw-form-row">
                 <div class="slw-form-field">
@@ -162,7 +172,7 @@ $minimum = number_format( (float) slw_get_option( 'first_order_minimum', 300 ), 
 
             <div class="slw-form-row">
                 <div class="slw-form-field">
-                    <label for="slw_why_carry">Why do you want to carry Sego Lily?</label>
+                    <label for="slw_why_carry">Why do you want to carry <?php echo esc_html( get_bloginfo( 'name' ) ); ?>?</label>
                     <textarea id="slw_why_carry" name="why_carry" rows="4" placeholder="Tell us about your shop and your customers."></textarea>
                 </div>
             </div>

@@ -35,6 +35,7 @@ class SLW_Premium_Features {
         // 4. Bulk user import (admin menu registered centrally by SLW_Admin_Menu)
         add_action( 'admin_post_slw_bulk_import', array( __CLASS__, 'handle_csv_upload' ) );
         add_action( 'admin_post_slw_download_import_template', array( __CLASS__, 'download_csv_template' ) );
+        add_action( 'admin_post_slw_single_customer', array( __CLASS__, 'handle_single_customer' ) );
     }
 
     // ── 1. Category-level pricing ─────────────────────────────────────────
@@ -212,10 +213,12 @@ class SLW_Premium_Features {
     public static function render_import_page() {
         $last_result = get_transient( 'slw_last_import_result' );
         delete_transient( 'slw_last_import_result' );
+        $single_result = get_transient( 'slw_single_customer_result' );
+        delete_transient( 'slw_single_customer_result' );
         ?>
         <div class="wrap">
             <h1>Import Wholesale Users</h1>
-            <p>Upload a CSV to bulk-create wholesale accounts. Each row creates a WooCommerce user with the wholesale_customer role. Existing users matched by email are promoted to wholesale instead of duplicated.</p>
+            <p>Create individual wholesale accounts or import in bulk via CSV.</p>
 
             <?php if ( $last_result ) : ?>
                 <div class="notice notice-<?php echo esc_attr( $last_result['type'] ); ?> is-dismissible">
@@ -226,31 +229,255 @@ class SLW_Premium_Features {
                 </div>
             <?php endif; ?>
 
-            <h2>CSV format</h2>
-            <p>Required columns: <code>email</code>, <code>first_name</code>, <code>last_name</code>, <code>business_name</code>. Optional columns: <code>phone</code>, <code>address</code>, <code>ein</code>, <code>business_type</code>, <code>net30_approved</code> (yes/no), <code>tax_exempt</code> (yes/no), <code>send_welcome_email</code> (yes/no, default yes).</p>
-            <p><a href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=slw_download_import_template' ), 'slw_csv_template' ) ); ?>" class="button">Download CSV template</a></p>
+            <?php if ( $single_result ) : ?>
+                <div class="notice notice-<?php echo esc_attr( $single_result['type'] ); ?> is-dismissible">
+                    <p><?php echo esc_html( $single_result['message'] ); ?></p>
+                </div>
+            <?php endif; ?>
 
-            <h2>Upload CSV</h2>
-            <form method="post" enctype="multipart/form-data" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-                <?php wp_nonce_field( 'slw_bulk_import' ); ?>
-                <input type="hidden" name="action" value="slw_bulk_import" />
-                <table class="form-table">
-                    <tr>
-                        <th><label for="slw_csv_file">CSV file</label></th>
-                        <td><input type="file" name="csv_file" id="slw_csv_file" accept=".csv" required /></td>
-                    </tr>
-                    <tr>
-                        <th><label for="slw_send_welcome_all">Send welcome email to all imported users</label></th>
-                        <td>
-                            <label><input type="checkbox" name="send_welcome_all" id="slw_send_welcome_all" value="1" /> Send even if row says otherwise</label>
-                            <p class="description">Use this if you want every imported user to receive the welcome email regardless of the send_welcome_email column.</p>
-                        </td>
-                    </tr>
+            <!-- Add Single Customer -->
+            <div class="slw-import-section">
+                <h2 class="slw-import-section__heading"><span class="dashicons dashicons-admin-users"></span> Add Single Customer</h2>
+                <p class="slw-import-section__desc">Quickly create a wholesale account for an individual customer.</p>
+
+                <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+                    <?php wp_nonce_field( 'slw_single_customer' ); ?>
+                    <input type="hidden" name="action" value="slw_single_customer" />
+
+                    <div class="slw-single-customer-form">
+                        <div class="slw-form-field">
+                            <label for="slw_sc_first_name">First Name <span class="slw-required">*</span></label>
+                            <input type="text" id="slw_sc_first_name" name="first_name" required />
+                        </div>
+                        <div class="slw-form-field">
+                            <label for="slw_sc_last_name">Last Name <span class="slw-required">*</span></label>
+                            <input type="text" id="slw_sc_last_name" name="last_name" required />
+                        </div>
+                        <div class="slw-form-field slw-form-field--full">
+                            <label for="slw_sc_email">Email <span class="slw-required">*</span></label>
+                            <input type="email" id="slw_sc_email" name="email" required />
+                        </div>
+                        <div class="slw-form-field">
+                            <label for="slw_sc_business">Business Name</label>
+                            <input type="text" id="slw_sc_business" name="business_name" />
+                        </div>
+                        <div class="slw-form-field">
+                            <label for="slw_sc_phone">Phone</label>
+                            <input type="tel" id="slw_sc_phone" name="phone" />
+                        </div>
+                        <div class="slw-form-actions">
+                            <button type="submit" class="button button-primary">Create Wholesale Account</button>
+                            <label style="font-size:13px;color:#628393;">
+                                <input type="checkbox" name="send_welcome" value="1" checked /> Send welcome email
+                            </label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Bulk Import via CSV -->
+            <div class="slw-import-section">
+                <h2 class="slw-import-section__heading"><span class="dashicons dashicons-upload"></span> Bulk Import via CSV</h2>
+                <p class="slw-import-section__desc">Upload a CSV to create multiple wholesale accounts at once. Existing users matched by email are promoted to wholesale instead of duplicated.</p>
+
+                <!-- Required Columns -->
+                <h3 style="font-size:14px;font-weight:700;color:#1E2A30;margin:0 0 10px;">Required Columns</h3>
+                <table class="slw-columns-table">
+                    <thead>
+                        <tr>
+                            <th>Column</th>
+                            <th>Description</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>email</code></td>
+                            <td>Customer email address (used for login and matching existing users)</td>
+                            <td><span class="slw-badge slw-badge--required">Required</span></td>
+                        </tr>
+                        <tr>
+                            <td><code>first_name</code></td>
+                            <td>Customer first name</td>
+                            <td><span class="slw-badge slw-badge--required">Required</span></td>
+                        </tr>
+                        <tr>
+                            <td><code>last_name</code></td>
+                            <td>Customer last name</td>
+                            <td><span class="slw-badge slw-badge--required">Required</span></td>
+                        </tr>
+                        <tr>
+                            <td><code>business_name</code></td>
+                            <td>Wholesale business or store name</td>
+                            <td><span class="slw-badge slw-badge--required">Required</span></td>
+                        </tr>
+                    </tbody>
                 </table>
-                <p class="submit"><button type="submit" class="button button-primary">Import CSV</button></p>
-            </form>
+
+                <!-- Optional Columns (collapsible) -->
+                <div class="slw-collapsible" id="slw-optional-columns">
+                    <button type="button" class="slw-collapsible__toggle" onclick="this.parentElement.classList.toggle('slw-collapsible--open')">
+                        <span class="dashicons dashicons-arrow-down-alt2 slw-collapsible__arrow"></span>
+                        Optional Columns (7 fields)
+                    </button>
+                    <div class="slw-collapsible__body">
+                        <table class="slw-columns-table">
+                            <thead>
+                                <tr>
+                                    <th>Column</th>
+                                    <th>Description</th>
+                                    <th>Default</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>phone</code></td>
+                                    <td>Business phone number</td>
+                                    <td>-</td>
+                                </tr>
+                                <tr>
+                                    <td><code>address</code></td>
+                                    <td>Business address</td>
+                                    <td>-</td>
+                                </tr>
+                                <tr>
+                                    <td><code>ein</code></td>
+                                    <td>Employer Identification Number / Tax ID</td>
+                                    <td>-</td>
+                                </tr>
+                                <tr>
+                                    <td><code>business_type</code></td>
+                                    <td>Type of business (e.g. boutique, salon, spa)</td>
+                                    <td>-</td>
+                                </tr>
+                                <tr>
+                                    <td><code>net30_approved</code></td>
+                                    <td>Approve NET 30 payment terms (yes/no)</td>
+                                    <td>no</td>
+                                </tr>
+                                <tr>
+                                    <td><code>tax_exempt</code></td>
+                                    <td>Mark customer as tax exempt (yes/no)</td>
+                                    <td>no</td>
+                                </tr>
+                                <tr>
+                                    <td><code>send_welcome_email</code></td>
+                                    <td>Send login credentials via email (yes/no)</td>
+                                    <td>yes</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div style="margin:20px 0 24px;">
+                    <a href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=slw_download_import_template' ), 'slw_csv_template' ) ); ?>" class="button">
+                        <span class="dashicons dashicons-download" style="margin-top:3px;"></span> Download CSV Template
+                    </a>
+                </div>
+
+                <form method="post" enctype="multipart/form-data" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+                    <?php wp_nonce_field( 'slw_bulk_import' ); ?>
+                    <input type="hidden" name="action" value="slw_bulk_import" />
+                    <table class="form-table">
+                        <tr>
+                            <th><label for="slw_csv_file">CSV File</label></th>
+                            <td><input type="file" name="csv_file" id="slw_csv_file" accept=".csv" required /></td>
+                        </tr>
+                        <tr>
+                            <th><label for="slw_send_welcome_all">Force welcome email</label></th>
+                            <td>
+                                <label><input type="checkbox" name="send_welcome_all" id="slw_send_welcome_all" value="1" /> Send to all imported users regardless of CSV column</label>
+                            </td>
+                        </tr>
+                    </table>
+                    <p class="submit"><button type="submit" class="button button-primary">Import CSV</button></p>
+                </form>
+            </div>
         </div>
         <?php
+    }
+
+    /**
+     * Handle the single customer creation form.
+     */
+    public static function handle_single_customer() {
+        if ( ! current_user_can( 'manage_woocommerce' ) ) wp_die( 'Unauthorized', 403 );
+        check_admin_referer( 'slw_single_customer' );
+
+        $email      = sanitize_email( $_POST['email'] ?? '' );
+        $first_name = sanitize_text_field( $_POST['first_name'] ?? '' );
+        $last_name  = sanitize_text_field( $_POST['last_name'] ?? '' );
+        $business   = sanitize_text_field( $_POST['business_name'] ?? '' );
+        $phone      = sanitize_text_field( $_POST['phone'] ?? '' );
+        $send_welcome = ! empty( $_POST['send_welcome'] );
+
+        if ( ! $email || ! is_email( $email ) ) {
+            set_transient( 'slw_single_customer_result', array(
+                'type' => 'error', 'message' => 'Please provide a valid email address.',
+            ), 60 );
+            wp_redirect( admin_url( 'admin.php?page=slw-import' ) );
+            exit;
+        }
+
+        if ( ! $first_name || ! $last_name ) {
+            set_transient( 'slw_single_customer_result', array(
+                'type' => 'error', 'message' => 'First name and last name are required.',
+            ), 60 );
+            wp_redirect( admin_url( 'admin.php?page=slw-import' ) );
+            exit;
+        }
+
+        $existing = get_user_by( 'email', $email );
+        if ( $existing ) {
+            if ( ! slw_is_wholesale_user( $existing->ID ) ) {
+                $existing->add_role( 'wholesale_customer' );
+                if ( $business ) update_user_meta( $existing->ID, 'slw_business_name', $business );
+                if ( $phone )    update_user_meta( $existing->ID, 'billing_phone', $phone );
+                set_transient( 'slw_single_customer_result', array(
+                    'type' => 'success', 'message' => 'Existing user ' . $email . ' has been promoted to wholesale customer.',
+                ), 60 );
+            } else {
+                set_transient( 'slw_single_customer_result', array(
+                    'type' => 'warning', 'message' => $email . ' is already a wholesale customer.',
+                ), 60 );
+            }
+            wp_redirect( admin_url( 'admin.php?page=slw-import' ) );
+            exit;
+        }
+
+        $username = self::generate_username( $email, $business );
+        $password = wp_generate_password( 14, true );
+        $user_id  = wp_insert_user( array(
+            'user_login' => $username,
+            'user_email' => $email,
+            'user_pass'  => $password,
+            'first_name' => $first_name,
+            'last_name'  => $last_name,
+            'role'       => 'wholesale_customer',
+        ) );
+
+        if ( is_wp_error( $user_id ) ) {
+            set_transient( 'slw_single_customer_result', array(
+                'type' => 'error', 'message' => 'Could not create user: ' . $user_id->get_error_message(),
+            ), 60 );
+            wp_redirect( admin_url( 'admin.php?page=slw-import' ) );
+            exit;
+        }
+
+        if ( $business ) update_user_meta( $user_id, 'slw_business_name', $business );
+        if ( $phone )    update_user_meta( $user_id, 'billing_phone', $phone );
+
+        if ( $send_welcome ) {
+            $user = get_userdata( $user_id );
+            self::send_bulk_welcome_email( $user, $password, $business );
+        }
+
+        set_transient( 'slw_single_customer_result', array(
+            'type' => 'success', 'message' => 'Wholesale account created for ' . $first_name . ' ' . $last_name . ' (' . $email . ').' . ( $send_welcome ? ' Welcome email sent.' : '' ),
+        ), 60 );
+        wp_redirect( admin_url( 'admin.php?page=slw-import' ) );
+        exit;
     }
 
     public static function handle_csv_upload() {

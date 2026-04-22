@@ -31,7 +31,11 @@ $products = wc_get_products( array(
 
 	<div id="slw-rfq-success" class="slw-notice slw-notice-success" style="display:none;">
 		<h3>Quote Request Submitted</h3>
-		<p>Thanks, <?php echo esc_html( $first_name ); ?>! Holly will review your request and get back to you shortly.</p>
+		<?php
+		$owner_name = class_exists( 'SLW_Email_Settings' ) ? SLW_Email_Settings::get( 'owner_name' ) : '';
+		$reviewer   = $owner_name ? $owner_name : 'We';
+		?>
+		<p>Thanks, <?php echo esc_html( $first_name ); ?>! <?php echo esc_html( $reviewer ); ?> will review your request and get back to you shortly.</p>
 	</div>
 
 	<form id="slw-rfq-form" class="slw-form slw-rfq-form" novalidate>

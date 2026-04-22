@@ -76,7 +76,12 @@ $reorder_nonce = wp_create_nonce( 'slw_reorder_nonce' );
 				<li><a href="<?php echo esc_url( wc_get_cart_url() ); ?>" class="slw-btn slw-btn-secondary">View Cart</a></li>
 				<li><a href="<?php echo esc_url( wc_get_account_endpoint_url( 'edit-account' ) ); ?>">Edit Account Details</a></li>
 				<li><a href="<?php echo esc_url( wc_get_account_endpoint_url( 'edit-address' ) ); ?>">Update Shipping Address</a></li>
-				<li><a href="mailto:wholesale@segolilyskincare.com">Contact Holly</a></li>
+				<?php
+				$contact_email = class_exists( 'SLW_Email_Settings' ) ? SLW_Email_Settings::get( 'from_address' ) : get_option( 'admin_email' );
+				$contact_name  = class_exists( 'SLW_Email_Settings' ) ? SLW_Email_Settings::get( 'owner_name' ) : '';
+				$contact_label = $contact_name ? 'Contact ' . esc_html( $contact_name ) : 'Contact Us';
+				?>
+				<li><a href="mailto:<?php echo esc_attr( $contact_email ); ?>"><?php echo $contact_label; ?></a></li>
 			</ul>
 		</div>
 
@@ -158,11 +163,19 @@ $reorder_nonce = wp_create_nonce( 'slw_reorder_nonce' );
 		<!-- Resources -->
 		<div class="slw-dashboard-card slw-dashboard-card-wide">
 			<h3>Wholesale Resources</h3>
+			<?php
+			$res_email = class_exists( 'SLW_Email_Settings' ) ? SLW_Email_Settings::get( 'from_address' ) : get_option( 'admin_email' );
+			$res_owner = class_exists( 'SLW_Email_Settings' ) ? SLW_Email_Settings::get( 'owner_name' ) : '';
+			$res_label = $res_owner ? sprintf( 'Contact %s (%s)', esc_html( $res_owner ), esc_html( $res_email ) ) : sprintf( 'Contact Us (%s)', esc_html( $res_email ) );
+			$res_help  = $res_owner
+				? sprintf( 'Need brand assets, shelf talkers, or marketing materials? Email %s and they\'ll send them over.', esc_html( $res_owner ) )
+				: 'Need brand assets, shelf talkers, or marketing materials? Reach out and we\'ll send them over.';
+			?>
 			<ul class="slw-resource-links">
-				<li><a href="mailto:wholesale@segolilyskincare.com">Contact Holly (wholesale@segolilyskincare.com)</a></li>
+				<li><a href="mailto:<?php echo esc_attr( $res_email ); ?>"><?php echo $res_label; ?></a></li>
 				<li><a href="<?php echo esc_url( home_url( '/wholesale-order' ) ); ?>">Product Catalog / Order Form</a></li>
 			</ul>
-			<p class="slw-help-text">Need brand assets, shelf talkers, or marketing materials? Email Holly and she'll send them over.</p>
+			<p class="slw-help-text"><?php echo $res_help; ?></p>
 		</div>
 
 	</div>

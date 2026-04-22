@@ -141,7 +141,7 @@ class SLW_Settings {
                     </tr>
                 </table>
 
-                <h2>Shipping Method Restrictions</h2>
+                <h2 class="title">Shipping Method Restrictions</h2>
                 <p>Select which shipping methods each customer type can see at checkout. Leaving either section empty means that role sees ALL shipping methods (no restrictions).</p>
                 <?php self::render_shipping_restrictions(); ?>
 

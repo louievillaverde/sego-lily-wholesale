@@ -133,29 +133,51 @@ class SLW_Admin_Dashboard {
 
                     <!-- Getting Started Checklist -->
                     <div class="slw-admin-card">
-                        <h2 class="slw-admin-card__heading">Getting Started</h2>
-                        <p class="slw-admin-card__progress"><?php echo esc_html( $completed ); ?> of <?php echo esc_html( $total ); ?> complete</p>
-                        <div class="slw-admin-checklist-bar">
-                            <div class="slw-admin-checklist-bar__fill" style="width: <?php echo esc_attr( $total > 0 ? round( ( $completed / $total ) * 100 ) : 0 ); ?>%"></div>
-                        </div>
-                        <ul class="slw-admin-checklist">
-                            <?php foreach ( $checklist as $item ) : ?>
-                                <li class="slw-admin-checklist__item <?php echo $item['done'] ? 'slw-admin-checklist__item--done' : ''; ?>">
-                                    <span class="slw-admin-checklist__check"><?php echo $item['done'] ? '&#10003;' : '&#9675;'; ?></span>
-                                    <span class="slw-admin-checklist__text"><?php echo esc_html( $item['label'] ); ?></span>
-                                </li>
-                            <?php endforeach; ?>
-                        </ul>
+                        <?php if ( $completed >= $total ) : ?>
+                            <div class="slw-admin-setup-complete">
+                                <div class="slw-admin-setup-complete__icon">&#10003;</div>
+                                <h3 class="slw-admin-setup-complete__title">Setup Complete</h3>
+                                <p class="slw-admin-setup-complete__text">Your wholesale portal is fully configured.</p>
+                                <div class="slw-admin-setup-complete__links">
+                                    <a href="<?php echo esc_url( admin_url( 'admin.php?page=slw-settings' ) ); ?>">Settings</a>
+                                    <a href="<?php echo esc_url( home_url( '/wholesale-order' ) ); ?>" target="_blank">View Order Form</a>
+                                    <a href="<?php echo esc_url( home_url( '/wholesale-dashboard' ) ); ?>" target="_blank">Customer Dashboard</a>
+                                </div>
+                            </div>
+                        <?php else : ?>
+                            <h2 class="slw-admin-card__heading">Getting Started</h2>
+                            <p class="slw-admin-card__progress"><?php echo esc_html( $completed ); ?> of <?php echo esc_html( $total ); ?> complete</p>
+                            <div class="slw-admin-checklist-bar">
+                                <div class="slw-admin-checklist-bar__fill" style="width: <?php echo esc_attr( $total > 0 ? round( ( $completed / $total ) * 100 ) : 0 ); ?>%"></div>
+                            </div>
+                            <ul class="slw-admin-checklist">
+                                <?php foreach ( $checklist as $item ) : ?>
+                                    <li class="slw-admin-checklist__item <?php echo $item['done'] ? 'slw-admin-checklist__item--done' : ''; ?>">
+                                        <span class="slw-admin-checklist__check"><?php echo $item['done'] ? '&#10003;' : '&#9675;'; ?></span>
+                                        <span class="slw-admin-checklist__text"><?php echo esc_html( $item['label'] ); ?></span>
+                                    </li>
+                                <?php endforeach; ?>
+                            </ul>
+                        <?php endif; ?>
                     </div>
 
                     <!-- Helpful Resources -->
                     <div class="slw-admin-card">
                         <h2 class="slw-admin-card__heading">Resources</h2>
                         <ul class="slw-admin-resources">
-                            <li><a href="https://github.com/louievillaverde/sego-lily-wholesale#readme" target="_blank"><span class="dashicons dashicons-book"></span> Documentation</a></li>
+                            <li><a href="<?php echo esc_url( admin_url( 'admin.php?page=slw-help' ) ); ?>"><span class="dashicons dashicons-book"></span> Documentation</a></li>
                             <li><a href="mailto:support@leadpiranha.com"><span class="dashicons dashicons-sos"></span> Contact Support</a></li>
-                            <li><a href="https://github.com/louievillaverde/sego-lily-wholesale/releases" target="_blank"><span class="dashicons dashicons-update"></span> View Changelog</a></li>
+                            <li><a href="<?php echo esc_url( home_url( '/wholesale-dashboard' ) ); ?>" target="_blank"><span class="dashicons dashicons-dashboard"></span> Customer Dashboard</a></li>
+                            <li><a href="<?php echo esc_url( home_url( '/wholesale-order' ) ); ?>" target="_blank"><span class="dashicons dashicons-store"></span> Order Form</a></li>
                         </ul>
+                        <div class="slw-whats-new">
+                            <h4 class="slw-whats-new__title">What's New in v<?php echo esc_html( SLW_VERSION ); ?></h4>
+                            <ul class="slw-whats-new__list">
+                                <li>Redesigned admin dashboard with improved stats cards</li>
+                                <li>Single-customer import form for quick account creation</li>
+                                <li>Improved settings page section navigation</li>
+                            </ul>
+                        </div>
                         <p class="slw-admin-card__version">Wholesale Portal v<?php echo esc_html( SLW_VERSION ); ?></p>
                     </div>
 
@@ -215,7 +237,13 @@ class SLW_Admin_Dashboard {
             }
         }
 
-        return compact( 'pending', 'active_customers', 'orders_this_month', 'revenue_this_month', 'open_quotes' );
+        return array(
+            'pending_applications' => $pending,
+            'active_customers'     => $active_customers,
+            'orders_this_month'    => $orders_this_month,
+            'revenue_this_month'   => $revenue_this_month,
+            'open_quotes'          => $open_quotes,
+        );
     }
 
     /**

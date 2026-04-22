@@ -26,7 +26,7 @@ class SLW_Help {
             <!-- Getting Started Guide -->
             <div class="slw-admin-card slw-help__guide">
                 <h2 class="slw-admin-card__heading">Setup Guide</h2>
-                <p style="color:#628393;margin-bottom:20px;">Follow these steps to get your wholesale portal up and running.</p>
+                <p style="color:#628393;margin-bottom:20px;">Follow these steps to get your wholesale portal up and running. You can also track your progress on the <a href="<?php echo esc_url( admin_url( 'admin.php?page=slw-dashboard' ) ); ?>" style="color:#386174;font-weight:600;">Getting Started checklist</a> on your Dashboard.</p>
 
                 <div class="slw-help__accordion">
                     <?php foreach ( $steps as $i => $step ) : ?>
@@ -80,13 +80,23 @@ class SLW_Help {
                 </div>
             </div>
 
+            <!-- What's New -->
+            <div class="slw-admin-card">
+                <h2 class="slw-admin-card__heading">What's New in v<?php echo esc_html( SLW_VERSION ); ?></h2>
+                <ul class="slw-whats-new__list" style="margin-bottom:16px;">
+                    <li>Redesigned admin dashboard with improved stats cards</li>
+                    <li>Single-customer import form for quick account creation</li>
+                    <li>Improved settings page section navigation</li>
+                    <li>Better invoice settings layout with visual separators</li>
+                </ul>
+            </div>
+
             <!-- Support -->
             <div class="slw-admin-card">
                 <h2 class="slw-admin-card__heading">Support</h2>
                 <p style="color:#628393;">Need help? Contact your administrator or the plugin developer.</p>
                 <p>
                     <a href="mailto:support@leadpiranha.com" class="button button-primary">Contact Support</a>
-                    <a href="https://github.com/louievillaverde/sego-lily-wholesale#readme" class="button" target="_blank">View Documentation</a>
                 </p>
                 <p class="slw-admin-card__version" style="margin-top:16px;">Wholesale Portal v<?php echo esc_html( SLW_VERSION ); ?></p>
             </div>
@@ -138,10 +148,9 @@ class SLW_Help {
     private static function get_quick_links() {
         $links = array(
             array(
-                'label'    => 'Documentation',
-                'icon'     => 'dashicons-book',
-                'url'      => 'https://github.com/louievillaverde/sego-lily-wholesale#readme',
-                'external' => true,
+                'label' => 'Help & Docs',
+                'icon'  => 'dashicons-book',
+                'url'   => admin_url( 'admin.php?page=slw-help' ),
             ),
             array(
                 'label' => 'Settings',
@@ -165,21 +174,15 @@ class SLW_Help {
             'external' => true,
         );
         $links[] = array(
-            'label' => 'Order Form',
-            'icon'  => 'dashicons-store',
-            'url'   => home_url( '/wholesale-order' ),
+            'label'    => 'Order Form',
+            'icon'     => 'dashicons-store',
+            'url'      => home_url( '/wholesale-order' ),
             'external' => true,
         );
         $links[] = array(
-            'label' => 'Customer Dashboard',
-            'icon'  => 'dashicons-dashboard',
-            'url'   => home_url( '/wholesale-dashboard' ),
-            'external' => true,
-        );
-        $links[] = array(
-            'label'    => 'Changelog',
-            'icon'     => 'dashicons-update',
-            'url'      => 'https://github.com/louievillaverde/sego-lily-wholesale/releases',
+            'label'    => 'Customer Dashboard',
+            'icon'     => 'dashicons-dashboard',
+            'url'      => home_url( '/wholesale-dashboard' ),
             'external' => true,
         );
 
