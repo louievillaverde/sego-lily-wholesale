@@ -636,6 +636,9 @@ class SLW_Email_Sequences {
 
             <?php endif; /* end if $connected */ ?>
 
+            <!-- ─── Email Templates (copyable) ─── -->
+            <?php self::render_email_templates(); ?>
+
             <!-- ─── Transactional Emails (sent by WordPress, not Mautic) ─── -->
             <h2 class="title">Transactional Emails</h2>
             <p style="color:#628393;font-size:13px;margin:-8px 0 16px;">These are sent instantly by WordPress when specific actions happen. They handle logistics (credentials, invoices, confirmations) while your campaign sequences above handle relationship-building and marketing.</p>
@@ -1484,5 +1487,93 @@ class SLW_Email_Sequences {
         $log = array_slice( $log, 0, 20 );
 
         update_option( 'slw_newsletter_log', $log );
+    }
+
+    /* =================================================================
+       Email Templates (copyable outreach + newsletter templates)
+       ================================================================= */
+
+    public static function render_email_templates() {
+        $wholesale_url = esc_url( home_url( '/wholesale-partners' ) );
+        $portal_url    = esc_url( home_url( '/wholesale-portal' ) );
+        $brand_name    = class_exists( 'SLW_Email_Settings' ) ? SLW_Email_Settings::get_business_name() : get_bloginfo( 'name' );
+        $owner_name    = class_exists( 'SLW_Email_Settings' ) ? SLW_Email_Settings::get( 'owner_name' ) : '';
+        if ( ! $owner_name ) $owner_name = 'Holly';
+
+        $template_1_subject = "Carry {$brand_name} in your shop?";
+        $template_1_body = "Hi {shop_owner_name},
+
+I came across {shop_name} and love what you're doing. I think our products would be a great fit for your customers.
+
+I'm {$owner_name} — I run {$brand_name}. We make small-batch, clean-ingredient skincare and our wholesale partners get 50% off retail pricing.
+
+If you're open to it, I'd love to send you our price list or set up a quick call:
+
+{$wholesale_url}
+
+No pressure at all — just thought it could be a good match.
+
+Talk soon,
+{$owner_name}";
+
+        $template_2_subject = "What's new this quarter at {$brand_name}";
+        $template_2_body = "Hi there,
+
+Hope business is going well! Here's a quick update from our end.
+
+NEW PRODUCTS
+[Describe any new products launched this quarter]
+
+WHAT'S SELLING BEST
+[Share your top 2-3 bestsellers and why customers love them]
+
+SEASONAL RECOMMENDATION
+[Suggest a product or bundle that fits the upcoming season]
+
+REORDER
+Ready to restock? Place your next order here:
+{$portal_url}
+
+As always, reach out anytime if you need samples, marketing materials, or just want to chat.
+
+Thanks for being a partner,
+{$owner_name}";
+
+        ?>
+        <h2 class="title">Email Templates</h2>
+        <p style="color:#628393;font-size:13px;margin:-8px 0 16px;">Copy these templates and customize before sending. Replace {shop_owner_name} and {shop_name} with the actual names.</p>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+            <div class="slw-admin-card" style="margin-bottom:0;">
+                <h3 style="margin:0 0 4px;font-size:15px;color:#1E2A30;">Wholesale Outreach</h3>
+                <span style="font-size:11px;color:#628393;text-transform:uppercase;letter-spacing:0.5px;">For retail customers who own shops</span>
+                <div style="margin:12px 0 8px;font-size:13px;color:#386174;"><strong>Subject:</strong> <?php echo esc_html( $template_1_subject ); ?></div>
+                <pre id="slw-tpl-1" style="background:#faf8f5;padding:14px;border-radius:4px;font-size:13px;line-height:1.6;white-space:pre-wrap;word-wrap:break-word;border:1px solid #e0ddd8;max-height:300px;overflow:auto;"><?php echo esc_html( $template_1_body ); ?></pre>
+                <button type="button" class="button slw-copy-tpl" data-target="slw-tpl-1" style="margin-top:8px;">Copy to Clipboard</button>
+            </div>
+
+            <div class="slw-admin-card" style="margin-bottom:0;">
+                <h3 style="margin:0 0 4px;font-size:15px;color:#1E2A30;">Quarterly Newsletter</h3>
+                <span style="font-size:11px;color:#628393;text-transform:uppercase;letter-spacing:0.5px;">For existing wholesale partners</span>
+                <div style="margin:12px 0 8px;font-size:13px;color:#386174;"><strong>Subject:</strong> <?php echo esc_html( $template_2_subject ); ?></div>
+                <pre id="slw-tpl-2" style="background:#faf8f5;padding:14px;border-radius:4px;font-size:13px;line-height:1.6;white-space:pre-wrap;word-wrap:break-word;border:1px solid #e0ddd8;max-height:300px;overflow:auto;"><?php echo esc_html( $template_2_body ); ?></pre>
+                <button type="button" class="button slw-copy-tpl" data-target="slw-tpl-2" style="margin-top:8px;">Copy to Clipboard</button>
+            </div>
+        </div>
+
+        <script>
+        document.querySelectorAll('.slw-copy-tpl').forEach(function(btn){
+            btn.addEventListener('click', function(){
+                var pre = document.getElementById(this.getAttribute('data-target'));
+                if (!pre) return;
+                navigator.clipboard.writeText(pre.textContent).then(function(){
+                    var orig = btn.textContent;
+                    btn.textContent = 'Copied!';
+                    setTimeout(function(){ btn.textContent = orig; }, 2000);
+                });
+            });
+        });
+        </script>
+        <?php
     }
 }

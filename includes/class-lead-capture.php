@@ -1032,7 +1032,7 @@ class SLW_Lead_Capture {
             <?php self::render_trade_show_tools(); ?>
 
             <!-- Email Templates -->
-            <?php self::render_email_templates(); ?>
+            <?php // Email templates moved to Sequences tab ?>
         </div>
 
         <script>
