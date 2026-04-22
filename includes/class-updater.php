@@ -33,6 +33,10 @@ class SLW_Updater {
         add_filter( 'site_transient_update_plugins', array( __CLASS__, 'check_update' ) );
         add_filter( 'plugins_api', array( __CLASS__, 'plugin_info' ), 20, 3 );
 
+        // Inject plugin icon on the plugins list and updates pages
+        add_action( 'admin_head-plugins.php', array( __CLASS__, 'inject_plugin_icon_css' ) );
+        add_action( 'admin_head-update-core.php', array( __CLASS__, 'inject_plugin_icon_css' ) );
+
         // Clear cached release data when the admin manually checks for updates
         add_action( 'load-update-core.php', array( __CLASS__, 'flush_cache_on_manual_check' ) );
 
@@ -240,5 +244,42 @@ class SLW_Updater {
             '1x'      => SLW_PLUGIN_URL . 'assets/icon.svg',
             'default' => SLW_PLUGIN_URL . 'assets/icon.svg',
         );
+    }
+
+    /**
+     * Inject CSS on the plugins list and updates pages that adds our icon
+     * next to the plugin name. WordPress only auto-renders icons for
+     * wordpress.org plugins — self-hosted plugins need this manual approach.
+     */
+    public static function inject_plugin_icon_css() {
+        $icon_url = SLW_PLUGIN_URL . 'assets/icon.svg';
+        $slug     = 'sego-lily-wholesale';
+        ?>
+        <style>
+        /* Plugin icon on plugins.php list */
+        tr[data-slug="<?php echo esc_attr( $slug ); ?>"] .plugin-title strong,
+        tr[data-plugin="<?php echo esc_attr( self::$plugin_file ); ?>"] .plugin-title strong {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        tr[data-slug="<?php echo esc_attr( $slug ); ?>"] .plugin-title strong::before,
+        tr[data-plugin="<?php echo esc_attr( self::$plugin_file ); ?>"] .plugin-title strong::before {
+            content: '';
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            min-width: 24px;
+            background: url('<?php echo esc_url( $icon_url ); ?>') no-repeat center center;
+            background-size: contain;
+            vertical-align: middle;
+        }
+        /* Plugin icon on update-core.php */
+        .plugins .plugin-title p:has(strong:contains("Wholesale Portal"))::before,
+        #update-plugins-table tr td p strong {
+            /* fallback handled by the transient icons */
+        }
+        </style>
+        <?php
     }
 }
