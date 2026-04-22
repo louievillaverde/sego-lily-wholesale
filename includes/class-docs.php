@@ -47,13 +47,13 @@ class SLW_Docs {
                 'topic' => 'getting-started',
                 'title' => 'First-Time Setup',
                 'content' => '<p>After activating <strong>Wholesale Portal</strong>, the plugin automatically creates several pages on your site: <em>Wholesale Partners</em> (application form), <em>Wholesale Order Form</em>, <em>My Wholesale Account</em> (customer dashboard), <em>Request a Quote</em>, and <em>Become a Wholesale Partner</em> (lead capture). A new <strong>Wholesale Customer</strong> user role is also registered.</p>
-<h4>Step 1 — Configure Core Settings</h4>
+<h4>Step 1: Configure Core Settings</h4>
 <p>Go to <strong>Wholesale → Settings</strong>. Set your default wholesale discount percentage, first-order minimum, and reorder minimum. These three values control the baseline behavior for every wholesale customer.</p>
-<h4>Step 2 — Review Your Application Page</h4>
+<h4>Step 2: Review Your Application Page</h4>
 <p>Visit the <em>Wholesale Partners</em> page on the front end to see the 3-step application wizard. If you use Elementor, you can edit the surrounding page content while leaving the <code>[sego_wholesale_application]</code> shortcode in place.</p>
-<h4>Step 3 — Branding (Optional)</h4>
+<h4>Step 3: Branding (Optional)</h4>
 <p>If the Invoices module is active, go to <strong>Wholesale → Invoices</strong> to upload your logo and set header/footer text for PDF invoices.</p>
-<h4>Step 4 — Test</h4>
+<h4>Step 4: Test</h4>
 <p>Submit a test application, approve it from <strong>Wholesale → Applications</strong>, then log in as that user to confirm pricing and ordering work correctly. See the <em>Testing the Full Flow</em> article for a detailed walkthrough.</p>',
             ),
 
@@ -69,7 +69,7 @@ class SLW_Docs {
 <h4>Per-Product Overrides</h4>
 <p>Edit any WooCommerce product and scroll to the <strong>Wholesale Pricing</strong> panel. Enter a fixed wholesale price or a product-specific discount percentage. Per-product pricing has the highest priority and overrides both category and global discounts.</p>
 <h4>Tier-Based Discounts</h4>
-<p>If you use the Tiers module (<strong>Wholesale → Tiers</strong>), each tier can define its own default discount. When a customer is assigned to a tier, the tier discount replaces the global discount — but per-category and per-product overrides still win.</p>',
+<p>If you use the Tiers module (<strong>Wholesale → Tiers</strong>), each tier can define its own default discount. When a customer is assigned to a tier, the tier discount replaces the global discount, but per-category and per-product overrides still win.</p>',
             ),
 
             array(
@@ -80,8 +80,8 @@ class SLW_Docs {
 <h4>Setting Minimums</h4>
 <p>Go to <strong>Wholesale → Settings</strong>. You will see two fields:</p>
 <ul>
-<li><strong>First Order Minimum</strong> — the dollar threshold a new wholesale customer must meet on their very first order. This is typically higher (e.g., $300) to ensure a meaningful opening purchase.</li>
-<li><strong>Reorder Minimum</strong> — the threshold for every order after the first. Set this to <code>0</code> to allow reorders of any amount.</li>
+<li><strong>First Order Minimum</strong>: the dollar threshold a new wholesale customer must meet on their very first order. This is typically higher (e.g., $300) to ensure a meaningful opening purchase.</li>
+<li><strong>Reorder Minimum</strong>: the threshold for every order after the first. Set this to <code>0</code> to allow reorders of any amount.</li>
 </ul>
 <h4>How Enforcement Works</h4>
 <p>When a wholesale customer views their cart, the plugin checks whether the cart subtotal (at wholesale prices) meets the applicable minimum. If it does not, a notice is displayed and the <em>Proceed to Checkout</em> button is disabled. The customer must add more items before they can complete the order.</p>
@@ -96,9 +96,9 @@ class SLW_Docs {
 <h4>3-Step Wizard</h4>
 <p>The form guides applicants through three steps:</p>
 <ol>
-<li><strong>Business Information</strong> — business name, contact name, email, phone, and mailing address.</li>
-<li><strong>Business Details</strong> — EIN / tax ID, business type (retailer, salon, spa, etc.), website URL, and how they heard about you.</li>
-<li><strong>Review & Submit</strong> — the applicant reviews all entered information and submits.</li>
+<li><strong>Business Information</strong>: business name, contact name, email, phone, and mailing address.</li>
+<li><strong>Business Details</strong>: EIN / tax ID, business type (retailer, salon, spa, etc.), website URL, and how they heard about you.</li>
+<li><strong>Review & Submit</strong>: the applicant reviews all entered information and submits.</li>
 </ol>
 <h4>Elementor Integration</h4>
 <p>If you use Elementor, edit the <em>Wholesale Partners</em> page, place a <strong>Shortcode</strong> widget, and paste <code>[sego_wholesale_application]</code>. You can add branding, hero images, and trust badges around the form using normal Elementor sections.</p>
@@ -111,20 +111,20 @@ class SLW_Docs {
                 'topic' => 'getting-started',
                 'title' => 'Testing the Full Flow',
                 'content' => '<p>Before launching your wholesale program, walk through the complete flow end-to-end. Use a separate browser or incognito window so you are not logged in as an admin.</p>
-<h4>Step 1 — Submit a Test Application</h4>
+<h4>Step 1: Submit a Test Application</h4>
 <p>Visit your <em>Wholesale Partners</em> page and fill out the 3-step application form using a test email address. Confirm you receive the submission confirmation email.</p>
-<h4>Step 2 — Approve the Application</h4>
+<h4>Step 2: Approve the Application</h4>
 <p>In your admin panel, go to <strong>Wholesale → Applications</strong>. Find the test application and click <strong>Approve</strong>. This creates a WordPress user account with the <em>Wholesale Customer</em> role and sends the applicant their login credentials.</p>
-<h4>Step 3 — Log In as the Test User</h4>
+<h4>Step 3: Log In as the Test User</h4>
 <p>Log in with the test credentials. Navigate to the <em>Wholesale Order Form</em> page. Verify that:</p>
 <ul>
 <li>Product prices show the wholesale discount</li>
 <li>The order minimum notice appears if your cart is below the threshold</li>
 <li>Adding enough products clears the minimum and enables checkout</li>
 </ul>
-<h4>Step 4 — Place a Test Order</h4>
+<h4>Step 4: Place a Test Order</h4>
 <p>Complete the checkout. Confirm the order appears in <strong>WooCommerce → Orders</strong> and in <strong>Wholesale → Orders</strong>. If invoicing is enabled, verify a PDF invoice is generated.</p>
-<h4>Step 5 — Clean Up</h4>
+<h4>Step 5: Clean Up</h4>
 <p>Delete or decline the test application and optionally remove the test user account from <strong>Users</strong>.</p>',
             ),
 
@@ -136,13 +136,13 @@ class SLW_Docs {
                 'slug'  => 'how-pricing-works',
                 'topic' => 'pricing-discounts',
                 'title' => 'How Pricing Works',
-                'content' => '<p>Wholesale Portal uses a 4-tier pricing resolution system. When a wholesale customer views a product, the plugin checks for a price override at each level — the most specific match wins.</p>
+                'content' => '<p>Wholesale Portal uses a 4-tier pricing resolution system. When a wholesale customer views a product, the plugin checks for a price override at each level. The most specific match wins.</p>
 <h4>Resolution Order (Highest to Lowest Priority)</h4>
 <ol>
-<li><strong>Per-Product Price</strong> — a fixed wholesale price set directly on the product. This always wins.</li>
-<li><strong>Category Discount</strong> — a percentage discount assigned to the product\'s category in <strong>Wholesale → Settings → Category Discounts</strong>.</li>
-<li><strong>Tier Discount</strong> — the default discount defined on the customer\'s assigned tier in <strong>Wholesale → Tiers</strong>.</li>
-<li><strong>Global Discount</strong> — the site-wide default wholesale discount set in <strong>Wholesale → Settings</strong>.</li>
+<li><strong>Per-Product Price</strong>: a fixed wholesale price set directly on the product. This always wins.</li>
+<li><strong>Category Discount</strong>: a percentage discount assigned to the product\'s category in <strong>Wholesale → Settings → Category Discounts</strong>.</li>
+<li><strong>Tier Discount</strong>: the default discount defined on the customer\'s assigned tier in <strong>Wholesale → Tiers</strong>.</li>
+<li><strong>Global Discount</strong>: the site-wide default wholesale discount set in <strong>Wholesale → Settings</strong>.</li>
 </ol>
 <h4>Example</h4>
 <p>Global discount is 40%. The "Candles" category has a 50% category discount. Product "Rose Candle" has a fixed wholesale price of $8.00 (retail $20). A Gold-tier customer (55% tier discount) adds Rose Candle to cart:</p>
@@ -207,7 +207,7 @@ class SLW_Docs {
                 'slug'  => 'tiered-quantity-pricing',
                 'topic' => 'pricing-discounts',
                 'title' => 'Tiered Quantity Pricing',
-                'content' => '<p>Tiered quantity pricing lets you offer better prices when a customer buys more units of a product — for example, "Buy 10+ for $5 each, Buy 25+ for $4 each."</p>
+                'content' => '<p>Tiered quantity pricing lets you offer better prices when a customer buys more units of a product. For example, "Buy 10+ for $5 each, Buy 25+ for $4 each."</p>
 <h4>Setting Up Quantity Brackets</h4>
 <ol>
 <li>Edit a product in <strong>Products</strong>.</li>
@@ -274,9 +274,9 @@ class SLW_Docs {
 <h4>Customizing the Email</h4>
 <p>Go to <strong>Wholesale → Settings → Email</strong> to configure:</p>
 <ul>
-<li><strong>From Name</strong> — the sender name (e.g., "Sego Lily Wholesale")</li>
-<li><strong>From Address</strong> — the reply-to email</li>
-<li><strong>Email Signature</strong> — appended to the bottom of all wholesale emails</li>
+<li><strong>From Name</strong>: the sender name (e.g., "Sego Lily Wholesale")</li>
+<li><strong>From Address</strong>: the reply-to email</li>
+<li><strong>Email Signature</strong>: appended to the bottom of all wholesale emails</li>
 </ul>
 <p>The email template uses your WordPress site\'s default HTML email styling. For deeper customization, you can filter the email content using the <code>slw_welcome_email_content</code> filter hook in your theme\'s <code>functions.php</code>.</p>
 <h4>Email Sequences</h4>
@@ -290,8 +290,8 @@ class SLW_Docs {
                 'content' => '<p>Not every visitor is ready to fill out a full wholesale application. The Lead Capture module provides a lightweight form to collect interested prospects\' contact information.</p>
 <h4>Lightweight Form vs. Full Application</h4>
 <ul>
-<li><strong>Lead Capture</strong> — collects name, email, business name, and phone. No tax ID or address required. Best for trade shows, social media links, and top-of-funnel pages.</li>
-<li><strong>Full Application</strong> — the complete 3-step wizard with business verification details. Best for serious applicants ready to open an account.</li>
+<li><strong>Lead Capture</strong>: collects name, email, business name, and phone. No tax ID or address required. Best for trade shows, social media links, and top-of-funnel pages.</li>
+<li><strong>Full Application</strong>: the complete 3-step wizard with business verification details. Best for serious applicants ready to open an account.</li>
 </ul>
 <h4>Setting Up Lead Capture</h4>
 <p>Add the <code>[wholesale_lead_capture]</code> shortcode to any page. The plugin auto-creates a <em>Become a Wholesale Partner</em> page at <code>/wholesale-leads</code> on activation.</p>
@@ -300,7 +300,7 @@ class SLW_Docs {
 <ul>
 <li>Update the status as you follow up</li>
 <li>Add internal notes</li>
-<li>Convert a lead to a full application with one click — this pre-fills the application form with the lead\'s info</li>
+<li>Convert a lead to a full application with one click. This pre-fills the application form with the lead\'s info</li>
 </ul>
 <h4>Webhook Integration</h4>
 <p>Leads also fire the webhook (if configured), so they can flow into your CRM, email marketing tool, or Slack channel automatically.</p>',
@@ -316,12 +316,12 @@ class SLW_Docs {
 <h4>CSV Format</h4>
 <p>Your CSV file should include the following columns:</p>
 <ul>
-<li><strong>email</strong> (required) — the customer\'s email address, used as their username</li>
+<li><strong>email</strong> (required). The customer\'s email address, used as their username</li>
 <li><strong>first_name</strong> (required) — first name</li>
 <li><strong>last_name</strong> (required) — last name</li>
 <li><strong>business_name</strong> (optional) — their company name</li>
 <li><strong>phone</strong> (optional) — phone number</li>
-<li><strong>tier</strong> (optional) — the slug of a tier to assign (e.g., <code>gold</code>)</li>
+<li><strong>tier</strong> (optional). The slug of a tier to assign (e.g., <code>gold</code>)</li>
 </ul>
 <h4>What Happens During Import</h4>
 <ol>
@@ -344,7 +344,7 @@ class SLW_Docs {
                 'title' => 'Order Minimums Explained',
                 'content' => '<p>Order minimums protect your margins by ensuring every wholesale order meets a minimum dollar value. The plugin supports two separate thresholds.</p>
 <h4>First Order Minimum</h4>
-<p>This is the minimum cart subtotal (at wholesale prices) required for a customer\'s very first order. It is typically set higher — for example, $300 — to ensure an opening order is worth the fulfillment cost. Configure this at <strong>Wholesale → Settings → First Order Minimum</strong>.</p>
+<p>This is the minimum cart subtotal (at wholesale prices) required for a customer\'s very first order. It is typically set higher. For example, $300 — to ensure an opening order is worth the fulfillment cost. Configure this at <strong>Wholesale → Settings → First Order Minimum</strong>.</p>
 <h4>Reorder Minimum</h4>
 <p>This applies to every order after the first. It can be the same as the first-order minimum, lower, or set to <code>$0</code> to allow reorders of any size. Configure this at <strong>Wholesale → Settings → Reorder Minimum</strong>.</p>
 <h4>How the Plugin Detects First vs. Reorder</h4>
@@ -401,13 +401,13 @@ class SLW_Docs {
                 'slug'    => 'email-overview',
                 'topic'   => 'emails-comms',
                 'title'   => 'How Emails Work in Wholesale Portal',
-                'content' => '<p>The plugin sends <strong>transactional emails</strong> directly via WordPress (using your SMTP configuration) for immediate, one-off notifications. <strong>Campaign sequences</strong> (multi-email flows) are handled by your connected email provider (Mautic, Mailchimp, etc.) triggered by webhooks.</p><h4>Transactional Emails (WordPress)</h4><ul><li><strong>Welcome email</strong> — sent on application approval with login credentials</li><li><strong>Decline email</strong> — polite rejection on application decline</li><li><strong>Admin notification</strong> — alerts you when a new application is submitted</li><li><strong>Quote response</strong> — sent when you respond to an RFQ</li><li><strong>Invoice email</strong> — when you click "Send Invoice" on an order</li></ul><h4>Campaign Sequences (Email Provider)</h4><ul><li><strong>Onboarding sequence</strong> — triggered by <code>wholesale-approved</code> webhook</li><li><strong>First order follow-up</strong> — triggered by <code>first-order-placed</code> webhook</li><li><strong>Reorder reminders</strong> — triggered by <code>reorder-reminder</code> webhook at 45/75/120 days</li></ul><p>View all sequence stats in <strong>Wholesale → Sequences</strong>.</p>',
+                'content' => '<p>The plugin sends <strong>transactional emails</strong> directly via WordPress (using your SMTP configuration) for immediate, one-off notifications. <strong>Campaign sequences</strong> (multi-email flows) are handled by your connected email provider (Mautic, Mailchimp, etc.) triggered by webhooks.</p><h4>Transactional Emails (WordPress)</h4><ul><li><strong>Welcome email</strong>: sent on application approval with login credentials</li><li><strong>Decline email</strong>: polite rejection on application decline</li><li><strong>Admin notification</strong>: alerts you when a new application is submitted</li><li><strong>Quote response</strong>: sent when you respond to an RFQ</li><li><strong>Invoice email</strong>: when you click "Send Invoice" on an order</li></ul><h4>Campaign Sequences (Email Provider)</h4><ul><li><strong>Onboarding sequence</strong>: triggered by <code>wholesale-approved</code> webhook</li><li><strong>First order follow-up</strong>: triggered by <code>first-order-placed</code> webhook</li><li><strong>Reorder reminders</strong>: triggered by <code>reorder-reminder</code> webhook at 45/75/120 days</li></ul><p>View all sequence stats in <strong>Wholesale → Sequences</strong>.</p>',
             ),
             array(
                 'slug'    => 'white-label-emails',
                 'topic'   => 'emails-comms',
                 'title'   => 'Customizing Email Branding (White-Label)',
-                'content' => '<p>All transactional emails use configurable sender details so they match your brand.</p><h4>How to Configure</h4><ol><li>Go to <strong>Wholesale → Invoices</strong></li><li>Scroll to the <strong>Email Settings</strong> section</li><li>Set your <strong>From Name</strong> (e.g., "Sego Lily Skincare")</li><li>Set your <strong>From Address</strong> (e.g., wholesale@yourdomain.com)</li><li>Set your <strong>Reply-To</strong> address</li><li>Set the <strong>Owner Name</strong> — this personalizes emails ("Holly reviews applications" vs "We review applications")</li><li>Set your <strong>Signature</strong> — appears at the bottom of every email</li><li>Save</li></ol><p>If left blank, From Name defaults to your WordPress site name and From Address defaults to your admin email.</p>',
+                'content' => '<p>All transactional emails use configurable sender details so they match your brand.</p><h4>How to Configure</h4><ol><li>Go to <strong>Wholesale → Invoices</strong></li><li>Scroll to the <strong>Email Settings</strong> section</li><li>Set your <strong>From Name</strong> (e.g., "Sego Lily Skincare")</li><li>Set your <strong>From Address</strong> (e.g., wholesale@yourdomain.com)</li><li>Set your <strong>Reply-To</strong> address</li><li>Set the <strong>Owner Name</strong>: this personalizes emails ("Holly reviews applications" vs "We review applications")</li><li>Set your <strong>Signature</strong>: appears at the bottom of every email</li><li>Save</li></ol><p>If left blank, From Name defaults to your WordPress site name and From Address defaults to your admin email.</p>',
             ),
             array(
                 'slug'    => 'connecting-email-provider',
@@ -430,13 +430,13 @@ class SLW_Docs {
                 'slug'    => 'wholesale-tiers',
                 'topic'   => 'advanced',
                 'title'   => 'Setting Up Wholesale Tiers',
-                'content' => '<p>Tiers let you reward your best wholesale partners with better pricing as they grow. The plugin supports multiple tiers with automatic upgrades.</p><h4>Default Tiers</h4><ul><li><strong>Standard</strong> — default for new partners, uses the global discount %</li><li><strong>Preferred</strong> — unlocked after 3+ orders or $1,500+ lifetime spend, +5% discount</li><li><strong>VIP</strong> — unlocked after 10+ orders or $5,000+ lifetime spend, +10% discount</li></ul><h4>Configuration</h4><ol><li>Go to <strong>Wholesale → Tiers</strong></li><li>Adjust tier names, discount percentages, and upgrade thresholds</li><li>Save</li></ol><p>Tiers upgrade automatically when a customer completes an order that crosses the threshold. Admins can also manually set a customer\'s tier from their user profile.</p>',
+                'content' => '<p>Tiers let you reward your best wholesale partners with better pricing as they grow. The plugin supports multiple tiers with automatic upgrades.</p><h4>Default Tiers</h4><ul><li><strong>Standard</strong>: default for new partners, uses the global discount %</li><li><strong>Preferred</strong>: unlocked after 3+ orders or $1,500+ lifetime spend, +5% discount</li><li><strong>VIP</strong>: unlocked after 10+ orders or $5,000+ lifetime spend, +10% discount</li></ul><h4>Configuration</h4><ol><li>Go to <strong>Wholesale → Tiers</strong></li><li>Adjust tier names, discount percentages, and upgrade thresholds</li><li>Save</li></ol><p>Tiers upgrade automatically when a customer completes an order that crosses the threshold. Admins can also manually set a customer\'s tier from their user profile.</p>',
             ),
             array(
                 'slug'    => 'automatic-tier-upgrades',
                 'topic'   => 'advanced',
                 'title'   => 'Automatic Tier Upgrades',
-                'content' => '<p>When a wholesale customer completes an order, the plugin automatically checks if they now qualify for a higher tier based on two criteria (whichever is met first):</p><ul><li><strong>Order count</strong> — total completed wholesale orders</li><li><strong>Lifetime spend</strong> — total revenue from completed orders</li></ul><p>Example: If Preferred requires 3 orders OR $1,500 spend, a customer who places their 3rd order (even if total spend is only $900) gets upgraded to Preferred.</p><h4>What Happens on Upgrade</h4><ul><li>The customer\'s tier meta is updated</li><li>Their discount % changes immediately on next page load</li><li>The upgrade is recorded in their tier history (visible on their user profile)</li><li>A <code>slw_tier_upgraded</code> action fires for webhook integration</li></ul><p>Tier upgrades are one-directional — customers don\'t get downgraded automatically. Admins can manually change tiers from the user profile.</p>',
+                'content' => '<p>When a wholesale customer completes an order, the plugin automatically checks if they now qualify for a higher tier based on two criteria (whichever is met first):</p><ul><li><strong>Order count</strong>: total completed wholesale orders</li><li><strong>Lifetime spend</strong>: total revenue from completed orders</li></ul><p>Example: If Preferred requires 3 orders OR $1,500 spend, a customer who places their 3rd order (even if total spend is only $900) gets upgraded to Preferred.</p><h4>What Happens on Upgrade</h4><ul><li>The customer\'s tier meta is updated</li><li>Their discount % changes immediately on next page load</li><li>The upgrade is recorded in their tier history (visible on their user profile)</li><li>A <code>slw_tier_upgraded</code> action fires for webhook integration</li></ul><p>Tier upgrades are one-directional — customers don\'t get downgraded automatically. Admins can manually change tiers from the user profile.</p>',
             ),
             array(
                 'slug'    => 'product-visibility',
@@ -459,7 +459,7 @@ class SLW_Docs {
                 'slug'    => 'customizing-invoices',
                 'topic'   => 'invoices-linesheets',
                 'title'   => 'Customizing Your Invoices',
-                'content' => '<p>The plugin generates clean, print-ready invoices for every WooCommerce order. Customize them to match your brand.</p><h4>Invoice Settings</h4><p>Go to <strong>Wholesale → Invoices</strong> and configure:</p><ul><li><strong>Logo</strong> — upload via WordPress media library</li><li><strong>Business Name, Address, Phone, Email</strong> — appears on every invoice</li><li><strong>Accent Color</strong> — color picker for headers and accents</li><li><strong>Invoice Number Prefix</strong> — e.g., "SLW-" produces "SLW-1234"</li><li><strong>Footer Text</strong> — e.g., "Thank you for your business!"</li><li><strong>Payment Terms Note</strong> — shown on NET invoices</li></ul><p>Use the <strong>Preview</strong> at the bottom of the page to see how your invoice looks before sending it to a customer.</p>',
+                'content' => '<p>The plugin generates clean, print-ready invoices for every WooCommerce order. Customize them to match your brand.</p><h4>Invoice Settings</h4><p>Go to <strong>Wholesale → Invoices</strong> and configure:</p><ul><li><strong>Logo</strong>: upload via WordPress media library</li><li><strong>Business Name, Address, Phone, Email</strong>: appears on every invoice</li><li><strong>Accent Color</strong>: color picker for headers and accents</li><li><strong>Invoice Number Prefix</strong>: e.g., "SLW-" produces "SLW-1234"</li><li><strong>Footer Text</strong>: e.g., "Thank you for your business!"</li><li><strong>Payment Terms Note</strong>: shown on NET invoices</li></ul><p>Use the <strong>Preview</strong> at the bottom of the page to see how your invoice looks before sending it to a customer.</p>',
             ),
             array(
                 'slug'    => 'sending-invoices',
@@ -500,7 +500,7 @@ class SLW_Docs {
                 'slug'    => 'emails-not-sending',
                 'topic'   => 'troubleshooting',
                 'title'   => 'Emails Not Sending',
-                'content' => '<p>If welcome emails, admin notifications, or other transactional emails aren\'t arriving:</p><ol><li><strong>Check spam folder</strong> — especially Gmail and Outlook</li><li><strong>Verify SMTP:</strong> Install and configure <strong>WP Mail SMTP</strong> plugin. Without it, WordPress uses PHP\'s <code>mail()</code> function which many hosts block or filter</li><li><strong>Test SMTP:</strong> WP Mail SMTP has a "Send Test Email" feature — use it</li><li><strong>Check From address:</strong> Go to <strong>Wholesale → Invoices → Email Settings</strong> and verify the From Address matches a real mailbox on your domain</li><li><strong>SPF/DKIM:</strong> Your domain\'s DNS needs SPF and DKIM records that authorize your SMTP server to send on its behalf. Check with your host.</li></ol>',
+                'content' => '<p>If welcome emails, admin notifications, or other transactional emails aren\'t arriving:</p><ol><li><strong>Check spam folder</strong>: especially Gmail and Outlook</li><li><strong>Verify SMTP:</strong> Install and configure <strong>WP Mail SMTP</strong> plugin. Without it, WordPress uses PHP\'s <code>mail()</code> function which many hosts block or filter</li><li><strong>Test SMTP:</strong> WP Mail SMTP has a "Send Test Email" feature — use it</li><li><strong>Check From address:</strong> Go to <strong>Wholesale → Invoices → Email Settings</strong> and verify the From Address matches a real mailbox on your domain</li><li><strong>SPF/DKIM:</strong> Your domain\'s DNS needs SPF and DKIM records that authorize your SMTP server to send on its behalf. Check with your host.</li></ol>',
             ),
             array(
                 'slug'    => 'updates-not-showing',
