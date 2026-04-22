@@ -21,6 +21,21 @@ class SLW_Email_Sequences {
         add_action( 'wp_ajax_slw_test_mautic_connection', array( __CLASS__, 'ajax_test_connection' ) );
         add_action( 'wp_ajax_slw_refresh_sequences',      array( __CLASS__, 'ajax_refresh_sequences' ) );
         add_action( 'wp_ajax_slw_send_newsletter',        array( __CLASS__, 'ajax_send_newsletter' ) );
+        add_action( 'wp_ajax_slw_save_sequence_order',   array( __CLASS__, 'ajax_save_sequence_order' ) );
+    }
+
+    /**
+     * AJAX: Save the drag-reordered sequence order.
+     */
+    public static function ajax_save_sequence_order() {
+        check_ajax_referer( 'slw_sequences_nonce', 'nonce' );
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_send_json_error( 'Permission denied.' );
+        }
+
+        $order = isset( $_POST['order'] ) ? array_map( 'sanitize_text_field', $_POST['order'] ) : array();
+        update_option( 'slw_sequence_order', $order );
+        wp_send_json_success( 'Order saved.' );
     }
 
     /* =================================================================
@@ -484,6 +499,41 @@ class SLW_Email_Sequences {
                     </p>
                 </div>
             <?php else : ?>
+                <?php
+                // Sort campaigns by saved order, falling back to relevance defaults
+                $saved_order = get_option( 'slw_sequence_order', array() );
+                $default_order = array(
+                    'Wholesale Onboarding' => 1,
+                    'Wholesale Cart Recovery' => 2,
+                    'Wholesale Payment Reminder' => 3,
+                    'Wholesale Referral' => 4,
+                    'Wholesale Win-Back' => 5,
+                    'Wholesale Anniversary' => 6,
+                    'Wholesale Pending' => 7,
+                );
+                usort( $campaigns, function( $a, $b ) use ( $saved_order, $default_order ) {
+                    $a_id = (string) ( $a['id'] ?? 0 );
+                    $b_id = (string) ( $b['id'] ?? 0 );
+                    // Use saved order if available
+                    if ( ! empty( $saved_order ) ) {
+                        $a_pos = array_search( $a_id, $saved_order );
+                        $b_pos = array_search( $b_id, $saved_order );
+                        if ( $a_pos !== false && $b_pos !== false ) return $a_pos - $b_pos;
+                        if ( $a_pos !== false ) return -1;
+                        if ( $b_pos !== false ) return 1;
+                    }
+                    // Fall back to relevance-based default
+                    $a_score = 99;
+                    $b_score = 99;
+                    foreach ( $default_order as $keyword => $score ) {
+                        if ( stripos( $a['name'] ?? '', $keyword ) !== false ) $a_score = min( $a_score, $score );
+                        if ( stripos( $b['name'] ?? '', $keyword ) !== false ) $b_score = min( $b_score, $score );
+                    }
+                    return $a_score - $b_score;
+                });
+                ?>
+                <p style="font-size:12px;color:#628393;margin-bottom:12px;">Drag to reorder sequences. Order is saved automatically.</p>
+                <div id="slw-campaigns-sortable">
                 <?php foreach ( $campaigns as $campaign ) :
                     $c_id        = isset( $campaign['id'] ) ? (int) $campaign['id'] : 0;
                     $c_name      = isset( $campaign['name'] ) ? $campaign['name'] : 'Untitled';
@@ -525,7 +575,7 @@ class SLW_Email_Sequences {
                     }
                     $email_count = count( $c_emails );
                 ?>
-                <div class="slw-admin-card slw-campaign-card <?php echo $c_published ? 'slw-campaign-card--active' : 'slw-campaign-card--inactive'; ?>">
+                <div class="slw-admin-card slw-campaign-card <?php echo $c_published ? 'slw-campaign-card--active' : 'slw-campaign-card--inactive'; ?>" draggable="true" data-campaign-id="<?php echo esc_attr( $c_id ); ?>">
                     <div class="slw-campaign-header" data-campaign="<?php echo esc_attr( $c_id ); ?>">
                         <div class="slw-campaign-info">
                             <span class="slw-campaign-icon dashicons dashicons-email-alt"></span>
@@ -581,6 +631,7 @@ class SLW_Email_Sequences {
                     <?php endif; ?>
                 </div>
                 <?php endforeach; ?>
+                </div><!-- #slw-campaigns-sortable -->
             <?php endif; ?>
 
             <?php endif; /* end if $connected */ ?>
@@ -889,6 +940,49 @@ class SLW_Email_Sequences {
 
         <script>
         (function($) {
+            // Drag-and-drop reorder for campaign cards
+            (function() {
+                var container = document.getElementById('slw-campaigns-sortable');
+                if (!container) return;
+                var dragEl = null;
+
+                container.addEventListener('dragstart', function(e) {
+                    dragEl = e.target.closest('.slw-campaign-card');
+                    if (!dragEl) return;
+                    dragEl.style.opacity = '0.4';
+                    e.dataTransfer.effectAllowed = 'move';
+                });
+
+                container.addEventListener('dragover', function(e) {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    var target = e.target.closest('.slw-campaign-card');
+                    if (target && target !== dragEl) {
+                        var rect = target.getBoundingClientRect();
+                        var midY = rect.top + rect.height / 2;
+                        if (e.clientY < midY) {
+                            container.insertBefore(dragEl, target);
+                        } else {
+                            container.insertBefore(dragEl, target.nextSibling);
+                        }
+                    }
+                });
+
+                container.addEventListener('dragend', function(e) {
+                    if (dragEl) dragEl.style.opacity = '1';
+                    dragEl = null;
+                    // Save new order via AJAX
+                    var cards = container.querySelectorAll('.slw-campaign-card');
+                    var order = [];
+                    cards.forEach(function(card) { order.push(card.getAttribute('data-campaign-id')); });
+                    $.post(ajaxurl, {
+                        action: 'slw_save_sequence_order',
+                        nonce: '<?php echo esc_js( wp_create_nonce( "slw_sequences_nonce" ) ); ?>',
+                        order: order
+                    });
+                });
+            })();
+
             // Toggle email list
             $(document).on('click', '.slw-toggle-emails', function() {
                 var $btn = $(this);

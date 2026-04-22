@@ -3,7 +3,7 @@
  * Plugin Name:       Wholesale Portal
  * Plugin URI:        https://github.com/louievillaverde/sego-lily-wholesale
  * Description:       Turn any WooCommerce store into a full B2B wholesale operation. Tiered wholesale pricing, application-based onboarding, order minimums, NET payment terms, tax exemption, customizable PDF invoices, downloadable line sheets, request-for-quote, automated reorder reminders, lead capture, bulk user import, and CRM webhook integration. Built by Lead Piranha.
- * Version:           3.1.1
+ * Version:           3.2.0
  * Author:            Lead Piranha
  * Author URI:        https://leadpiranha.com
  * Requires at least: 6.0
@@ -28,7 +28,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SLW_VERSION', '3.1.1' );
+define( 'SLW_VERSION', '3.2.0' );
 define( 'SLW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SLW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -100,6 +100,7 @@ add_action( 'plugins_loaded', function() {
     require_once SLW_PLUGIN_DIR . 'includes/class-new-arrivals.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-reminders.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-rfq.php';
+    require_once SLW_PLUGIN_DIR . 'includes/class-customer-portal.php';
 
     // Initialize — core
     SLW_Wholesale_Role::init();
@@ -135,6 +136,7 @@ add_action( 'plugins_loaded', function() {
     SLW_New_Arrivals::init();
     SLW_Reminders::init();
     SLW_RFQ::init();
+    SLW_Customer_Portal::init();
 
     // Enqueue frontend styles on pages that use our shortcodes
     add_action( 'wp_enqueue_scripts', function() {
@@ -142,7 +144,8 @@ add_action( 'plugins_loaded', function() {
             || has_shortcode( get_post()->post_content ?? '', 'sego_wholesale_order_form' )
             || has_shortcode( get_post()->post_content ?? '', 'sego_wholesale_dashboard' )
             || has_shortcode( get_post()->post_content ?? '', 'sego_wholesale_rfq' )
-            || has_shortcode( get_post()->post_content ?? '', 'wholesale_lead_capture' ) ) {
+            || has_shortcode( get_post()->post_content ?? '', 'wholesale_lead_capture' )
+            || has_shortcode( get_post()->post_content ?? '', 'wholesale_portal' ) ) {
             wp_enqueue_style(
                 'sego-lily-wholesale',
                 SLW_PLUGIN_URL . 'assets/sego-lily-wholesale.css',
@@ -186,6 +189,10 @@ register_activation_hook( __FILE__, function() {
         'wholesale-leads' => array(
             'title'   => 'Become a Wholesale Partner',
             'content' => '[wholesale_lead_capture]',
+        ),
+        'wholesale-portal' => array(
+            'title'   => 'Wholesale Portal',
+            'content' => '[wholesale_portal]',
         ),
     );
 
@@ -367,6 +374,7 @@ add_action( 'admin_init', function() {
             'wholesale-dashboard' => array( 'My Wholesale Account',  '[sego_wholesale_dashboard]' ),
             'wholesale-rfq'       => array( 'Request a Quote',       '[sego_wholesale_rfq]' ),
             'wholesale-leads'     => array( 'Become a Wholesale Partner', '[wholesale_lead_capture]' ),
+            'wholesale-portal'    => array( 'Wholesale Portal',          '[wholesale_portal]' ),
         ) as $slug => $data ) {
             if ( ! get_page_by_path( $slug ) ) {
                 wp_insert_post( array(

@@ -2401,3 +2401,120 @@ p.description,
 	width: 100% !important;
 	max-width: 500px !important;
 }
+
+/* ──────────────────────────────────────────────────────────────────────
+   Mobile Admin — Tablet (max-width: 1024px)
+   ────────────────────────────────────────────────────────────────────── */
+@media screen and (max-width: 1024px) {
+	/* Stats grid: 2 columns on tablet */
+	.slw-admin-stats {
+		grid-template-columns: repeat(2, 1fr) !important;
+	}
+
+	/* Dashboard sidebar: collapse below main content */
+	.slw-admin-layout {
+		display: flex !important;
+		flex-direction: column !important;
+	}
+
+	.slw-admin-sidebar {
+		width: 100% !important;
+		max-width: none !important;
+		order: 2;
+	}
+
+	.slw-admin-main {
+		width: 100% !important;
+		max-width: none !important;
+		order: 1;
+	}
+
+	/* Docs sidebar: horizontal scrollable row */
+	.slw-docs-sidebar {
+		width: 100% !important;
+		max-width: none !important;
+		display: flex !important;
+		flex-direction: row !important;
+		overflow-x: auto !important;
+		gap: 4px !important;
+		padding-bottom: 12px !important;
+		-webkit-overflow-scrolling: touch;
+		white-space: nowrap;
+	}
+
+	.slw-docs-sidebar a,
+	.slw-docs-sidebar .slw-docs-nav-item {
+		flex-shrink: 0 !important;
+		white-space: nowrap !important;
+	}
+
+	.slw-docs-layout {
+		flex-direction: column !important;
+	}
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   Mobile Admin — Phone (max-width: 782px)
+   ────────────────────────────────────────────────────────────────────── */
+@media screen and (max-width: 782px) {
+	/* Stats grid: 1 column on phone */
+	.slw-admin-stats {
+		grid-template-columns: 1fr !important;
+	}
+
+	/* Quick Actions: stack vertically */
+	.slw-admin-actions,
+	.slw-admin-actions__grid {
+		display: flex !important;
+		flex-direction: column !important;
+		gap: 8px !important;
+	}
+
+	.slw-admin-actions__btn {
+		width: 100% !important;
+		text-align: center !important;
+	}
+
+	/* Settings form table: labels stack above inputs */
+	.form-table th {
+		display: block !important;
+		width: 100% !important;
+		padding-bottom: 4px !important;
+	}
+
+	.form-table td {
+		display: block !important;
+		width: 100% !important;
+		padding-left: 0 !important;
+	}
+
+	.form-table tr {
+		display: block !important;
+		margin-bottom: 16px !important;
+	}
+
+	/* Docs sidebar: collapses to dropdown-like horizontal scroll */
+	.slw-docs-sidebar {
+		flex-wrap: nowrap !important;
+		overflow-x: auto !important;
+		padding: 8px 0 !important;
+		gap: 6px !important;
+	}
+
+	.slw-docs-sidebar a,
+	.slw-docs-sidebar .slw-docs-nav-item {
+		font-size: 12px !important;
+		padding: 6px 10px !important;
+	}
+}
+
+/* Drag-reorder for campaign cards */
+.slw-campaign-card[draggable="true"] {
+	cursor: grab;
+}
+.slw-campaign-card[draggable="true"]:active {
+	cursor: grabbing;
+}
+#slw-campaigns-sortable .slw-campaign-card {
+	transition: opacity 0.2s;
+}

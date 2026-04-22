@@ -15,6 +15,54 @@ class SLW_Admin_Menu {
         add_action( 'admin_menu', array( __CLASS__, 'register_menus' ) );
     }
 
+    /**
+     * Render the admin preview page with an iframe pointing to the customer portal.
+     */
+    public static function render_preview_page() {
+        $portal_url = home_url( '/wholesale-portal?slw_preview=1' );
+        $tab = isset( $_GET['portal_tab'] ) ? sanitize_key( $_GET['portal_tab'] ) : '';
+        if ( $tab ) {
+            $portal_url = add_query_arg( 'tab', $tab, $portal_url );
+        }
+        ?>
+        <div class="wrap">
+            <h1>Customer Portal Preview</h1>
+            <p class="description">This shows the wholesale customer portal exactly as your wholesale partners see it. Use the tabs inside the portal to navigate between sections.</p>
+            <div style="margin-top:16px;">
+                <iframe
+                    src="<?php echo esc_url( $portal_url ); ?>"
+                    style="width:100%;min-height:800px;border:1px solid #ddd;border-radius:6px;background:#fff;"
+                    id="slw-portal-preview-iframe"
+                ></iframe>
+            </div>
+        </div>
+        <script>
+        (function() {
+            var iframe = document.getElementById('slw-portal-preview-iframe');
+            if (!iframe) return;
+            // Auto-resize iframe to content height
+            function resizeIframe() {
+                try {
+                    var body = iframe.contentWindow.document.body;
+                    var html = iframe.contentWindow.document.documentElement;
+                    var height = Math.max(
+                        body.scrollHeight, body.offsetHeight,
+                        html.clientHeight, html.scrollHeight, html.offsetHeight
+                    );
+                    iframe.style.height = Math.max(height + 40, 800) + 'px';
+                } catch(e) {}
+            }
+            iframe.addEventListener('load', function() {
+                resizeIframe();
+                // Re-check after images load
+                setTimeout(resizeIframe, 1000);
+                setTimeout(resizeIframe, 3000);
+            });
+        })();
+        </script>
+        <?php
+    }
+
     public static function register_menus() {
         // SVG icon — storefront with price tag (B2B wholesale).
         $icon_svg = 'data:image/svg+xml;base64,' . base64_encode(
@@ -89,6 +137,16 @@ class SLW_Admin_Menu {
                 array( 'SLW_Wholesale_Orders', 'render_page' )
             );
         }
+
+        // 3b. Preview (customer portal iframe)
+        add_submenu_page(
+            'slw-dashboard',
+            'Portal Preview',
+            'Preview',
+            'manage_woocommerce',
+            'slw-preview',
+            array( __CLASS__, 'render_preview_page' )
+        );
 
         // 4. Quote Requests
         if ( class_exists( 'SLW_RFQ' ) ) {

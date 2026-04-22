@@ -29,6 +29,9 @@ class SLW_Product_Minimums {
 		// Order form integration: expose minimum data via a filter other
 		// modules can read, and hook into the product query args
 		add_filter( 'slw_order_form_product_data', array( __CLASS__, 'add_minimum_to_order_form' ), 10, 2 );
+
+		// Frontend product page: show case pack + minimum info for wholesale users
+		add_action( 'woocommerce_single_product_summary', array( __CLASS__, 'display_case_pack_on_product_page' ), 25 );
 	}
 
 	// ── Product Edit Field ────────────────────────────────────────────────
@@ -219,6 +222,41 @@ class SLW_Product_Minimums {
 		}
 
 		return $args;
+	}
+
+	// ── Frontend Product Page Display ─────────────────────────────────────
+
+	/**
+	 * Display case pack size and minimum order info on single product pages
+	 * for logged-in wholesale customers.
+	 */
+	public static function display_case_pack_on_product_page() {
+		if ( ! slw_is_wholesale_user() ) {
+			return;
+		}
+
+		global $product;
+		if ( ! $product || ! is_a( $product, 'WC_Product' ) ) {
+			return;
+		}
+
+		$product_id = $product->get_id();
+		$case_pack  = self::get_case_pack_size( $product_id );
+		$min_qty    = self::get_product_minimum( $product_id );
+
+		if ( $case_pack <= 0 && $min_qty <= 0 ) {
+			return;
+		}
+
+		$parts = array();
+		if ( $case_pack > 0 ) {
+			$parts[] = 'Case of ' . esc_html( $case_pack );
+		}
+		if ( $min_qty > 0 ) {
+			$parts[] = 'Min. order: ' . esc_html( $min_qty ) . ' units';
+		}
+
+		echo '<p class="slw-wholesale-label">Wholesale: ' . implode( ' | ', $parts ) . '</p>';
 	}
 
 	// ── Helper ────────────────────────────────────────────────────────────

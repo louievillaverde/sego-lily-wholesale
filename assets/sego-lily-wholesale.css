@@ -2621,3 +2621,182 @@ button.slw-reorder-btn:hover {
     padding-top: 16px;
     border-top: 1px solid #e0ddd8;
 }
+
+/* -------------------------------------------------------
+   Customer Portal — Tabbed Navigation
+   ------------------------------------------------------- */
+.slw-portal-wrap {
+    font-family: Georgia, 'Times New Roman', serif;
+    color: #2C2C2C;
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 20px;
+    line-height: 1.6;
+}
+
+/* Reset nested wraps so they don't double-pad */
+.slw-portal-wrap .slw-dashboard-wrap,
+.slw-portal-wrap .slw-order-form-wrap {
+    max-width: none;
+    padding: 0;
+    margin: 0;
+}
+
+/* Tab Bar */
+.slw-portal-tabs {
+    margin-bottom: 0;
+    border-bottom: 2px solid #e0ddd8;
+}
+
+.slw-portal-tabs-inner {
+    display: flex;
+    gap: 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+
+.slw-portal-tabs-inner::-webkit-scrollbar {
+    display: none;
+}
+
+.slw-portal-tab {
+    display: inline-flex;
+    align-items: center;
+    padding: 12px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #628393;
+    text-decoration: none;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    white-space: nowrap;
+    transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.slw-portal-tab:hover {
+    color: #386174;
+    text-decoration: none;
+}
+
+.slw-portal-tab-active {
+    color: #386174;
+    border-bottom-color: #386174;
+}
+
+/* Mobile dropdown — hidden on desktop */
+.slw-portal-tabs-mobile {
+    display: none;
+}
+
+.slw-portal-tab-select {
+    width: 100%;
+    padding: 10px 14px;
+    font-size: 15px;
+    font-family: Georgia, 'Times New Roman', serif;
+    border: 1px solid #e0ddd8;
+    border-radius: 6px;
+    background: #F7F6F3;
+    color: #2C2C2C;
+    appearance: auto;
+}
+
+/* Tab Content Area */
+.slw-portal-content {
+    padding-top: 24px;
+}
+
+/* Invoices Tab */
+.slw-invoices-tab h3,
+.slw-account-tab h3,
+.slw-price-list-tab h3,
+.slw-help-tab h3 {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 22px;
+    color: #386174;
+    margin: 0 0 8px 0;
+}
+
+.slw-invoices-tab > p,
+.slw-account-tab > p,
+.slw-price-list-tab > p,
+.slw-help-tab > p {
+    color: #628393;
+    margin-bottom: 20px;
+}
+
+/* FAQ list */
+.slw-faq-list {
+    margin: 0;
+}
+
+.slw-faq-item {
+    padding: 12px 0;
+    border-bottom: 1px solid #e0ddd8;
+}
+
+.slw-faq-item:last-child {
+    border-bottom: none;
+}
+
+.slw-faq-item dt {
+    font-weight: 700;
+    color: #2C2C2C;
+    margin: 0 0 4px 0;
+    font-size: 15px;
+}
+
+.slw-faq-item dd {
+    margin: 0;
+    color: #628393;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+/* Wholesale label on single product pages */
+.slw-wholesale-label {
+    background: #386174;
+    color: #F7F6F3;
+    display: inline-block;
+    padding: 6px 14px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 600;
+    margin: 8px 0;
+    letter-spacing: 0.3px;
+}
+
+/* -------------------------------------------------------
+   Customer Portal — Mobile Responsive
+   ------------------------------------------------------- */
+@media (max-width: 768px) {
+    .slw-portal-tabs-inner {
+        display: none;
+    }
+
+    .slw-portal-tabs-mobile {
+        display: block;
+        padding: 0 0 12px 0;
+    }
+
+    .slw-portal-tabs {
+        border-bottom: none;
+    }
+
+    .slw-portal-wrap {
+        padding: 12px;
+    }
+
+    .slw-portal-content {
+        padding-top: 16px;
+    }
+
+    /* Stack account cards */
+    .slw-account-tab .slw-dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .slw-account-tab .slw-dashboard-card {
+        margin-bottom: 12px;
+    }
+}

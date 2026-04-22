@@ -41,12 +41,12 @@ class SLW_Updater {
         add_action( 'load-update-core.php', array( __CLASS__, 'flush_cache_on_manual_check' ) );
 
         // One-time flush: clear stale icon data from pre-3.0.1 transients
-        if ( get_option( 'slw_icon_cache_version' ) !== '3.0.4' ) {
+        if ( get_option( 'slw_icon_cache_version' ) !== '3.1.2' ) {
             delete_transient( self::$cache_key );
             delete_site_transient( 'update_plugins' );
             delete_transient( 'slw_mautic_campaigns' );
             delete_transient( 'slw_mautic_email_stats' );
-            update_option( 'slw_icon_cache_version', '3.0.4' );
+            update_option( 'slw_icon_cache_version', '3.1.2' );
         }
 
         // Flush stale icon/transient data after plugin updates so the new
@@ -223,28 +223,13 @@ class SLW_Updater {
     }
 
     /**
-     * Return icon URLs for the plugins list / updates screen.
-     * Uses both SVG (data URI for guaranteed rendering) and the file URL.
+     * Return icon URLs for the updates screen.
+     * Simple format — just the SVG URL. This is the exact pattern that
+     * worked when the lily icon was showing on the updates page.
      */
     private static function get_icon_urls() {
-        $svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">'
-            . '<rect x="24" y="44" width="80" height="68" rx="4" fill="#386174"/>'
-            . '<path d="M16 44L64 16L112 44Z" fill="#2C4F5E"/>'
-            . '<rect x="48" y="72" width="32" height="40" rx="3" fill="#F7F6F3"/>'
-            . '<circle cx="73" cy="92" r="2.5" fill="#D4AF37"/>'
-            . '<rect x="30" y="52" width="14" height="14" rx="2" fill="#F7F6F3" opacity="0.85"/>'
-            . '<rect x="84" y="52" width="14" height="14" rx="2" fill="#F7F6F3" opacity="0.85"/>'
-            . '<g transform="translate(90,20) rotate(15)">'
-            . '<rect width="24" height="16" rx="3" fill="#D4AF37"/>'
-            . '<circle cx="5" cy="8" r="2" fill="#1E2A30"/>'
-            . '<line x1="10" y1="5" x2="20" y2="5" stroke="#1E2A30" stroke-width="1.5" stroke-linecap="round"/>'
-            . '<line x1="10" y1="9" x2="17" y2="9" stroke="#1E2A30" stroke-width="1.5" stroke-linecap="round"/>'
-            . '</g></svg>';
-
         return array(
-            'svg'     => 'data:image/svg+xml;base64,' . base64_encode( $svg ),
-            '1x'      => SLW_PLUGIN_URL . 'assets/icon.svg',
-            'default' => SLW_PLUGIN_URL . 'assets/icon.svg',
+            'svg' => SLW_PLUGIN_URL . 'assets/icon.svg',
         );
     }
 
