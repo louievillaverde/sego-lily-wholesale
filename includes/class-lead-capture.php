@@ -266,10 +266,10 @@ class SLW_Lead_Capture {
             background: #fff !important;
             border: 2px solid #e0ddd8 !important;
             border-radius: 16px !important;
-            padding: 36px 24px !important;
+            padding: 44px 32px !important;
             cursor: pointer;
             text-align: center;
-            width: 260px;
+            width: 280px;
             max-width: calc(50% - 10px);
             display: flex !important;
             flex-direction: column !important;
