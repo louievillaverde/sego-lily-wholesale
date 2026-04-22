@@ -3,7 +3,7 @@
  * Plugin Name:       Wholesale Portal
  * Plugin URI:        https://github.com/louievillaverde/sego-lily-wholesale
  * Description:       All-in-one B2B wholesale portal for WooCommerce. Customer portal, tiered pricing, application workflow, PDF invoices, email sequences with multi-provider support, NET payment terms, lead capture, trade show tools, and automated order reminders. Built by Lead Piranha.
- * Version:           3.3.6
+ * Version:           3.4.0
  * Author:            Lead Piranha
  * Author URI:        https://leadpiranha.com
  * Requires at least: 6.0
@@ -28,7 +28,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SLW_VERSION', '3.3.6' );
+define( 'SLW_VERSION', '3.4.0' );
 define( 'SLW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SLW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -315,16 +315,15 @@ register_deactivation_hook( __FILE__, function() {
  * once the table exists (option cached in memory).
  */
 add_action( 'admin_init', function() {
-    if ( get_option( 'slw_db_version' ) === '1.4' ) {
-        return;  // already verified
-    }
     global $wpdb;
-    $table = $wpdb->prefix . 'slw_applications';
-    $exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) );
-    if ( $exists !== $table ) {
-        // Table missing. Create it now.
-        $charset_collate = $wpdb->get_charset_collate();
-        $sql = "CREATE TABLE IF NOT EXISTS {$table} (
+
+    // ── 1. Tables: create if missing (checked independently) ──
+    require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+    $charset_collate = $wpdb->get_charset_collate();
+
+    $app_table = $wpdb->prefix . 'slw_applications';
+    if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $app_table ) ) !== $app_table ) {
+        dbDelta( "CREATE TABLE IF NOT EXISTS {$app_table} (
             id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
             business_name VARCHAR(255) NOT NULL,
             contact_name VARCHAR(255) NOT NULL,
@@ -344,13 +343,12 @@ add_action( 'admin_init', function() {
             PRIMARY KEY (id),
             KEY status (status),
             KEY email (email)
-        ) {$charset_collate};";
-        require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-        dbDelta( $sql );
+        ) {$charset_collate};" );
+    }
 
-        // Leads table
-        $leads_table = $wpdb->prefix . 'slw_leads';
-        $leads_sql = "CREATE TABLE {$leads_table} (
+    $leads_table = $wpdb->prefix . 'slw_leads';
+    if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $leads_table ) ) !== $leads_table ) {
+        dbDelta( "CREATE TABLE {$leads_table} (
             id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
             name VARCHAR(255) NOT NULL,
             email VARCHAR(255) NOT NULL,
@@ -364,36 +362,41 @@ add_action( 'admin_init', function() {
             PRIMARY KEY (id),
             KEY status (status),
             KEY email (email)
-        ) {$charset_collate};";
-        dbDelta( $leads_sql );
+        ) {$charset_collate};" );
+    }
 
-        // Also ensure role + pages exist in case activation never ran
-        if ( ! get_role( 'wholesale_customer' ) ) {
-            $customer_role = get_role( 'customer' );
-            $caps = $customer_role ? $customer_role->capabilities : array( 'read' => true );
-            add_role( 'wholesale_customer', 'Wholesale Customer', $caps );
-        }
-        foreach ( array(
-            'wholesale-partners'  => array( 'Wholesale Partners',    '[sego_wholesale_application]' ),
-            'wholesale-order'     => array( 'Wholesale Order Form',  '[sego_wholesale_order_form]' ),
-            'wholesale-dashboard' => array( 'My Wholesale Account',  '[sego_wholesale_dashboard]' ),
-            'wholesale-rfq'       => array( 'Request a Quote',       '[sego_wholesale_rfq]' ),
-            'wholesale-leads'     => array( 'Become a Wholesale Partner', '[wholesale_lead_capture]' ),
-            'wholesale-booth'     => array( 'Wholesale Booth',           '[wholesale_lead_capture_quick]' ),
-            'wholesale-portal'    => array( 'Wholesale Portal',          '[wholesale_portal]' ),
-        ) as $slug => $data ) {
-            if ( ! get_page_by_path( $slug ) ) {
-                wp_insert_post( array(
-                    'post_title'   => $data[0],
-                    'post_content' => $data[1],
-                    'post_status'  => 'publish',
-                    'post_type'    => 'page',
-                    'post_name'    => $slug,
-                ));
-            }
+    // ── 2. Role: create if missing ──
+    if ( ! get_role( 'wholesale_customer' ) ) {
+        $customer_role = get_role( 'customer' );
+        $caps = $customer_role ? $customer_role->capabilities : array( 'read' => true );
+        add_role( 'wholesale_customer', 'Wholesale Customer', $caps );
+    }
+
+    // ── 3. Pages: create each individually if missing (no version flag needed) ──
+    $required_pages = array(
+        'wholesale-partners'  => array( 'Wholesale Partners',              '[sego_wholesale_application]' ),
+        'wholesale-order'     => array( 'Wholesale Order Form',            '[sego_wholesale_order_form]' ),
+        'wholesale-dashboard' => array( 'My Wholesale Account',            '[sego_wholesale_dashboard]' ),
+        'wholesale-rfq'       => array( 'Request a Quote',                 '[sego_wholesale_rfq]' ),
+        'wholesale-leads'     => array( 'Become a Wholesale Partner',      '[wholesale_lead_capture]' ),
+        'wholesale-booth'     => array( 'Wholesale Booth',                 '[wholesale_lead_capture_quick]' ),
+        'wholesale-portal'    => array( 'Wholesale Portal',                '[wholesale_portal]' ),
+    );
+    foreach ( $required_pages as $slug => $data ) {
+        if ( ! get_page_by_path( $slug ) ) {
+            wp_insert_post( array(
+                'post_title'   => $data[0],
+                'post_content' => $data[1],
+                'post_status'  => 'publish',
+                'post_type'    => 'page',
+                'post_name'    => $slug,
+            ));
         }
     }
-    update_option( 'slw_db_version', '1.4' );
+    // No db_version flag needed — each check is independent.
+    // Tables check via SHOW TABLES, pages check via get_page_by_path.
+    // Runs on every admin_init but each check is a single cheap query
+    // that short-circuits when the resource already exists.
 });
 
 /**
