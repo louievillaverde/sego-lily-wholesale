@@ -256,7 +256,7 @@ class SLW_Wholesale_Role {
             $net_terms = ( $legacy_net30 === '1' ) ? 30 : 0;
         }
         $net_terms = absint( $net_terms );
-        $resale_number = get_user_meta( $user->ID, 'slw_resale_certificate_number', true );
+        $resale_number = SLW_Encryption::decrypt( get_user_meta( $user->ID, 'slw_resale_certificate_number', true ) );
         ?>
         <h2>Wholesale Portal</h2>
         <table class="form-table">
@@ -321,7 +321,16 @@ class SLW_Wholesale_Role {
         // Keep legacy slw_net30_approved in sync for backward compat
         update_user_meta( $user_id, 'slw_net30_approved', $net_terms > 0 ? '1' : '0' );
 
-        update_user_meta( $user_id, 'slw_resale_certificate_number', sanitize_text_field( $_POST['slw_resale_certificate_number'] ?? '' ) );
+        update_user_meta( $user_id, 'slw_resale_certificate_number', SLW_Encryption::encrypt( sanitize_text_field( $_POST['slw_resale_certificate_number'] ?? '' ) ) );
+
+        // Audit log: wholesale status change
+        if ( $should_be_wholesale && ! $is_currently ) {
+            $user_display = get_userdata( $user_id )->display_name ?? 'User #' . $user_id;
+            SLW_Audit_Log::log( 'wholesale_status_changed', sprintf( 'Wholesale status granted for user %s', $user_display ) );
+        } elseif ( ! $should_be_wholesale && $is_currently ) {
+            $user_display = get_userdata( $user_id )->display_name ?? 'User #' . $user_id;
+            SLW_Audit_Log::log( 'wholesale_status_changed', sprintf( 'Wholesale status revoked for user %s', $user_display ) );
+        }
     }
 
     /**

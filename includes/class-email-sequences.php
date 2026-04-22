@@ -376,13 +376,43 @@ class SLW_Email_Sequences {
         $nonce = wp_create_nonce( 'slw_sequences_nonce' );
         $refresh_url = wp_nonce_url( admin_url( 'admin.php?page=slw-sequences' ), 'slw_refresh_sequences', 'slw_refresh' );
 
+        // Provider display name
+        $provider_labels = array(
+            'mautic' => 'Mautic', 'mailchimp' => 'Mailchimp', 'activecampaign' => 'ActiveCampaign',
+            'klaviyo' => 'Klaviyo', 'convertkit' => 'ConvertKit', 'none' => 'None',
+        );
+        $provider_label = isset( $provider_labels[ $provider ] ) ? $provider_labels[ $provider ] : ucfirst( $provider );
+
+        // Settings accordion default state: open if no provider configured
+        $settings_open = ! $has_config && $provider !== 'none';
+
         ?>
         <div class="wrap slw-sequences-wrap">
             <h1>Email Sequences</h1>
-            <p>Monitor your Mautic email campaigns and webhook activity. All editing happens in Mautic.</p>
+            <p>Monitor your email campaigns and webhook activity. All editing happens in your email provider.</p>
 
             <?php if ( $saved ) : ?>
                 <div class="notice notice-success is-dismissible"><p>Settings saved.</p></div>
+            <?php endif; ?>
+
+            <?php if ( ! $has_config && $provider === 'none' ) : ?>
+            <!-- ─── Empty State: No Provider ─── -->
+            <div class="slw-seq-empty-state">
+                <div class="slw-seq-empty-state__icon">
+                    <span class="dashicons dashicons-email-alt"></span>
+                </div>
+                <h2>Connect your email provider to see campaign stats</h2>
+                <p>Link Mautic, Mailchimp, Klaviyo, or another provider to pull in live campaign data, open rates, and click stats.</p>
+                <div class="slw-seq-empty-state__logos">
+                    <span class="slw-seq-provider-logo">Mautic</span>
+                    <span class="slw-seq-provider-logo">Mailchimp</span>
+                    <span class="slw-seq-provider-logo">Klaviyo</span>
+                    <span class="slw-seq-provider-logo">ActiveCampaign</span>
+                </div>
+                <button type="button" class="button button-primary slw-seq-configure-btn" onclick="document.getElementById('slw-settings-accordion').open=true;document.getElementById('slw-settings-accordion').scrollIntoView({behavior:'smooth'});">
+                    Configure Provider
+                </button>
+            </div>
             <?php endif; ?>
 
             <!-- ─── Connection Status Bar ─── -->
@@ -390,7 +420,7 @@ class SLW_Email_Sequences {
                 <div class="slw-connection-info">
                     <span class="slw-connection-dot"></span>
                     <?php if ( $connected ) : ?>
-                        <span>Connected to Mautic at <strong><?php echo esc_html( parse_url( $mautic_url, PHP_URL_HOST ) ); ?></strong></span>
+                        <span>Connected to <?php echo esc_html( $provider_label ); ?> at <strong><?php echo esc_html( wp_parse_url( $mautic_url, PHP_URL_HOST ) ); ?></strong></span>
                         <span class="slw-connection-sync"><?php echo esc_html( $last_sync ); ?></span>
                     <?php elseif ( $has_config && $api_error ) : ?>
                         <span>Connection failed: <?php echo esc_html( $api_error ); ?></span>
@@ -409,23 +439,47 @@ class SLW_Email_Sequences {
 
             <?php if ( $connected ) : ?>
 
-            <!-- ─── Quick Stats ─── -->
+            <!-- ─── Quick Stats with Chart Bars ─── -->
             <div class="slw-stats-grid">
                 <div class="slw-stat-card accent-teal">
                     <span class="stat-number"><?php echo esc_html( number_format( $total_sent ) ); ?></span>
                     <span class="stat-label">Emails Sent</span>
+                    <svg class="slw-stat-chart" width="80" height="32" viewBox="0 0 80 32">
+                        <rect x="0" y="12" width="32" height="20" rx="3" fill="#628393" opacity="0.3"/>
+                        <rect x="40" y="0" width="32" height="32" rx="3" fill="#386174"/>
+                        <text x="16" y="26" text-anchor="middle" fill="#fff" font-size="8" font-weight="600">Last</text>
+                        <text x="56" y="18" text-anchor="middle" fill="#fff" font-size="8" font-weight="600">This</text>
+                    </svg>
                 </div>
                 <div class="slw-stat-card accent-green">
                     <span class="stat-number"><?php echo esc_html( $avg_open_rate ); ?>%</span>
                     <span class="stat-label">Avg Open Rate</span>
+                    <svg class="slw-stat-chart" width="80" height="32" viewBox="0 0 80 32">
+                        <rect x="0" y="8" width="32" height="24" rx="3" fill="#628393" opacity="0.3"/>
+                        <rect x="40" y="4" width="32" height="28" rx="3" fill="#2e7d32"/>
+                        <text x="16" y="24" text-anchor="middle" fill="#fff" font-size="8" font-weight="600">Last</text>
+                        <text x="56" y="22" text-anchor="middle" fill="#fff" font-size="8" font-weight="600">This</text>
+                    </svg>
                 </div>
                 <div class="slw-stat-card accent-gold">
                     <span class="stat-number"><?php echo esc_html( $active_count ); ?></span>
                     <span class="stat-label">Active Sequences</span>
+                    <svg class="slw-stat-chart" width="80" height="32" viewBox="0 0 80 32">
+                        <rect x="0" y="16" width="32" height="16" rx="3" fill="#628393" opacity="0.3"/>
+                        <rect x="40" y="4" width="32" height="28" rx="3" fill="#D4AF37"/>
+                        <text x="16" y="28" text-anchor="middle" fill="#fff" font-size="8" font-weight="600">Last</text>
+                        <text x="56" y="22" text-anchor="middle" fill="#fff" font-size="8" font-weight="600">This</text>
+                    </svg>
                 </div>
                 <div class="slw-stat-card">
                     <span class="stat-number"><?php echo esc_html( number_format( $total_contacts ) ); ?></span>
                     <span class="stat-label">Contacts in Sequences</span>
+                    <svg class="slw-stat-chart" width="80" height="32" viewBox="0 0 80 32">
+                        <rect x="0" y="10" width="32" height="22" rx="3" fill="#628393" opacity="0.3"/>
+                        <rect x="40" y="2" width="32" height="30" rx="3" fill="#386174"/>
+                        <text x="16" y="26" text-anchor="middle" fill="#fff" font-size="8" font-weight="600">Last</text>
+                        <text x="56" y="20" text-anchor="middle" fill="#fff" font-size="8" font-weight="600">This</text>
+                    </svg>
                 </div>
             </div>
 
@@ -480,19 +534,22 @@ class SLW_Email_Sequences {
                     }
                     $email_count = count( $c_emails );
                 ?>
-                <div class="slw-admin-card slw-campaign-card">
+                <div class="slw-admin-card slw-campaign-card <?php echo $c_published ? 'slw-campaign-card--active' : 'slw-campaign-card--inactive'; ?>">
                     <div class="slw-campaign-header" data-campaign="<?php echo esc_attr( $c_id ); ?>">
                         <div class="slw-campaign-info">
-                            <h3>
-                                <?php echo esc_html( $c_name ); ?>
-                                <span class="slw-status-badge <?php echo $c_published ? 'slw-badge-published' : 'slw-badge-unpublished'; ?>">
-                                    <?php echo $c_published ? 'Published' : 'Unpublished'; ?>
-                                </span>
-                            </h3>
-                            <div class="slw-campaign-meta">
-                                <span><?php echo esc_html( $c_contacts ); ?> contact<?php echo $c_contacts !== 1 ? 's' : ''; ?></span>
-                                <span class="slw-meta-sep">&middot;</span>
-                                <span><?php echo esc_html( $email_count ); ?> email<?php echo $email_count !== 1 ? 's' : ''; ?></span>
+                            <span class="slw-campaign-icon dashicons dashicons-email-alt"></span>
+                            <div>
+                                <h3>
+                                    <?php echo esc_html( $c_name ); ?>
+                                    <span class="slw-status-badge <?php echo $c_published ? 'slw-badge-published' : 'slw-badge-unpublished'; ?>">
+                                        <?php echo $c_published ? 'Active' : 'Inactive'; ?>
+                                    </span>
+                                </h3>
+                                <div class="slw-campaign-meta">
+                                    <span><?php echo esc_html( $c_contacts ); ?> contact<?php echo $c_contacts !== 1 ? 's' : ''; ?></span>
+                                    <span class="slw-meta-sep">&middot;</span>
+                                    <span><?php echo esc_html( $email_count ); ?> email<?php echo $email_count !== 1 ? 's' : ''; ?></span>
+                                </div>
                             </div>
                         </div>
                         <button type="button" class="button slw-toggle-emails" aria-expanded="false">
@@ -502,50 +559,33 @@ class SLW_Email_Sequences {
 
                     <?php if ( ! empty( $c_emails ) ) : ?>
                     <div class="slw-campaign-emails" style="display:none;">
-                        <table class="wp-list-table widefat striped">
-                            <thead>
-                                <tr>
-                                    <th>Subject</th>
-                                    <th>Timing</th>
-                                    <th>Sent</th>
-                                    <th>Open Rate</th>
-                                    <th>Click Rate</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ( $c_emails as $ce ) :
-                                    $open_rate  = $ce['sent'] > 0 ? round( ( $ce['opens'] / $ce['sent'] ) * 100, 1 ) : 0;
-                                    $click_rate = $ce['sent'] > 0 ? round( ( $ce['clicks'] / $ce['sent'] ) * 100, 1 ) : 0;
-                                ?>
-                                <tr>
-                                    <td><strong><?php echo esc_html( $ce['subject'] ); ?></strong></td>
-                                    <td><span class="slw-timing-pill"><?php echo esc_html( $ce['timing'] ); ?></span></td>
-                                    <td><?php echo esc_html( number_format( $ce['sent'] ) ); ?></td>
-                                    <td>
-                                        <span class="slw-rate <?php echo $open_rate >= 30 ? 'slw-rate-good' : ( $open_rate >= 15 ? 'slw-rate-ok' : 'slw-rate-low' ); ?>">
-                                            <?php echo esc_html( $open_rate ); ?>%
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <span class="slw-rate <?php echo $click_rate >= 5 ? 'slw-rate-good' : ( $click_rate >= 2 ? 'slw-rate-ok' : 'slw-rate-low' ); ?>">
-                                            <?php echo esc_html( $click_rate ); ?>%
-                                        </span>
-                                    </td>
-                                    <td class="slw-email-actions">
-                                        <?php if ( $ce['email_id'] > 0 ) : ?>
-                                            <a href="<?php echo esc_url( $mautic_url . '/s/emails/edit/' . $ce['email_id'] ); ?>"
-                                               target="_blank" rel="noopener" class="button button-small">Edit in Mautic</a>
-                                            <a href="<?php echo esc_url( $mautic_url . '/s/emails/view/' . $ce['email_id'] ); ?>"
-                                               target="_blank" rel="noopener" class="button button-small">View</a>
-                                        <?php else : ?>
-                                            <span class="description">ID unavailable</span>
+                        <div class="slw-email-timeline">
+                            <?php foreach ( $c_emails as $idx => $ce ) :
+                                $open_rate  = $ce['sent'] > 0 ? round( ( $ce['opens'] / $ce['sent'] ) * 100, 1 ) : 0;
+                                $click_rate = $ce['sent'] > 0 ? round( ( $ce['clicks'] / $ce['sent'] ) * 100, 1 ) : 0;
+                                $open_class = $open_rate >= 50 ? 'slw-pill--green' : ( $open_rate >= 30 ? 'slw-pill--yellow' : 'slw-pill--red' );
+                                $click_class = $click_rate >= 50 ? 'slw-pill--green' : ( $click_rate >= 30 ? 'slw-pill--yellow' : 'slw-pill--red' );
+                            ?>
+                            <div class="slw-timeline-node <?php echo $idx === count( $c_emails ) - 1 ? 'slw-timeline-node--last' : ''; ?>">
+                                <div class="slw-timeline-dot"></div>
+                                <div class="slw-timeline-content">
+                                    <div class="slw-timeline-subject"><?php echo esc_html( $ce['subject'] ); ?></div>
+                                    <div class="slw-timeline-meta">
+                                        <span class="slw-timing-pill"><?php echo esc_html( $ce['timing'] ); ?></span>
+                                        <span class="slw-stat-pill slw-pill--gray"><?php echo esc_html( number_format( $ce['sent'] ) ); ?> sent</span>
+                                        <?php if ( $ce['sent'] > 0 ) : ?>
+                                            <span class="slw-stat-pill <?php echo esc_attr( $open_class ); ?>"><?php echo esc_html( $open_rate ); ?>% opened</span>
+                                            <span class="slw-stat-pill <?php echo esc_attr( $click_class ); ?>"><?php echo esc_html( $click_rate ); ?>% clicked</span>
                                         <?php endif; ?>
-                                    </td>
-                                </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
+                                    </div>
+                                    <?php if ( $ce['email_id'] > 0 ) : ?>
+                                        <a href="<?php echo esc_url( $mautic_url . '/s/emails/edit/' . $ce['email_id'] ); ?>"
+                                           target="_blank" rel="noopener" class="button button-small slw-timeline-edit">Edit</a>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
                     </div>
                     <?php endif; ?>
                 </div>
@@ -554,50 +594,75 @@ class SLW_Email_Sequences {
 
             <?php endif; /* end if $connected */ ?>
 
-            <!-- ─── Webhook Health ─── -->
-            <h2 class="title">Webhook Activity</h2>
+            <!-- ─── Webhook Health (Collapsible) ─── -->
+            <?php
+            $last_webhook      = ! empty( $webhook_log ) ? $webhook_log[0] : null;
+            $last_webhook_time = $last_webhook ? human_time_diff( strtotime( $last_webhook['time'] ?? '' ) ) . ' ago' : 'Never';
+            $last_webhook_ok   = $last_webhook && ( $last_webhook['status'] ?? '' ) === 'success';
+            ?>
+            <details class="slw-seq-accordion">
+                <summary class="slw-seq-accordion__bar">
+                    <span class="slw-seq-accordion__title">Webhook Activity</span>
+                    <span class="slw-seq-accordion__summary">
+                        Last webhook: <?php echo esc_html( $last_webhook_time ); ?>
+                        <?php if ( $last_webhook ) : ?>
+                            (<span class="<?php echo $last_webhook_ok ? 'slw-pill--green' : 'slw-pill--red'; ?>"><?php echo esc_html( $last_webhook_ok ? 'success' : 'failed' ); ?></span>)
+                        <?php endif; ?>
+                    </span>
+                    <span class="slw-seq-accordion__arrow dashicons dashicons-arrow-down-alt2"></span>
+                </summary>
+                <?php if ( empty( $webhook_log ) ) : ?>
+                    <div class="slw-admin-card">
+                        <p>No webhook activity recorded yet. Webhooks fire when applications are approved, first orders are placed, or reorder reminders trigger.</p>
+                    </div>
+                <?php else : ?>
+                    <div class="slw-admin-card" style="padding: 0; overflow: hidden;">
+                        <table class="wp-list-table widefat striped">
+                            <thead>
+                                <tr>
+                                    <th>Event</th>
+                                    <th>Email</th>
+                                    <th>Status</th>
+                                    <th>HTTP Code</th>
+                                    <th>Time</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ( array_slice( $webhook_log, 0, 25 ) as $entry ) : ?>
+                                <tr>
+                                    <td><code><?php echo esc_html( $entry['event'] ?? '' ); ?></code></td>
+                                    <td><?php echo esc_html( $entry['email'] ?? '-' ); ?></td>
+                                    <td>
+                                        <?php
+                                        $wh_status     = $entry['status'] ?? 'unknown';
+                                        $wh_badge_class = $wh_status === 'success' ? 'slw-status-approved' : 'slw-status-declined';
+                                        ?>
+                                        <span class="<?php echo esc_attr( $wh_badge_class ); ?>"><?php echo esc_html( ucfirst( $wh_status ) ); ?></span>
+                                    </td>
+                                    <td><?php echo esc_html( $entry['code'] ?? '-' ); ?></td>
+                                    <td><?php echo esc_html( $entry['time'] ?? '' ); ?></td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php endif; ?>
+            </details>
 
-            <?php if ( empty( $webhook_log ) ) : ?>
-                <div class="slw-admin-card">
-                    <p>No webhook activity recorded yet. Webhooks fire when applications are approved, first orders are placed, or reorder reminders trigger.</p>
-                </div>
-            <?php else : ?>
-                <div class="slw-admin-card" style="padding: 0; overflow: hidden;">
-                    <table class="wp-list-table widefat striped">
-                        <thead>
-                            <tr>
-                                <th>Event</th>
-                                <th>Email</th>
-                                <th>Status</th>
-                                <th>HTTP Code</th>
-                                <th>Time</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ( array_slice( $webhook_log, 0, 25 ) as $entry ) : ?>
-                            <tr>
-                                <td><code><?php echo esc_html( $entry['event'] ?? '' ); ?></code></td>
-                                <td><?php echo esc_html( $entry['email'] ?? '-' ); ?></td>
-                                <td>
-                                    <?php
-                                    $status = $entry['status'] ?? 'unknown';
-                                    $badge_class = $status === 'success' ? 'slw-status-approved' : 'slw-status-declined';
-                                    ?>
-                                    <span class="<?php echo esc_attr( $badge_class ); ?>"><?php echo esc_html( ucfirst( $status ) ); ?></span>
-                                </td>
-                                <td><?php echo esc_html( $entry['code'] ?? '-' ); ?></td>
-                                <td><?php echo esc_html( $entry['time'] ?? '' ); ?></td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            <?php endif; ?>
-
-            <!-- ─── Provider Settings ─── -->
-            <h2 class="title">Email Provider Settings</h2>
-
-            <div class="slw-admin-card">
+            <!-- ─── Provider Settings (Accordion) ─── -->
+            <details id="slw-settings-accordion" class="slw-seq-accordion slw-seq-accordion--settings" <?php echo $settings_open ? 'open' : ''; ?>>
+                <summary class="slw-seq-accordion__bar">
+                    <span class="slw-seq-accordion__title">
+                        Provider: <?php echo esc_html( $provider_label ); ?>
+                        <?php if ( $connected ) : ?>
+                            <span class="slw-pill--green" style="margin-left:8px;">Connected</span>
+                        <?php elseif ( $has_config ) : ?>
+                            <span class="slw-pill--red" style="margin-left:8px;">Disconnected</span>
+                        <?php endif; ?>
+                    </span>
+                    <span class="slw-seq-accordion__arrow dashicons dashicons-arrow-down-alt2"></span>
+                </summary>
+            <div class="slw-admin-card" style="border-radius:0 0 8px 8px;margin-top:0;">
                 <form method="post">
                     <?php wp_nonce_field( 'slw_sequences_nonce' ); ?>
                     <input type="hidden" name="slw_sequences_save" value="1" />
@@ -722,6 +787,7 @@ class SLW_Email_Sequences {
                     <?php submit_button( 'Save Provider Settings' ); ?>
                 </form>
             </div>
+            </details>
 
         </div>
 

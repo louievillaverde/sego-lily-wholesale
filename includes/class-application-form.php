@@ -105,7 +105,7 @@ class SLW_Application_Form {
             // which rejected handles like @yourstore. sanitize_text_field
             // accepts any text; display logic handles link formatting.
             'website'       => sanitize_text_field( $_POST['website'] ?? '' ),
-            'ein'           => sanitize_text_field( $_POST['ein'] ),
+            'ein'           => SLW_Encryption::encrypt( sanitize_text_field( $_POST['ein'] ) ),
             'business_type' => sanitize_text_field( $_POST['business_type'] ),
             'how_heard'     => sanitize_textarea_field( $_POST['how_heard'] ?? '' ),
             'why_carry'     => sanitize_textarea_field( $_POST['why_carry'] ?? '' ),
@@ -260,7 +260,7 @@ class SLW_Application_Form {
                             }
                         }
                     ?></td></tr>
-                    <tr><th>EIN / Resale Certificate</th><td><?php echo esc_html( $app->ein ); ?></td></tr>
+                    <tr><th>EIN / Resale Certificate</th><td><?php echo esc_html( SLW_Encryption::decrypt( $app->ein ) ); ?></td></tr>
                     <tr><th>Business Type</th><td><?php echo esc_html( $app->business_type ); ?></td></tr>
                     <tr><th>How They Heard About Us</th><td><?php echo esc_html( $app->how_heard ); ?></td></tr>
                     <tr><th>Why They Want to Carry Sego Lily</th><td><?php echo nl2br( esc_html( $app->why_carry ) ); ?></td></tr>
@@ -469,9 +469,12 @@ class SLW_Application_Form {
             }
         }
 
-        // Store business info as user meta
+        // Store business info as user meta (EIN stays encrypted)
         update_user_meta( $user_id, 'slw_business_name', $app->business_name );
         update_user_meta( $user_id, 'slw_ein', $app->ein );
+
+        // Audit log
+        SLW_Audit_Log::log( 'application_approved', sprintf( 'Application approved for %s', $app->business_name ) );
         update_user_meta( $user_id, 'slw_business_type', $app->business_type );
         update_user_meta( $user_id, 'slw_application_id', $app->id );
 
@@ -531,6 +534,9 @@ class SLW_Application_Form {
             'reviewed_at' => current_time( 'mysql' ),
             'reviewed_by' => get_current_user_id(),
         ), array( 'id' => $app->id ) );
+
+        // Audit log
+        SLW_Audit_Log::log( 'application_declined', sprintf( 'Application declined for %s', $app->business_name ) );
 
         $name_parts = explode( ' ', $app->contact_name, 2 );
         $first_name = $name_parts[0];

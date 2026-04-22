@@ -131,19 +131,87 @@ class SLW_Admin_Dashboard {
                 <!-- Sidebar -->
                 <div class="slw-admin-dashboard__sidebar">
 
-                    <!-- Getting Started Checklist -->
+                    <!-- Getting Started Checklist / Celebration / Notifications -->
                     <div class="slw-admin-card">
-                        <?php if ( $completed >= $total ) : ?>
-                            <div class="slw-admin-setup-complete">
-                                <div class="slw-admin-setup-complete__icon">&#10003;</div>
-                                <h3 class="slw-admin-setup-complete__title">Setup Complete</h3>
-                                <p class="slw-admin-setup-complete__text">Your wholesale portal is fully configured.</p>
-                                <div class="slw-admin-setup-complete__links">
-                                    <a href="<?php echo esc_url( admin_url( 'admin.php?page=slw-settings' ) ); ?>">Settings</a>
-                                    <a href="<?php echo esc_url( home_url( '/wholesale-order?slw_preview=1' ) ); ?>" target="_blank">View Order Form</a>
-                                    <a href="<?php echo esc_url( home_url( '/wholesale-dashboard?slw_preview=1' ) ); ?>" target="_blank">Customer Dashboard</a>
+                        <?php if ( $completed >= $total ) :
+                            // Record when setup was first completed
+                            $completed_at = get_option( 'slw_setup_completed_at' );
+                            if ( ! $completed_at ) {
+                                update_option( 'slw_setup_completed_at', current_time( 'mysql' ), false );
+                                $completed_at = current_time( 'mysql' );
+                            }
+                            $days_since = ( time() - strtotime( $completed_at ) ) / DAY_IN_SECONDS;
+
+                            if ( $days_since < 7 ) :
+                                // Celebration card (first 7 days)
+                        ?>
+                            <div class="slw-celebration">
+                                <div class="slw-celebration__confetti" aria-hidden="true">
+                                    <span class="slw-confetti-dot slw-confetti-dot--1"></span>
+                                    <span class="slw-confetti-dot slw-confetti-dot--2"></span>
+                                    <span class="slw-confetti-dot slw-confetti-dot--3"></span>
+                                    <span class="slw-confetti-dot slw-confetti-dot--4"></span>
+                                    <span class="slw-confetti-dot slw-confetti-dot--5"></span>
+                                    <span class="slw-confetti-dot slw-confetti-dot--6"></span>
+                                    <span class="slw-confetti-dot slw-confetti-dot--7"></span>
+                                    <span class="slw-confetti-dot slw-confetti-dot--8"></span>
+                                </div>
+                                <div class="slw-celebration__icon">&#127881;</div>
+                                <h3 class="slw-celebration__title">Your wholesale portal is live!</h3>
+                                <div class="slw-celebration__stats">
+                                    <span class="slw-celebration__stat">
+                                        <strong><?php echo esc_html( $stats['active_customers'] ); ?></strong> wholesale customers
+                                    </span>
+                                    <span class="slw-celebration__stat">
+                                        <strong><?php echo esc_html( $stats['orders_this_month'] ); ?></strong> orders this month
+                                    </span>
                                 </div>
                             </div>
+                            <?php else :
+                                // Notifications card (after 7 days)
+                                $pending_apps   = $stats['pending_applications'];
+                                $pending_quotes = $stats['open_quotes'];
+                                $webhook_log    = get_option( 'slw_webhook_log', array() );
+                                $wh_failures_24h = 0;
+                                $cutoff = strtotime( '-24 hours' );
+                                foreach ( $webhook_log as $wh_entry ) {
+                                    if ( isset( $wh_entry['time'] ) && strtotime( $wh_entry['time'] ) >= $cutoff && ( $wh_entry['status'] ?? '' ) !== 'success' ) {
+                                        $wh_failures_24h++;
+                                    }
+                                }
+                            ?>
+                            <h2 class="slw-admin-card__heading">Notifications</h2>
+                            <ul class="slw-notifications-list">
+                                <li class="slw-notification-item <?php echo $pending_apps > 0 ? 'slw-notification-item--alert' : ''; ?>">
+                                    <span class="dashicons dashicons-clipboard"></span>
+                                    <span class="slw-notification-text">
+                                        <strong><?php echo esc_html( $pending_apps ); ?></strong> pending application<?php echo $pending_apps !== 1 ? 's' : ''; ?>
+                                    </span>
+                                    <?php if ( $pending_apps > 0 ) : ?>
+                                        <a href="<?php echo esc_url( admin_url( 'admin.php?page=slw-applications&status=pending' ) ); ?>" class="slw-notification-link">Review</a>
+                                    <?php endif; ?>
+                                </li>
+                                <li class="slw-notification-item <?php echo $pending_quotes > 0 ? 'slw-notification-item--alert' : ''; ?>">
+                                    <span class="dashicons dashicons-format-chat"></span>
+                                    <span class="slw-notification-text">
+                                        <strong><?php echo esc_html( $pending_quotes ); ?></strong> pending quote<?php echo $pending_quotes !== 1 ? 's' : ''; ?>
+                                    </span>
+                                    <?php if ( $pending_quotes > 0 && class_exists( 'SLW_RFQ' ) ) : ?>
+                                        <a href="<?php echo esc_url( admin_url( 'admin.php?page=slw-rfq' ) ); ?>" class="slw-notification-link">Review</a>
+                                    <?php endif; ?>
+                                </li>
+                                <li class="slw-notification-item <?php echo $wh_failures_24h > 0 ? 'slw-notification-item--alert' : ''; ?>">
+                                    <span class="dashicons dashicons-admin-links"></span>
+                                    <span class="slw-notification-text">
+                                        <?php if ( $wh_failures_24h > 0 ) : ?>
+                                            <strong><?php echo esc_html( $wh_failures_24h ); ?></strong> webhook failure<?php echo $wh_failures_24h !== 1 ? 's' : ''; ?> in last 24h
+                                        <?php else : ?>
+                                            Webhooks healthy
+                                        <?php endif; ?>
+                                    </span>
+                                </li>
+                            </ul>
+                            <?php endif; ?>
                         <?php else : ?>
                             <h2 class="slw-admin-card__heading">Getting Started</h2>
                             <p class="slw-admin-card__progress"><?php echo esc_html( $completed ); ?> of <?php echo esc_html( $total ); ?> complete</p>
