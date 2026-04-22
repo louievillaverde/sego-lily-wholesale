@@ -351,6 +351,34 @@ class SLW_RFQ {
 		<div class="wrap">
 			<h1>Quote Requests</h1>
 
+			<!-- Summary Stats -->
+			<div class="slw-admin-stats" style="margin-bottom:16px;">
+				<div class="slw-admin-stats__card slw-admin-stats__card--gold" style="flex:1;min-width:120px;">
+					<div style="padding:16px 20px;text-align:center;">
+						<span style="display:block;font-size:28px;font-weight:700;color:#1E2A30;"><?php echo esc_html( $counts['pending']->count ?? 0 ); ?></span>
+						<span style="font-size:12px;color:#628393;text-transform:uppercase;letter-spacing:0.5px;">Pending</span>
+					</div>
+				</div>
+				<div class="slw-admin-stats__card slw-admin-stats__card--teal" style="flex:1;min-width:120px;">
+					<div style="padding:16px 20px;text-align:center;">
+						<span style="display:block;font-size:28px;font-weight:700;color:#1E2A30;"><?php echo esc_html( $counts['quoted']->count ?? 0 ); ?></span>
+						<span style="font-size:12px;color:#628393;text-transform:uppercase;letter-spacing:0.5px;">Quoted</span>
+					</div>
+				</div>
+				<div class="slw-admin-stats__card slw-admin-stats__card--green" style="flex:1;min-width:120px;">
+					<div style="padding:16px 20px;text-align:center;">
+						<span style="display:block;font-size:28px;font-weight:700;color:#1E2A30;"><?php echo esc_html( $counts['accepted']->count ?? 0 ); ?></span>
+						<span style="font-size:12px;color:#628393;text-transform:uppercase;letter-spacing:0.5px;">Accepted</span>
+					</div>
+				</div>
+				<div class="slw-admin-stats__card" style="flex:1;min-width:120px;">
+					<div style="padding:16px 20px;text-align:center;">
+						<span style="display:block;font-size:28px;font-weight:700;color:#1E2A30;"><?php echo esc_html( $total ); ?></span>
+						<span style="font-size:12px;color:#628393;text-transform:uppercase;letter-spacing:0.5px;">Total</span>
+					</div>
+				</div>
+			</div>
+
 			<ul class="subsubsub">
 				<li><a href="?page=slw-rfq&status=all" <?php echo $status_filter === 'all' ? 'class="current"' : ''; ?>>All (<?php echo esc_html( $total ); ?>)</a> |</li>
 				<li><a href="?page=slw-rfq&status=pending" <?php echo $status_filter === 'pending' ? 'class="current"' : ''; ?>>Pending (<?php echo esc_html( $counts['pending']->count ?? 0 ); ?>)</a> |</li>

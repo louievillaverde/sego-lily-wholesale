@@ -16,50 +16,31 @@ class SLW_Admin_Menu {
     }
 
     /**
-     * Render the admin preview page with an iframe pointing to the customer portal.
+     * Render the admin preview page. Renders the portal directly (no iframe)
+     * to avoid dependency on the /wholesale-portal page existing.
      */
     public static function render_preview_page() {
-        $portal_url = home_url( '/wholesale-portal?slw_preview=1' );
-        $tab = isset( $_GET['portal_tab'] ) ? sanitize_key( $_GET['portal_tab'] ) : '';
-        if ( $tab ) {
-            $portal_url = add_query_arg( 'tab', $tab, $portal_url );
-        }
+        // Simulate preview mode
+        $_GET['slw_preview'] = '1';
+
+        // Load frontend CSS
+        wp_enqueue_style( 'slw-frontend-preview', SLW_PLUGIN_URL . 'assets/sego-lily-wholesale.css', array(), SLW_VERSION );
+
         ?>
         <div class="wrap">
             <h1>Customer Portal Preview</h1>
-            <p class="description">This shows the wholesale customer portal exactly as your wholesale partners see it. Use the tabs inside the portal to navigate between sections.</p>
-            <div style="margin-top:16px;">
-                <iframe
-                    src="<?php echo esc_url( $portal_url ); ?>"
-                    style="width:100%;min-height:800px;border:1px solid #ddd;border-radius:6px;background:#fff;"
-                    id="slw-portal-preview-iframe"
-                ></iframe>
+            <p class="description" style="margin-bottom:20px;">This is exactly what your wholesale partners see. Use the tabs to navigate between sections. Select a customer from the "View as" dropdown to see their specific pricing and order history.</p>
+            <div style="background:#fff;border:1px solid #ddd;border-radius:8px;padding:24px;margin-top:8px;">
+                <?php
+                if ( class_exists( 'SLW_Customer_Portal' ) ) {
+                    // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+                    echo SLW_Customer_Portal::render( array() );
+                } else {
+                    echo '<p>Customer Portal class not loaded. Please ensure the plugin is fully activated.</p>';
+                }
+                ?>
             </div>
         </div>
-        <script>
-        (function() {
-            var iframe = document.getElementById('slw-portal-preview-iframe');
-            if (!iframe) return;
-            // Auto-resize iframe to content height
-            function resizeIframe() {
-                try {
-                    var body = iframe.contentWindow.document.body;
-                    var html = iframe.contentWindow.document.documentElement;
-                    var height = Math.max(
-                        body.scrollHeight, body.offsetHeight,
-                        html.clientHeight, html.scrollHeight, html.offsetHeight
-                    );
-                    iframe.style.height = Math.max(height + 40, 800) + 'px';
-                } catch(e) {}
-            }
-            iframe.addEventListener('load', function() {
-                resizeIframe();
-                // Re-check after images load
-                setTimeout(resizeIframe, 1000);
-                setTimeout(resizeIframe, 3000);
-            });
-        })();
-        </script>
         <?php
     }
 

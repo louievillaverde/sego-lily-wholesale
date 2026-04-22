@@ -304,6 +304,35 @@ class SLW_Application_Form {
             <h1>Wholesale Applications
                 <a href="<?php echo wp_nonce_url( admin_url( 'admin.php?page=slw-applications&action=export_csv' ), 'slw_admin_action' ); ?>" class="page-title-action">Export CSV</a>
             </h1>
+
+            <!-- Summary Stats -->
+            <div class="slw-admin-stats" style="margin-bottom:16px;">
+                <div class="slw-admin-stats__card slw-admin-stats__card--gold" style="flex:1;min-width:120px;">
+                    <div style="padding:16px 20px;text-align:center;">
+                        <span style="display:block;font-size:28px;font-weight:700;color:#1E2A30;"><?php echo esc_html( $counts['pending']->count ?? 0 ); ?></span>
+                        <span style="font-size:12px;color:#628393;text-transform:uppercase;letter-spacing:0.5px;">Pending</span>
+                    </div>
+                </div>
+                <div class="slw-admin-stats__card slw-admin-stats__card--green" style="flex:1;min-width:120px;">
+                    <div style="padding:16px 20px;text-align:center;">
+                        <span style="display:block;font-size:28px;font-weight:700;color:#1E2A30;"><?php echo esc_html( $counts['approved']->count ?? 0 ); ?></span>
+                        <span style="font-size:12px;color:#628393;text-transform:uppercase;letter-spacing:0.5px;">Approved</span>
+                    </div>
+                </div>
+                <div class="slw-admin-stats__card" style="flex:1;min-width:120px;">
+                    <div style="padding:16px 20px;text-align:center;">
+                        <span style="display:block;font-size:28px;font-weight:700;color:#1E2A30;"><?php echo esc_html( $counts['declined']->count ?? 0 ); ?></span>
+                        <span style="font-size:12px;color:#628393;text-transform:uppercase;letter-spacing:0.5px;">Declined</span>
+                    </div>
+                </div>
+                <div class="slw-admin-stats__card slw-admin-stats__card--teal" style="flex:1;min-width:120px;">
+                    <div style="padding:16px 20px;text-align:center;">
+                        <span style="display:block;font-size:28px;font-weight:700;color:#1E2A30;"><?php echo esc_html( $total ); ?></span>
+                        <span style="font-size:12px;color:#628393;text-transform:uppercase;letter-spacing:0.5px;">Total</span>
+                    </div>
+                </div>
+            </div>
+
             <ul class="subsubsub">
                 <li><a href="?page=slw-applications&status=all" <?php echo $status_filter === 'all' ? 'class="current"' : ''; ?>>All (<?php echo $total; ?>)</a> |</li>
                 <li><a href="?page=slw-applications&status=pending" <?php echo $status_filter === 'pending' ? 'class="current"' : ''; ?>>Pending (<?php echo $counts['pending']->count ?? 0; ?>)</a> |</li>
@@ -325,7 +354,7 @@ class SLW_Application_Form {
                 </thead>
                 <tbody>
                     <?php if ( empty( $applications ) ) : ?>
-                        <tr><td colspan="8">No applications found.</td></tr>
+                        <tr><td colspan="8" style="text-align:center;padding:40px 20px;color:#628393;font-style:italic;">No applications yet. Share your wholesale application page (<a href="<?php echo esc_url( home_url( '/wholesale-partners' ) ); ?>" target="_blank">/wholesale-partners</a>) to start receiving applications.</td></tr>
                     <?php else : ?>
                         <?php foreach ( $applications as $app ) : ?>
                         <tr>

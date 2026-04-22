@@ -88,46 +88,31 @@ class SLW_Admin_Dashboard {
                         </div>
                     </div>
 
-                    <!-- Funnel View -->
-                    <div class="slw-funnel">
-                        <?php
-                        $funnel = self::get_funnel_counts();
-                        $funnel_stages = array(
-                            array(
-                                'count' => $funnel['leads'],
-                                'label' => 'Leads',
-                                'url'   => admin_url( 'admin.php?page=slw-leads' ),
-                                'class' => 'slw-funnel__stage--teal-1',
-                            ),
-                            array(
-                                'count' => $funnel['pending_apps'],
-                                'label' => 'Pending Applications',
-                                'url'   => admin_url( 'admin.php?page=slw-applications&status=pending' ),
-                                'class' => 'slw-funnel__stage--teal-2',
-                            ),
-                            array(
-                                'count' => $funnel['approved_this_month'],
-                                'label' => 'Approved This Month',
-                                'url'   => admin_url( 'admin.php?page=slw-applications&status=approved' ),
-                                'class' => 'slw-funnel__stage--teal-3',
-                            ),
-                            array(
-                                'count' => $funnel['first_orders'],
-                                'label' => 'First Order',
-                                'url'   => admin_url( 'admin.php?page=slw-orders' ),
-                                'class' => 'slw-funnel__stage--gold',
-                            ),
-                        );
-                        foreach ( $funnel_stages as $i => $stage ) :
-                        ?>
-                            <?php if ( $i > 0 ) : ?>
-                                <span class="slw-funnel__arrow dashicons dashicons-arrow-right-alt"></span>
-                            <?php endif; ?>
-                            <a href="<?php echo esc_url( $stage['url'] ); ?>" class="slw-funnel__stage <?php echo esc_attr( $stage['class'] ); ?>">
-                                <span class="slw-funnel__count"><?php echo esc_html( $stage['count'] ); ?></span>
-                                <span class="slw-funnel__label"><?php echo esc_html( $stage['label'] ); ?></span>
+                    <!-- Lead Pipeline (distinct from overview stats — shows conversion flow) -->
+                    <div class="slw-admin-card" style="padding:20px 24px;">
+                        <h2 class="slw-admin-card__heading" style="margin-bottom:16px;">Lead Pipeline</h2>
+                        <?php $funnel = self::get_funnel_counts(); ?>
+                        <div class="slw-funnel">
+                            <a href="<?php echo esc_url( admin_url( 'admin.php?page=slw-leads' ) ); ?>" class="slw-funnel__stage slw-funnel__stage--teal-1">
+                                <span class="slw-funnel__count"><?php echo esc_html( $funnel['leads'] ); ?></span>
+                                <span class="slw-funnel__label">Captured</span>
                             </a>
-                        <?php endforeach; ?>
+                            <span class="slw-funnel__arrow">&rarr;</span>
+                            <a href="<?php echo esc_url( admin_url( 'admin.php?page=slw-applications&status=pending' ) ); ?>" class="slw-funnel__stage slw-funnel__stage--teal-2">
+                                <span class="slw-funnel__count"><?php echo esc_html( $funnel['pending_apps'] ); ?></span>
+                                <span class="slw-funnel__label">Applied</span>
+                            </a>
+                            <span class="slw-funnel__arrow">&rarr;</span>
+                            <a href="<?php echo esc_url( admin_url( 'admin.php?page=slw-applications&status=approved' ) ); ?>" class="slw-funnel__stage slw-funnel__stage--teal-3">
+                                <span class="slw-funnel__count"><?php echo esc_html( $funnel['approved_this_month'] ); ?></span>
+                                <span class="slw-funnel__label">Approved</span>
+                            </a>
+                            <span class="slw-funnel__arrow">&rarr;</span>
+                            <a href="<?php echo esc_url( admin_url( 'admin.php?page=slw-orders' ) ); ?>" class="slw-funnel__stage slw-funnel__stage--gold">
+                                <span class="slw-funnel__count"><?php echo esc_html( $funnel['first_orders'] ); ?></span>
+                                <span class="slw-funnel__label">Ordered</span>
+                            </a>
+                        </div>
                     </div>
 
                     <!-- Recent Activity -->
