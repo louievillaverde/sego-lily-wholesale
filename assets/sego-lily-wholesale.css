@@ -3039,9 +3039,25 @@ button.slw-reorder-btn:hover {
 .slw-booth__card:hover,
 .slw-booth__card:focus {
     border-color: #386174;
-    box-shadow: 0 4px 20px rgba(56, 97, 116, 0.15);
-    transform: translateY(-2px);
+    background: #386174;
+    box-shadow: 0 6px 24px rgba(56, 97, 116, 0.2);
+    transform: translateY(-3px);
     outline: none;
+}
+
+.slw-booth__card:hover .slw-booth__card-label,
+.slw-booth__card:focus .slw-booth__card-label {
+    color: #F7F6F3;
+}
+
+.slw-booth__card:hover .slw-booth__card-desc,
+.slw-booth__card:focus .slw-booth__card-desc {
+    color: rgba(247, 246, 243, 0.8);
+}
+
+.slw-booth__card:hover svg,
+.slw-booth__card:focus svg {
+    stroke: #D4AF37;
 }
 
 .slw-booth__card:active {
@@ -3145,42 +3161,50 @@ button.slw-reorder-btn:hover {
 
 /* ---- Step 3: Incentive Page ---- */
 .slw-booth__thanks {
-    font-size: 16px;
-    color: #628393;
-    margin: 0 0 12px 0;
+    font-size: 18px;
+    color: #386174;
+    margin: 0 0 16px 0;
     font-style: italic;
 }
 
 .slw-booth__incentive-heading {
     font-family: Georgia, 'Times New Roman', serif;
-    font-size: 36px;
+    font-size: 32px;
     font-weight: 700;
     color: #1E2A30;
-    margin: 0 0 16px 0;
-    line-height: 1.2;
+    margin: 0 0 24px 0;
+    line-height: 1.3;
 }
 
 .slw-booth__incentive-sub {
-    font-size: 20px;
+    font-size: 18px;
     color: #628393;
-    margin: 0 0 28px 0;
+    margin: 0 0 32px 0;
+    line-height: 1.5;
 }
 
 .slw-booth__code-badge {
-    display: inline-block;
-    background: rgba(212, 175, 55, 0.12);
-    border: 1px solid rgba(212, 175, 55, 0.3);
-    border-radius: 10px;
-    padding: 12px 24px;
-    font-size: 20px;
+    display: block;
+    max-width: 380px;
+    margin: 0 auto 24px;
+    background: linear-gradient(135deg, #D4AF37 0%, #c49b2a 100%);
+    border: none;
+    border-radius: 12px;
+    padding: 20px 28px;
+    font-size: 22px;
+    font-weight: 700;
+    font-family: Georgia, 'Times New Roman', serif;
     color: #1E2A30;
-    margin-bottom: 32px;
+    text-align: center;
+    box-shadow: 0 4px 16px rgba(212, 175, 55, 0.3);
 }
 
 .slw-booth__code-badge strong {
-    color: #D4AF37;
-    font-size: 24px;
-    letter-spacing: 1px;
+    color: #1E2A30;
+    font-size: 26px;
+    letter-spacing: 1.5px;
+    display: block;
+    margin-top: 4px;
 }
 
 .slw-booth__cta-group {
@@ -3191,44 +3215,52 @@ button.slw-reorder-btn:hover {
 }
 
 .slw-booth__cta {
-    display: inline-block;
-    padding: 16px 36px;
-    font-size: 18px;
-    font-family: Georgia, 'Times New Roman', serif;
-    font-weight: 700;
-    border-radius: 12px;
-    text-decoration: none;
-    min-height: 52px;
-    min-width: 44px;
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    padding: 18px 40px !important;
+    font-size: 18px !important;
+    font-family: Georgia, 'Times New Roman', serif !important;
+    font-weight: 700 !important;
+    border-radius: 10px !important;
+    text-decoration: none !important;
+    min-height: 56px;
+    min-width: 180px;
     text-align: center;
     transition: transform 0.15s, box-shadow 0.2s;
     box-sizing: border-box;
+    cursor: pointer;
+    letter-spacing: 0.3px;
+    border: none !important;
 }
 
 .slw-booth__cta:hover {
-    transform: translateY(-1px);
+    transform: translateY(-2px);
+    text-decoration: none !important;
 }
 
 .slw-booth__cta--primary {
-    background: #386174;
-    color: #F7F6F3;
-    box-shadow: 0 2px 12px rgba(56, 97, 116, 0.25);
+    background: #386174 !important;
+    color: #F7F6F3 !important;
+    box-shadow: 0 4px 16px rgba(56, 97, 116, 0.3);
 }
 
 .slw-booth__cta--primary:hover {
-    box-shadow: 0 4px 20px rgba(56, 97, 116, 0.35);
-    color: #F7F6F3;
+    background: #2C4F5E !important;
+    box-shadow: 0 6px 24px rgba(56, 97, 116, 0.4);
+    color: #F7F6F3 !important;
 }
 
 .slw-booth__cta--secondary {
-    background: #fff;
-    color: #386174;
-    border: 2px solid #386174;
+    background: #D4AF37 !important;
+    color: #1E2A30 !important;
+    box-shadow: 0 4px 16px rgba(212, 175, 55, 0.25);
 }
 
 .slw-booth__cta--secondary:hover {
-    background: rgba(56, 97, 116, 0.04);
-    color: #386174;
+    background: #BF9A2C !important;
+    color: #1E2A30 !important;
+    box-shadow: 0 6px 24px rgba(212, 175, 55, 0.35);
 }
 
 /* ---- Loading Overlay ---- */
