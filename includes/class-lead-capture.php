@@ -412,6 +412,64 @@ class SLW_Lead_Capture {
 
         #slw-booth .slw-booth__question-label { font-size: 14px; color: #628393; margin: 16px 0 0; }
 
+        /* Progress bar */
+        #slw-booth .slw-booth__progress {
+            width: 100%;
+            max-width: 300px;
+            margin: 0 auto 32px;
+            display: none;
+        }
+        #slw-booth .slw-booth__progress--visible { display: block; }
+        #slw-booth .slw-booth__progress-bar {
+            height: 4px;
+            background: #e0ddd8;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        #slw-booth .slw-booth__progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #386174, #D4AF37);
+            border-radius: 2px;
+            transition: width 0.4s ease;
+        }
+        #slw-booth .slw-booth__progress-label {
+            font-size: 12px;
+            color: #8A9499;
+            margin-top: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Next button */
+        #slw-booth .slw-booth__next-btn {
+            display: block !important;
+            margin: 24px auto 0;
+            padding: 16px 48px !important;
+            font-size: 18px !important;
+            font-family: Georgia, 'Times New Roman', serif !important;
+            font-weight: 700 !important;
+            background: #386174 !important;
+            color: #F7F6F3 !important;
+            border: none !important;
+            border-radius: 10px !important;
+            cursor: pointer;
+            transition: all 0.2s;
+            appearance: none;
+            -webkit-appearance: none;
+            min-height: 52px;
+            box-shadow: 0 4px 16px rgba(56,97,116,0.25);
+        }
+        #slw-booth .slw-booth__next-btn:hover {
+            background: #2C4F5E !important;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(56,97,116,0.35);
+        }
+        #slw-booth .slw-booth__enter-hint {
+            font-size: 12px;
+            color: #8A9499;
+            margin-top: 10px;
+        }
+
         /* Tablet + mobile */
         @media (max-width: 600px) {
             #slw-booth { padding: 40px 16px; }
@@ -432,6 +490,12 @@ class SLW_Lead_Capture {
             <?php wp_nonce_field( 'slw_capture_lead', 'slw_lead_nonce' ); ?>
             <input type="hidden" id="slw-booth-source" value="<?php echo esc_attr( $url_source ); ?>" />
             <input type="hidden" id="slw-booth-event" value="<?php echo esc_attr( $url_event ); ?>" />
+
+            <!-- Progress bar -->
+            <div class="slw-booth__progress" id="slw-booth-progress">
+                <div class="slw-booth__progress-bar"><div class="slw-booth__progress-fill" id="slw-booth-progress-fill" style="width:33%"></div></div>
+                <div class="slw-booth__progress-label" id="slw-booth-progress-label">Step 1 of 3</div>
+            </div>
 
             <!-- ============ STEP 1: Interest Selector ============ -->
             <div class="slw-booth__step slw-booth__step--active" data-step="1">
@@ -460,10 +524,14 @@ class SLW_Lead_Capture {
                 <div class="slw-booth__question slw-booth__question--active" data-q="r1">
                     <h2 class="slw-booth__title">What's your name?</h2>
                     <input type="text" class="slw-booth__input" id="slw-booth-r-name" placeholder="First name" autocomplete="given-name" />
+                    <button type="button" class="slw-booth__next-btn" data-next="r2">Next &rarr;</button>
+                    <p class="slw-booth__enter-hint">or press Enter &crarr;</p>
                 </div>
                 <div class="slw-booth__question" data-q="r2">
                     <h2 class="slw-booth__title">What's your email?</h2>
                     <input type="email" class="slw-booth__input" id="slw-booth-r-email" placeholder="you@email.com" autocomplete="email" />
+                    <button type="button" class="slw-booth__next-btn" data-next="r3">Next &rarr;</button>
+                    <p class="slw-booth__enter-hint">or press Enter &crarr;</p>
                 </div>
                 <div class="slw-booth__question" data-q="r3">
                     <h2 class="slw-booth__title">What's your biggest skin concern?</h2>
@@ -481,10 +549,14 @@ class SLW_Lead_Capture {
                 <div class="slw-booth__question slw-booth__question--active" data-q="w1">
                     <h2 class="slw-booth__title">What's your name?</h2>
                     <input type="text" class="slw-booth__input" id="slw-booth-w-name" placeholder="First name" autocomplete="given-name" />
+                    <button type="button" class="slw-booth__next-btn" data-next="w2">Next &rarr;</button>
+                    <p class="slw-booth__enter-hint">or press Enter &crarr;</p>
                 </div>
                 <div class="slw-booth__question" data-q="w2">
                     <h2 class="slw-booth__title">What's your email?</h2>
                     <input type="email" class="slw-booth__input" id="slw-booth-w-email" placeholder="you@email.com" autocomplete="email" />
+                    <button type="button" class="slw-booth__next-btn" data-next="w3">Next &rarr;</button>
+                    <p class="slw-booth__enter-hint">or press Enter &crarr;</p>
                 </div>
                 <div class="slw-booth__question" data-q="w3">
                     <h2 class="slw-booth__title">What type of business?</h2>
@@ -623,6 +695,60 @@ class SLW_Lead_Capture {
                     }
                 });
             });
+
+            // ---- Next button click: same logic as Enter ----
+            booth.querySelectorAll('.slw-booth__next-btn').forEach(function(btn){
+                btn.addEventListener('click', function(){
+                    var nextQ = this.getAttribute('data-next');
+                    var q = this.closest('.slw-booth__question');
+                    var inp = q.querySelector('.slw-booth__input');
+                    if (inp) {
+                        var val = inp.value.trim();
+                        if (!val) { inp.focus(); return; }
+                        if (inp.type === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) {
+                            inp.classList.add('slw-booth__input--error');
+                            setTimeout(function(){ inp.classList.remove('slw-booth__input--error'); }, 1500);
+                            inp.focus();
+                            return;
+                        }
+                    }
+                    showQuestion(nextQ);
+                });
+            });
+
+            // ---- Progress bar updates ----
+            var progressFill  = document.getElementById('slw-booth-progress-fill');
+            var progressLabel = document.getElementById('slw-booth-progress-label');
+            var progressWrap  = document.getElementById('slw-booth-progress');
+
+            function updateProgress(step, total) {
+                if (!progressFill) return;
+                progressWrap.classList.add('slw-booth__progress--visible');
+                var pct = Math.round((step / total) * 100);
+                progressFill.style.width = pct + '%';
+                progressLabel.textContent = 'Step ' + step + ' of ' + total;
+            }
+
+            // Show progress when entering step 2
+            var origShowStep = showStep;
+            showStep = function(stepId) {
+                origShowStep(stepId);
+                if (stepId === '1') { progressWrap.classList.remove('slw-booth__progress--visible'); }
+                else if (stepId === '2a' || stepId === '2b') { updateProgress(2, 3); }
+                else if (stepId === '3a' || stepId === '3b') { updateProgress(3, 3); }
+            };
+
+            // Update progress on question advance within step 2
+            var origShowQ = showQuestion;
+            showQuestion = function(qId) {
+                origShowQ(qId);
+                var num = parseInt(qId.charAt(1), 10);
+                // sub-step progress: 2a has 3 questions, show as 2.0, 2.3, 2.6 visually
+                if (num && progressFill) {
+                    var subPct = 33 + (num / 3) * 33;
+                    progressFill.style.width = Math.min(subPct, 66) + '%';
+                }
+            };
 
             // ---- Pill selection: captures lead then shows incentive ----
             booth.querySelectorAll('.slw-booth__pill').forEach(function(pill){
