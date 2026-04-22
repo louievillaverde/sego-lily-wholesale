@@ -3,7 +3,7 @@
  * Plugin Name:       Wholesale Portal
  * Plugin URI:        https://github.com/louievillaverde/sego-lily-wholesale
  * Description:       All-in-one B2B wholesale portal for WooCommerce. Customer portal, tiered pricing, application workflow, PDF invoices, email sequences with multi-provider support, NET payment terms, lead capture, trade show tools, and automated order reminders. Built by Lead Piranha.
- * Version:           3.3.5
+ * Version:           3.3.6
  * Author:            Lead Piranha
  * Author URI:        https://leadpiranha.com
  * Requires at least: 6.0
@@ -28,7 +28,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SLW_VERSION', '3.3.5' );
+define( 'SLW_VERSION', '3.3.6' );
 define( 'SLW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SLW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -315,7 +315,7 @@ register_deactivation_hook( __FILE__, function() {
  * once the table exists (option cached in memory).
  */
 add_action( 'admin_init', function() {
-    if ( get_option( 'slw_db_version' ) === '1.3' ) {
+    if ( get_option( 'slw_db_version' ) === '1.4' ) {
         return;  // already verified
     }
     global $wpdb;
@@ -393,7 +393,7 @@ add_action( 'admin_init', function() {
             }
         }
     }
-    update_option( 'slw_db_version', '1.3' );
+    update_option( 'slw_db_version', '1.4' );
 });
 
 /**
