@@ -3,7 +3,7 @@
  * Plugin Name:       Wholesale Portal
  * Plugin URI:        https://github.com/louievillaverde/sego-lily-wholesale
  * Description:       Turn any WooCommerce store into a full B2B wholesale operation. Tiered wholesale pricing, application-based onboarding, order minimums, NET payment terms, tax exemption, customizable PDF invoices, downloadable line sheets, request-for-quote, automated reorder reminders, lead capture, bulk user import, and CRM webhook integration. Built by Lead Piranha.
- * Version:           2.4.1
+ * Version:           2.5.0
  * Author:            Lead Piranha
  * Author URI:        https://leadpiranha.com
  * Requires at least: 6.0
@@ -28,7 +28,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SLW_VERSION', '2.4.1' );
+define( 'SLW_VERSION', '2.5.0' );
 define( 'SLW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SLW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -80,6 +80,7 @@ add_action( 'plugins_loaded', function() {
     require_once SLW_PLUGIN_DIR . 'includes/class-admin-dashboard.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-lead-capture.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-help.php';
+    require_once SLW_PLUGIN_DIR . 'includes/class-docs.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-wholesale-orders.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-email-settings.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-email-sequences.php';
@@ -110,6 +111,7 @@ add_action( 'plugins_loaded', function() {
     SLW_Admin_Dashboard::init();
     SLW_Lead_Capture::init();
     SLW_Help::init();
+    SLW_Docs::init();
     SLW_Wholesale_Orders::init();
     SLW_Email_Settings::init();
     SLW_Email_Sequences::init();

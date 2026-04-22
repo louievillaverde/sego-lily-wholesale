@@ -165,7 +165,7 @@ class SLW_Admin_Dashboard {
                     <div class="slw-admin-card">
                         <h2 class="slw-admin-card__heading">Resources</h2>
                         <ul class="slw-admin-resources">
-                            <li><a href="<?php echo esc_url( admin_url( 'admin.php?page=slw-help' ) ); ?>"><span class="dashicons dashicons-book"></span> Help &amp; Setup Guide</a></li>
+                            <li><a href="<?php echo esc_url( admin_url( 'admin.php?page=slw-docs' ) ); ?>"><span class="dashicons dashicons-book"></span> Help &amp; Docs</a></li>
                             <li><a href="mailto:support@leadpiranha.com"><span class="dashicons dashicons-sos"></span> Contact Support</a></li>
                             <li><a href="<?php echo esc_url( home_url( '/wholesale-dashboard?slw_preview=1' ) ); ?>" target="_blank"><span class="dashicons dashicons-dashboard"></span> Customer Dashboard</a></li>
                             <li><a href="<?php echo esc_url( home_url( '/wholesale-order?slw_preview=1' ) ); ?>" target="_blank"><span class="dashicons dashicons-store"></span> Order Form</a></li>

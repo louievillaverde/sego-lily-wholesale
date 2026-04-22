@@ -160,14 +160,14 @@ class SLW_Admin_Menu {
             );
         }
 
-        // 9. Help (always last)
+        // 9. Docs (always last)
         add_submenu_page(
             'slw-dashboard',
-            'Help & Getting Started',
-            'Help',
+            'Documentation',
+            'Docs',
             'manage_woocommerce',
-            'slw-help',
-            array( 'SLW_Help', 'render_page' )
+            'slw-docs',
+            array( 'SLW_Docs', 'render_page' )
         );
     }
 }
