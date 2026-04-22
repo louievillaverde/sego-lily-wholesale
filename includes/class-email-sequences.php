@@ -636,6 +636,64 @@ class SLW_Email_Sequences {
 
             <?php endif; /* end if $connected */ ?>
 
+            <!-- ─── Transactional Emails (sent by WordPress, not Mautic) ─── -->
+            <h2 class="title">Transactional Emails</h2>
+            <p style="color:#628393;font-size:13px;margin:-8px 0 16px;">These are sent instantly by WordPress when specific actions happen. They handle logistics (credentials, invoices, confirmations) while your campaign sequences above handle relationship-building and marketing.</p>
+
+            <div class="slw-admin-card" style="padding:0;overflow:hidden;">
+                <table class="wp-list-table widefat fixed striped">
+                    <thead>
+                        <tr>
+                            <th style="width:30%;">Email</th>
+                            <th style="width:30%;">When It Sends</th>
+                            <th style="width:25%;">What It Contains</th>
+                            <th style="width:15%;">Sent Via</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Welcome + Login Credentials</strong></td>
+                            <td>Immediately when you approve an application</td>
+                            <td>Username, password, login URL, first order minimum, link to order form</td>
+                            <td><span class="slw-pill--gray" style="font-size:11px;">WordPress</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Application Declined</strong></td>
+                            <td>Immediately when you decline an application</td>
+                            <td>Polite rejection with retail store link</td>
+                            <td><span class="slw-pill--gray" style="font-size:11px;">WordPress</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>New Application Alert</strong></td>
+                            <td>When a prospect submits the wholesale application form</td>
+                            <td>Business name, contact info, link to review in admin (sent to you, not the applicant)</td>
+                            <td><span class="slw-pill--gray" style="font-size:11px;">WordPress</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Quote Response</strong></td>
+                            <td>When you send a quote from the Quotes page</td>
+                            <td>Quoted products, prices, and your message</td>
+                            <td><span class="slw-pill--gray" style="font-size:11px;">WordPress</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Invoice</strong></td>
+                            <td>When you click "Send Invoice" on an order</td>
+                            <td>Link to the branded invoice page (printable)</td>
+                            <td><span class="slw-pill--gray" style="font-size:11px;">WordPress</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Import Welcome</strong></td>
+                            <td>When you import a customer via CSV or manual add (if "Send welcome email" is checked)</td>
+                            <td>Login credentials, same as the approval welcome email</td>
+                            <td><span class="slw-pill--gray" style="font-size:11px;">WordPress</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div style="padding:12px 16px;background:#faf8f5;border-top:1px solid #e0ddd8;font-size:12px;color:#628393;">
+                    Transactional emails use the sender name, address, and signature configured in <a href="<?php echo esc_url( admin_url( 'admin.php?page=slw-invoice-settings' ) ); ?>">Wholesale &rarr; Invoices &rarr; Email Settings</a>. They are sent through your WordPress SMTP configuration (WP Mail SMTP plugin).
+                </div>
+            </div>
+
             <!-- ─── Webhook Health (Collapsible) ─── -->
             <?php
             $last_webhook      = ! empty( $webhook_log ) ? $webhook_log[0] : null;
