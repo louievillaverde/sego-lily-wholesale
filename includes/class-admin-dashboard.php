@@ -102,15 +102,15 @@ class SLW_Admin_Dashboard {
                     <div class="slw-admin-card">
                         <h2 class="slw-admin-card__heading">Quick Actions</h2>
                         <div class="slw-admin-actions">
-                            <a href="<?php echo esc_url( admin_url( 'user-new.php' ) ); ?>" class="button slw-admin-actions__btn">
+                            <a href="<?php echo esc_url( admin_url( 'user-new.php' ) ); ?>" class="slw-admin-actions__btn">
                                 <span class="dashicons dashicons-plus-alt2"></span> New Wholesale User
                             </a>
                             <?php if ( class_exists( 'SLW_Premium_Features' ) ) : ?>
-                                <a href="<?php echo esc_url( admin_url( 'admin.php?page=slw-import' ) ); ?>" class="button slw-admin-actions__btn">
+                                <a href="<?php echo esc_url( admin_url( 'admin.php?page=slw-import' ) ); ?>" class="slw-admin-actions__btn">
                                     <span class="dashicons dashicons-upload"></span> Import Users
                                 </a>
                             <?php endif; ?>
-                            <a href="<?php echo esc_url( home_url( '/wholesale-order?slw_preview=1' ) ); ?>" class="button slw-admin-actions__btn" target="_blank">
+                            <a href="<?php echo esc_url( home_url( '/wholesale-order?slw_preview=1' ) ); ?>" class="slw-admin-actions__btn" target="_blank">
                                 <span class="dashicons dashicons-store"></span> View Order Form
                             </a>
                             <?php
@@ -119,7 +119,7 @@ class SLW_Admin_Dashboard {
                                 $linesheet_url = home_url( '/?slw_linesheet=1' );
                             }
                             if ( $linesheet_url ) : ?>
-                                <a href="<?php echo esc_url( $linesheet_url ); ?>" class="button slw-admin-actions__btn" target="_blank">
+                                <a href="<?php echo esc_url( $linesheet_url ); ?>" class="slw-admin-actions__btn" target="_blank">
                                     <span class="dashicons dashicons-media-document"></span> Download Line Sheet
                                 </a>
                             <?php endif; ?>

@@ -168,7 +168,7 @@ $reorder_nonce = wp_create_nonce( 'slw_reorder_nonce' );
 			$res_owner = class_exists( 'SLW_Email_Settings' ) ? SLW_Email_Settings::get( 'owner_name' ) : '';
 			$res_label = $res_owner ? sprintf( 'Contact %s (%s)', esc_html( $res_owner ), esc_html( $res_email ) ) : sprintf( 'Contact Us (%s)', esc_html( $res_email ) );
 			$res_help  = $res_owner
-				? sprintf( 'Need brand assets, shelf talkers, or marketing materials? Email %s and they\'ll send them over.', esc_html( $res_owner ) )
+				? sprintf( 'Need brand assets, shelf talkers, or marketing materials? Email %s and we\'ll send them over.', esc_html( $res_owner ) )
 				: 'Need brand assets, shelf talkers, or marketing materials? Reach out and we\'ll send them over.';
 			?>
 			<ul class="slw-resource-links">

@@ -591,8 +591,8 @@ class SLW_Docs {
                         <?php echo wp_kses_post( $active_article['content'] ); ?>
                     </article>
                 <?php else : ?>
-                    <h1 style="margin-bottom:8px;">Documentation</h1>
-                    <p style="color:#628393;margin-bottom:32px;">Browse topics below or use the search to find what you need.</p>
+                    <h1 style="font-family:Georgia,'Times New Roman',serif;font-size:28px;color:#1E2A30;margin:0 0 6px;">Help & Resources</h1>
+                    <p style="color:#628393;font-size:15px;margin-bottom:32px;">Everything you need to know about your wholesale portal. Browse topics or search.</p>
                     <div class="slw-docs-topic-grid">
                         <?php foreach ( $topics as $topic_slug => $topic_label ) :
                             if ( empty( $by_topic[ $topic_slug ] ) ) continue;
