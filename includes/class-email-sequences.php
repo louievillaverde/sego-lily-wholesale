@@ -416,28 +416,6 @@ class SLW_Email_Sequences {
             </div>
             <?php endif; ?>
 
-            <!-- ─── Connection Status Bar ─── -->
-            <div class="slw-connection-bar <?php echo $connected ? 'slw-connected' : 'slw-disconnected'; ?>">
-                <div class="slw-connection-info">
-                    <span class="slw-connection-dot"></span>
-                    <?php if ( $connected ) : ?>
-                        <span>Connected to <?php echo esc_html( $provider_label ); ?> at <strong><?php echo esc_html( wp_parse_url( $mautic_url, PHP_URL_HOST ) ); ?></strong></span>
-                        <span class="slw-connection-sync"><?php echo esc_html( $last_sync ); ?></span>
-                    <?php elseif ( $has_config && $api_error ) : ?>
-                        <span>Connection failed: <?php echo esc_html( $api_error ); ?></span>
-                    <?php elseif ( $provider === 'none' ) : ?>
-                        <span>No email provider configured (webhooks only mode)</span>
-                    <?php else : ?>
-                        <span>Not connected &mdash; configure your Mautic credentials below</span>
-                    <?php endif; ?>
-                </div>
-                <?php if ( $connected ) : ?>
-                    <a href="<?php echo esc_url( $refresh_url ); ?>" class="button slw-refresh-btn">
-                        &#8635; Refresh
-                    </a>
-                <?php endif; ?>
-            </div>
-
             <?php if ( $connected ) : ?>
 
             <!-- ─── Quick Stats with Chart Bars ─── -->
@@ -448,8 +426,8 @@ class SLW_Email_Sequences {
                     <svg class="slw-stat-chart" width="80" height="32" viewBox="0 0 80 32">
                         <rect x="4" y="12" width="28" height="20" rx="3" fill="#628393" opacity="0.3"/>
                         <rect x="44" y="2" width="28" height="30" rx="3" fill="#386174"/>
-                        <text x="18" y="30" text-anchor="middle" fill="#628393" font-size="7">Last</text>
-                        <text x="58" y="30" text-anchor="middle" fill="#386174" font-size="7">This</text>
+                        <text x="18" y="30" text-anchor="middle" fill="#628393" font-size="7">Prev</text>
+                        <text x="58" y="30" text-anchor="middle" fill="#386174" font-size="7">Now</text>
                     </svg>
                 </div>
                 <div class="slw-stat-card accent-green">
@@ -458,8 +436,8 @@ class SLW_Email_Sequences {
                     <svg class="slw-stat-chart" width="80" height="32" viewBox="0 0 80 32">
                         <rect x="4" y="10" width="28" height="22" rx="3" fill="#628393" opacity="0.3"/>
                         <rect x="44" y="4" width="28" height="28" rx="3" fill="#2e7d32"/>
-                        <text x="18" y="30" text-anchor="middle" fill="#628393" font-size="7">Last</text>
-                        <text x="58" y="30" text-anchor="middle" fill="#2e7d32" font-size="7">This</text>
+                        <text x="18" y="30" text-anchor="middle" fill="#628393" font-size="7">Prev</text>
+                        <text x="58" y="30" text-anchor="middle" fill="#2e7d32" font-size="7">Now</text>
                     </svg>
                 </div>
                 <div class="slw-stat-card accent-gold">
@@ -468,18 +446,18 @@ class SLW_Email_Sequences {
                     <svg class="slw-stat-chart" width="80" height="32" viewBox="0 0 80 32">
                         <rect x="4" y="16" width="28" height="16" rx="3" fill="#628393" opacity="0.3"/>
                         <rect x="44" y="4" width="28" height="28" rx="3" fill="#D4AF37"/>
-                        <text x="18" y="30" text-anchor="middle" fill="#628393" font-size="7">Last</text>
-                        <text x="58" y="30" text-anchor="middle" fill="#D4AF37" font-size="7">This</text>
+                        <text x="18" y="30" text-anchor="middle" fill="#628393" font-size="7">Prev</text>
+                        <text x="58" y="30" text-anchor="middle" fill="#D4AF37" font-size="7">Now</text>
                     </svg>
                 </div>
                 <div class="slw-stat-card">
                     <span class="stat-number"><?php echo esc_html( number_format( $total_contacts ) ); ?></span>
-                    <span class="stat-label">Contacts in Sequences</span>
+                    <span class="stat-label">Contacts</span>
                     <svg class="slw-stat-chart" width="80" height="32" viewBox="0 0 80 32">
                         <rect x="4" y="10" width="28" height="22" rx="3" fill="#628393" opacity="0.3"/>
                         <rect x="44" y="2" width="28" height="30" rx="3" fill="#386174"/>
-                        <text x="18" y="30" text-anchor="middle" fill="#628393" font-size="7">Last</text>
-                        <text x="58" y="30" text-anchor="middle" fill="#386174" font-size="7">This</text>
+                        <text x="18" y="30" text-anchor="middle" fill="#628393" font-size="7">Prev</text>
+                        <text x="58" y="30" text-anchor="middle" fill="#386174" font-size="7">Now</text>
                     </svg>
                 </div>
             </div>
@@ -754,8 +732,14 @@ class SLW_Email_Sequences {
                         Provider: <?php echo esc_html( $provider_label ); ?>
                         <?php if ( $connected ) : ?>
                             <span class="slw-pill--green" style="margin-left:8px;">Connected</span>
-                        <?php elseif ( $has_config ) : ?>
-                            <span class="slw-pill--red" style="margin-left:8px;">Disconnected</span>
+                            <span style="margin-left:12px;font-size:12px;font-weight:400;color:#628393;">
+                                <?php echo esc_html( wp_parse_url( $mautic_url, PHP_URL_HOST ) ); ?> &middot; <?php echo esc_html( $last_sync ); ?>
+                            </span>
+                            <a href="<?php echo esc_url( $refresh_url ); ?>" class="button" style="margin-left:12px;padding:2px 10px;font-size:11px;line-height:1.6;" onclick="event.stopPropagation();">&#8635; Refresh</a>
+                        <?php elseif ( $has_config && $api_error ) : ?>
+                            <span class="slw-pill--red" style="margin-left:8px;">Error: <?php echo esc_html( $api_error ); ?></span>
+                        <?php elseif ( $provider === 'none' ) : ?>
+                            <span style="margin-left:8px;font-size:12px;color:#628393;">Webhook only</span>
                         <?php endif; ?>
                     </span>
                     <span class="slw-seq-accordion__arrow dashicons dashicons-arrow-down-alt2"></span>

@@ -2388,3 +2388,16 @@ p.description,
 		gap: 8px;
 	}
 }
+
+/* Fix narrow settings inputs */
+.wrap input.small-text {
+	width: 80px !important;
+	min-width: 80px !important;
+}
+
+.wrap .form-table td input.regular-text,
+.wrap .form-table td input[type="url"],
+.wrap .form-table td textarea {
+	width: 100% !important;
+	max-width: 500px !important;
+}

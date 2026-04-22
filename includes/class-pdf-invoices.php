@@ -401,30 +401,35 @@ class SLW_PDF_Invoices {
 			'bg'    => '#fff8e1',
 		);
 
-		// Use real products from the store if available
+		// Use real products from the store for a realistic preview
 		$dummy_items = array();
 		if ( function_exists( 'wc_get_products' ) ) {
-			$real_products = wc_get_products( array( 'limit' => 3, 'status' => 'publish', 'orderby' => 'date', 'order' => 'DESC' ) );
-			$qtys = array( 24, 12, 36 );
+			$real_products = wc_get_products( array( 'limit' => 4, 'status' => 'publish', 'orderby' => 'rand' ) );
+			$qtys = array( 6, 12, 6, 24 );
+			$discount = absint( get_option( 'slw_discount_percent', 50 ) );
 			$i = 0;
 			foreach ( $real_products as $prod ) {
-				$discount = absint( get_option( 'slw_discount_percent', 50 ) );
-				$wholesale_price = (float) $prod->get_regular_price() * ( 1 - $discount / 100 );
+				$retail = (float) $prod->get_regular_price();
+				if ( ! $retail ) $retail = (float) $prod->get_price();
+				if ( ! $retail ) continue;
+				$wholesale_price = round( $retail * ( 1 - $discount / 100 ), 2 );
 				$dummy_items[] = array(
 					'name'  => $prod->get_name(),
-					'sku'   => $prod->get_sku() ?: 'SKU-' . $prod->get_id(),
-					'qty'   => $qtys[ $i ] ?? 12,
-					'price' => round( $wholesale_price, 2 ),
+					'sku'   => $prod->get_sku() ?: 'WP-' . $prod->get_id(),
+					'qty'   => $qtys[ $i ] ?? 6,
+					'price' => $wholesale_price,
 				);
 				$i++;
+				if ( $i >= 4 ) break;
 			}
 		}
 		// Fallback if no products exist
 		if ( empty( $dummy_items ) ) {
 			$dummy_items = array(
-				array( 'name' => 'Sample Product A', 'sku' => 'SP-001', 'qty' => 24, 'price' => 18.00 ),
-				array( 'name' => 'Sample Product B', 'sku' => 'SP-002', 'qty' => 12, 'price' => 14.50 ),
-				array( 'name' => 'Sample Product C', 'sku' => 'SP-003', 'qty' => 36, 'price' => 22.00 ),
+				array( 'name' => 'Ageless Honey Creme - 2oz',    'sku' => 'AHC-002', 'qty' => 12, 'price' => 24.50 ),
+				array( 'name' => 'Tallow Balm Original - 1oz',   'sku' => 'TBO-001', 'qty' => 6,  'price' => 14.00 ),
+				array( 'name' => 'Hydrating Face Serum - 1oz',   'sku' => 'HFS-001', 'qty' => 6,  'price' => 18.00 ),
+				array( 'name' => 'Gentle Cleansing Balm - 2oz',  'sku' => 'GCB-002', 'qty' => 24, 'price' => 14.50 ),
 			);
 		}
 
