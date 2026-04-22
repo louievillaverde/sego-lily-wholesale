@@ -15,10 +15,13 @@ class SLW_Product_Minimums {
 	public static function init() {
 		// Product edit field (after the existing wholesale price fields)
 		add_action( 'woocommerce_product_options_general_product_data', array( __CLASS__, 'add_minimum_qty_field' ), 20 );
+		add_action( 'woocommerce_product_options_general_product_data', array( __CLASS__, 'add_case_pack_field' ), 21 );
 		add_action( 'woocommerce_admin_process_product_object', array( __CLASS__, 'save_minimum_qty_field' ) );
+		add_action( 'woocommerce_admin_process_product_object', array( __CLASS__, 'save_case_pack_field' ) );
 
 		// Cart enforcement
 		add_action( 'woocommerce_check_cart_items', array( __CLASS__, 'enforce_minimums' ) );
+		add_action( 'woocommerce_check_cart_items', array( __CLASS__, 'enforce_case_packs' ) );
 
 		// Quantity input min attribute on product pages
 		add_filter( 'woocommerce_quantity_input_args', array( __CLASS__, 'quantity_input_args' ), 10, 2 );
@@ -96,36 +99,6 @@ class SLW_Product_Minimums {
 		}
 	}
 
-	// ── Quantity Input Args ───────────────────────────────────────────────
-
-	/**
-	 * Set the min attribute on quantity inputs for wholesale users so the
-	 * stepper starts at the product minimum.
-	 *
-	 * @param array      $args    Quantity input args.
-	 * @param WC_Product $product Product object.
-	 * @return array
-	 */
-	public static function quantity_input_args( $args, $product ) {
-		if ( ! slw_is_wholesale_user() ) {
-			return $args;
-		}
-
-		$product_id = $product->get_id();
-		$parent_id = $product->get_parent_id();
-		$min = self::get_product_minimum( $parent_id ? $parent_id : $product_id );
-
-		if ( $min > 0 ) {
-			$args['min_value'] = $min;
-			// Only set input_value if it's currently below the minimum
-			if ( isset( $args['input_value'] ) && (int) $args['input_value'] < $min ) {
-				$args['input_value'] = $min;
-			}
-		}
-
-		return $args;
-	}
-
 	// ── Order Form Integration ────────────────────────────────────────────
 
 	/**
@@ -139,7 +112,113 @@ class SLW_Product_Minimums {
 	public static function add_minimum_to_order_form( $data, $product ) {
 		$min = self::get_product_minimum( $product->get_id() );
 		$data['minimum_qty'] = $min;
+		$data['case_pack_size'] = self::get_case_pack_size( $product->get_id() );
 		return $data;
+	}
+
+	// ── Case Pack Size Field ──────────────────────────────────────────────
+
+	/**
+	 * Add the case pack size field on the product General tab, after Min Wholesale Qty.
+	 */
+	public static function add_case_pack_field() {
+		woocommerce_wp_text_input( array(
+			'id'                => '_slw_case_pack_size',
+			'label'             => 'Wholesale Case Pack Size',
+			'desc_tip'          => true,
+			'description'       => 'Wholesale customers must order in multiples of this number (e.g. 6 = case of 6). Leave blank for no restriction.',
+			'type'              => 'number',
+			'custom_attributes' => array( 'step' => '1', 'min' => '0' ),
+		) );
+	}
+
+	/**
+	 * Save the case pack size field.
+	 *
+	 * @param WC_Product $product
+	 */
+	public static function save_case_pack_field( $product ) {
+		$value = isset( $_POST['_slw_case_pack_size'] ) ? wc_clean( $_POST['_slw_case_pack_size'] ) : '';
+		$product->update_meta_data( '_slw_case_pack_size', $value );
+	}
+
+	// ── Case Pack Cart Enforcement ────────────────────────────────────────
+
+	/**
+	 * Validate that cart quantities are multiples of the case pack size.
+	 */
+	public static function enforce_case_packs() {
+		if ( ! slw_is_wholesale_user() ) {
+			return;
+		}
+
+		foreach ( WC()->cart->get_cart() as $cart_item ) {
+			$product = $cart_item['data'];
+			if ( ! $product ) {
+				continue;
+			}
+
+			$product_id = $product->get_id();
+			$parent_id  = $product->get_parent_id();
+			$case_size  = self::get_case_pack_size( $parent_id ? $parent_id : $product_id );
+
+			if ( $case_size <= 0 ) {
+				continue;
+			}
+
+			$qty = (int) $cart_item['quantity'];
+			if ( $qty % $case_size !== 0 ) {
+				wc_add_notice(
+					sprintf(
+						'%s must be ordered in multiples of %d (case pack). You have %d in your cart.',
+						esc_html( $product->get_name() ),
+						$case_size,
+						$qty
+					),
+					'error'
+				);
+			}
+		}
+	}
+
+	// ── Quantity Input Args (updated for case pack step) ──────────────────
+
+	/**
+	 * Override quantity_input_args to also set the step attribute for case packs.
+	 */
+	public static function quantity_input_args( $args, $product ) {
+		if ( ! slw_is_wholesale_user() ) {
+			return $args;
+		}
+
+		$product_id = $product->get_id();
+		$parent_id  = $product->get_parent_id();
+		$lookup_id  = $parent_id ? $parent_id : $product_id;
+
+		// Minimum qty
+		$min = self::get_product_minimum( $lookup_id );
+		if ( $min > 0 ) {
+			$args['min_value'] = $min;
+			if ( isset( $args['input_value'] ) && (int) $args['input_value'] < $min ) {
+				$args['input_value'] = $min;
+			}
+		}
+
+		// Case pack step
+		$case_size = self::get_case_pack_size( $lookup_id );
+		if ( $case_size > 0 ) {
+			$args['step'] = $case_size;
+			// Default value should be the case pack size (not 1)
+			if ( ! isset( $args['input_value'] ) || (int) $args['input_value'] < $case_size ) {
+				$args['input_value'] = $case_size;
+			}
+			// Ensure min_value is at least case_size
+			if ( ! isset( $args['min_value'] ) || (int) $args['min_value'] < $case_size ) {
+				$args['min_value'] = $case_size;
+			}
+		}
+
+		return $args;
 	}
 
 	// ── Helper ────────────────────────────────────────────────────────────
@@ -153,5 +232,16 @@ class SLW_Product_Minimums {
 	public static function get_product_minimum( $product_id ) {
 		$min = get_post_meta( $product_id, '_slw_minimum_qty', true );
 		return ( $min !== '' && is_numeric( $min ) && (int) $min > 0 ) ? (int) $min : 0;
+	}
+
+	/**
+	 * Get the case pack size for a product.
+	 *
+	 * @param int $product_id
+	 * @return int 0 if no case pack set.
+	 */
+	public static function get_case_pack_size( $product_id ) {
+		$size = get_post_meta( $product_id, '_slw_case_pack_size', true );
+		return ( $size !== '' && is_numeric( $size ) && (int) $size > 0 ) ? (int) $size : 0;
 	}
 }

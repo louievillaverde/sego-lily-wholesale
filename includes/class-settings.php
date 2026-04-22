@@ -23,6 +23,11 @@ class SLW_Settings {
         'slw_wholesale_tax_exempt_default'  => array( 'sanitize' => 'rest_sanitize_boolean','default' => false ),
         'slw_wholesale_shipping_methods'    => array( 'sanitize' => 'array',               'default' => array() ),
         'slw_retail_shipping_methods'       => array( 'sanitize' => 'array',               'default' => array() ),
+        // Store Notice
+        'slw_store_notice_enabled'          => array( 'sanitize' => 'rest_sanitize_boolean','default' => false ),
+        'slw_store_notice_text'             => array( 'sanitize' => 'wp_kses_post',        'default' => '' ),
+        'slw_store_notice_type'             => array( 'sanitize' => 'sanitize_text_field', 'default' => 'info' ),
+        'slw_store_notice_dismissible'      => array( 'sanitize' => 'rest_sanitize_boolean','default' => false ),
     );
 
     public static function init() {
@@ -60,6 +65,8 @@ class SLW_Settings {
                     $value = floatval( $_POST[ $key ] ?? $config['default'] );
                 } elseif ( $config['sanitize'] === 'esc_url_raw' ) {
                     $value = esc_url_raw( $_POST[ $key ] ?? '' );
+                } elseif ( $config['sanitize'] === 'wp_kses_post' ) {
+                    $value = wp_kses_post( $_POST[ $key ] ?? '' );
                 } else {
                     $value = sanitize_text_field( $_POST[ $key ] ?? '' );
                 }
@@ -137,6 +144,50 @@ class SLW_Settings {
                                 Make every wholesale user tax exempt by default
                             </label>
                             <p class="description">When enabled, all wholesale customers are exempt from sales tax at checkout regardless of the per-user "Resale Cert Verified" toggle. Leave unchecked to require per-user verification.</p>
+                        </td>
+                    </tr>
+                </table>
+
+                <h2 class="title">Store Notice</h2>
+                <p>Display a banner at the top of the wholesale order form and dashboard.</p>
+                <table class="form-table">
+                    <tr>
+                        <th scope="row"><label for="slw_store_notice_enabled">Enable Store Notice</label></th>
+                        <td>
+                            <label>
+                                <input type="checkbox" id="slw_store_notice_enabled" name="slw_store_notice_enabled"
+                                       value="1" <?php checked( get_option( 'slw_store_notice_enabled', false ) ); ?> />
+                                Show a notice banner to wholesale customers
+                            </label>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="slw_store_notice_text">Notice Text</label></th>
+                        <td>
+                            <textarea id="slw_store_notice_text" name="slw_store_notice_text"
+                                      rows="3" class="large-text"><?php echo esc_textarea( get_option( 'slw_store_notice_text', '' ) ); ?></textarea>
+                            <p class="description">HTML allowed (links, bold, etc.). This text appears at the top of the order form and dashboard.</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="slw_store_notice_type">Notice Type</label></th>
+                        <td>
+                            <select id="slw_store_notice_type" name="slw_store_notice_type">
+                                <?php $current_type = get_option( 'slw_store_notice_type', 'info' ); ?>
+                                <option value="info" <?php selected( $current_type, 'info' ); ?>>Info (blue)</option>
+                                <option value="success" <?php selected( $current_type, 'success' ); ?>>Success (green)</option>
+                                <option value="warning" <?php selected( $current_type, 'warning' ); ?>>Warning (yellow)</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="slw_store_notice_dismissible">Dismissible</label></th>
+                        <td>
+                            <label>
+                                <input type="checkbox" id="slw_store_notice_dismissible" name="slw_store_notice_dismissible"
+                                       value="1" <?php checked( get_option( 'slw_store_notice_dismissible', false ) ); ?> />
+                                Allow customers to dismiss the notice (reappears if you change the text)
+                            </label>
                         </td>
                     </tr>
                 </table>

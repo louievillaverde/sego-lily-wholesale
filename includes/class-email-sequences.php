@@ -20,6 +20,7 @@ class SLW_Email_Sequences {
         // AJAX handlers
         add_action( 'wp_ajax_slw_test_mautic_connection', array( __CLASS__, 'ajax_test_connection' ) );
         add_action( 'wp_ajax_slw_refresh_sequences',      array( __CLASS__, 'ajax_refresh_sequences' ) );
+        add_action( 'wp_ajax_slw_send_newsletter',        array( __CLASS__, 'ajax_send_newsletter' ) );
     }
 
     /* =================================================================
@@ -649,6 +650,103 @@ class SLW_Email_Sequences {
                 <?php endif; ?>
             </details>
 
+            <!-- ─── Compose Newsletter ─── -->
+            <div class="slw-newsletter-section">
+                <div class="slw-newsletter-header">
+                    <h2 class="title">Newsletters</h2>
+                    <button type="button" class="button button-primary" id="slw-compose-newsletter-btn">New Newsletter</button>
+                </div>
+
+                <div id="slw-newsletter-compose" class="slw-admin-card slw-newsletter-compose" style="display:none;">
+                    <h3>Compose Newsletter</h3>
+                    <table class="form-table">
+                        <tr>
+                            <th scope="row"><label for="slw-nl-subject">Subject Line</label></th>
+                            <td><input type="text" id="slw-nl-subject" class="large-text" placeholder="Your newsletter subject..." /></td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><label>Body</label></th>
+                            <td>
+                                <?php
+                                wp_editor( '', 'slw_nl_body', array(
+                                    'textarea_name' => 'slw_nl_body',
+                                    'media_buttons' => true,
+                                    'textarea_rows' => 12,
+                                    'teeny'         => false,
+                                    'quicktags'     => true,
+                                ) );
+                                ?>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Audience</th>
+                            <td>
+                                <fieldset>
+                                    <label><input type="radio" name="slw_nl_audience" value="all" checked /> All wholesale customers</label><br>
+                                    <label><input type="radio" name="slw_nl_audience" value="standard" /> Standard tier only</label><br>
+                                    <label><input type="radio" name="slw_nl_audience" value="preferred" /> Preferred tier only</label><br>
+                                    <label><input type="radio" name="slw_nl_audience" value="vip" /> VIP tier only</label><br>
+                                    <label><input type="radio" name="slw_nl_audience" value="select" /> Select individually</label>
+                                </fieldset>
+                                <div id="slw-nl-individual-select" style="display:none;margin-top:10px;">
+                                    <select id="slw-nl-recipients" multiple="multiple" style="width:100%;min-height:120px;">
+                                        <?php
+                                        $ws_users = get_users( array( 'role' => 'wholesale_customer' ) );
+                                        foreach ( $ws_users as $ws_user ) :
+                                            $tier_label = '';
+                                            if ( class_exists( 'SLW_Tiers' ) ) {
+                                                $tier = SLW_Tiers::get_user_tier( $ws_user->ID );
+                                                if ( $tier ) $tier_label = ' (' . esc_html( $tier ) . ')';
+                                            }
+                                        ?>
+                                            <option value="<?php echo esc_attr( $ws_user->ID ); ?>">
+                                                <?php echo esc_html( $ws_user->display_name . ' <' . $ws_user->user_email . '>' . $tier_label ); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <p class="description">Hold Ctrl/Cmd to select multiple customers.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    </table>
+                    <div class="slw-newsletter-actions">
+                        <button type="button" class="button button-primary" id="slw-send-newsletter-btn" data-nonce="<?php echo esc_attr( $nonce ); ?>">Send Newsletter</button>
+                        <button type="button" class="button" id="slw-cancel-newsletter-btn">Cancel</button>
+                        <span id="slw-newsletter-status" style="margin-left:12px;"></span>
+                    </div>
+                </div>
+
+                <?php
+                // Newsletter history
+                $newsletter_log = get_option( 'slw_newsletter_log', array() );
+                if ( ! empty( $newsletter_log ) ) :
+                ?>
+                <div class="slw-admin-card" style="margin-top:12px;">
+                    <h3>Recent Newsletters</h3>
+                    <table class="wp-list-table widefat striped">
+                        <thead>
+                            <tr>
+                                <th>Subject</th>
+                                <th>Recipients</th>
+                                <th>Sent By</th>
+                                <th>Date</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ( array_slice( $newsletter_log, 0, 20 ) as $nl_entry ) : ?>
+                            <tr>
+                                <td><?php echo esc_html( $nl_entry['subject'] ?? '' ); ?></td>
+                                <td><?php echo esc_html( $nl_entry['recipient_count'] ?? 0 ); ?> contact(s)</td>
+                                <td><?php echo esc_html( $nl_entry['sent_by'] ?? '' ); ?></td>
+                                <td><?php echo esc_html( $nl_entry['date'] ?? '' ); ?></td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <?php endif; ?>
+            </div>
+
             <!-- ─── Provider Settings (Accordion) ─── -->
             <details id="slw-settings-accordion" class="slw-seq-accordion slw-seq-accordion--settings" <?php echo $settings_open ? 'open' : ''; ?>>
                 <summary class="slw-seq-accordion__bar">
@@ -831,6 +929,90 @@ class SLW_Email_Sequences {
             $('#slw_email_provider').on('change', toggleProviderFields);
             toggleProviderFields();
 
+            // Newsletter compose toggle
+            $('#slw-compose-newsletter-btn').on('click', function() {
+                $('#slw-newsletter-compose').slideToggle(200);
+            });
+            $('#slw-cancel-newsletter-btn').on('click', function() {
+                $('#slw-newsletter-compose').slideUp(200);
+            });
+
+            // Show/hide individual recipient select
+            $('input[name="slw_nl_audience"]').on('change', function() {
+                if ($(this).val() === 'select') {
+                    $('#slw-nl-individual-select').show();
+                } else {
+                    $('#slw-nl-individual-select').hide();
+                }
+            });
+
+            // Send newsletter
+            $('#slw-send-newsletter-btn').on('click', function() {
+                var $btn = $(this);
+                var $status = $('#slw-newsletter-status');
+                var subject = $('#slw-nl-subject').val().trim();
+
+                // Get TinyMCE content
+                var body = '';
+                if (typeof tinyMCE !== 'undefined' && tinyMCE.get('slw_nl_body')) {
+                    body = tinyMCE.get('slw_nl_body').getContent();
+                } else {
+                    body = $('#slw_nl_body').val();
+                }
+
+                if (!subject) {
+                    $status.html('<span style="color:#b71c1c;">Please enter a subject line.</span>');
+                    return;
+                }
+                if (!body || body.trim() === '') {
+                    $status.html('<span style="color:#b71c1c;">Please enter the newsletter body.</span>');
+                    return;
+                }
+
+                var audience = $('input[name="slw_nl_audience"]:checked').val();
+                var recipients = [];
+                if (audience === 'select') {
+                    recipients = $('#slw-nl-recipients').val() || [];
+                    if (recipients.length === 0) {
+                        $status.html('<span style="color:#b71c1c;">Please select at least one recipient.</span>');
+                        return;
+                    }
+                }
+
+                if (!confirm('Send this newsletter to ' + (audience === 'select' ? recipients.length + ' selected' : audience) + ' wholesale customers?')) {
+                    return;
+                }
+
+                $btn.prop('disabled', true).text('Sending...');
+                $status.text('');
+
+                $.post(ajaxurl, {
+                    action: 'slw_send_newsletter',
+                    nonce: $btn.data('nonce'),
+                    subject: subject,
+                    body: body,
+                    audience: audience,
+                    recipients: recipients
+                }, function(response) {
+                    $btn.prop('disabled', false).text('Send Newsletter');
+                    if (response.success) {
+                        $status.html('<span style="color:#1b5e20;font-weight:600;">&#10003; ' + response.data + '</span>');
+                        // Clear form
+                        $('#slw-nl-subject').val('');
+                        if (typeof tinyMCE !== 'undefined' && tinyMCE.get('slw_nl_body')) {
+                            tinyMCE.get('slw_nl_body').setContent('');
+                        }
+                        // Reload after 2 seconds to show the log entry
+                        setTimeout(function() { location.reload(); }, 2000);
+                    } else {
+                        $status.html('<span style="color:#b71c1c;font-weight:600;">&#10007; ' + response.data + '</span>');
+                    }
+                }).fail(function() {
+                    $btn.prop('disabled', false).text('Send Newsletter');
+                    $status.html('<span style="color:#b71c1c;">Request failed.</span>');
+                });
+            });
+
             // Test connection
             $('#slw-test-connection').on('click', function() {
                 var $btn = $(this);
@@ -857,5 +1039,300 @@ class SLW_Email_Sequences {
         })(jQuery);
         </script>
         <?php
+    }
+
+    /* =================================================================
+       Newsletter Send
+       ================================================================= */
+
+    /**
+     * AJAX: Send a newsletter to wholesale customers.
+     */
+    public static function ajax_send_newsletter() {
+        check_ajax_referer( 'slw_sequences_nonce', 'nonce' );
+
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_send_json_error( 'Permission denied.' );
+        }
+
+        $subject    = sanitize_text_field( $_POST['subject'] ?? '' );
+        $body       = wp_kses_post( $_POST['body'] ?? '' );
+        $audience   = sanitize_text_field( $_POST['audience'] ?? 'all' );
+        $recipients = isset( $_POST['recipients'] ) ? array_map( 'absint', (array) $_POST['recipients'] ) : array();
+
+        if ( empty( $subject ) || empty( $body ) ) {
+            wp_send_json_error( 'Subject and body are required.' );
+        }
+
+        // Resolve the recipient list
+        $email_list = self::resolve_newsletter_recipients( $audience, $recipients );
+
+        if ( empty( $email_list ) ) {
+            wp_send_json_error( 'No recipients found for the selected audience.' );
+        }
+
+        // Build the branded HTML email
+        $html_email = self::build_branded_email( $subject, $body );
+
+        // Determine send method: Mautic or wp_mail
+        $provider = get_option( 'slw_email_provider', 'none' );
+        $mautic_url = rtrim( get_option( 'slw_mautic_url', '' ), '/' );
+        $has_mautic = $provider === 'mautic' && ! empty( $mautic_url )
+                      && ! empty( get_option( 'slw_mautic_client_id', '' ) )
+                      && ! empty( get_option( 'slw_mautic_client_secret', '' ) );
+
+        $sent_count = 0;
+        $send_error = '';
+
+        if ( $has_mautic ) {
+            $result = self::send_via_mautic( $subject, $html_email, $email_list );
+            if ( is_wp_error( $result ) ) {
+                $send_error = $result->get_error_message();
+            } else {
+                $sent_count = $result;
+            }
+        } else {
+            $result = self::send_via_wp_mail( $subject, $html_email, $email_list );
+            if ( is_wp_error( $result ) ) {
+                $send_error = $result->get_error_message();
+            } else {
+                $sent_count = $result;
+            }
+        }
+
+        if ( $send_error ) {
+            wp_send_json_error( 'Send failed: ' . $send_error );
+        }
+
+        // Log the newsletter
+        self::log_newsletter( $subject, $sent_count );
+
+        // Log to webhook log
+        $webhook_log = get_option( 'slw_webhook_log', array() );
+        array_unshift( $webhook_log, array(
+            'event'  => 'newsletter_sent',
+            'email'  => $subject,
+            'status' => 'success',
+            'code'   => 200,
+            'time'   => current_time( 'mysql' ),
+        ) );
+        update_option( 'slw_webhook_log', array_slice( $webhook_log, 0, 50 ) );
+
+        wp_send_json_success( 'Newsletter sent to ' . $sent_count . ' contact(s).' );
+    }
+
+    /**
+     * Resolve the list of email addresses based on audience selection.
+     *
+     * @param string $audience    Audience type: all, standard, preferred, vip, select.
+     * @param array  $user_ids    Specific user IDs if audience is 'select'.
+     * @return array              Array of email addresses.
+     */
+    private static function resolve_newsletter_recipients( $audience, $user_ids = array() ) {
+        $emails = array();
+
+        if ( $audience === 'select' && ! empty( $user_ids ) ) {
+            foreach ( $user_ids as $uid ) {
+                $user = get_userdata( $uid );
+                if ( $user && slw_is_wholesale_user( $uid ) ) {
+                    $emails[] = $user->user_email;
+                }
+            }
+            return $emails;
+        }
+
+        // Get all wholesale users
+        $users = get_users( array( 'role' => 'wholesale_customer' ) );
+
+        foreach ( $users as $user ) {
+            // Filter by tier if needed
+            if ( $audience !== 'all' && class_exists( 'SLW_Tiers' ) ) {
+                $tier = strtolower( SLW_Tiers::get_user_tier( $user->ID ) ?: 'standard' );
+                if ( $tier !== $audience ) {
+                    continue;
+                }
+            }
+            $emails[] = $user->user_email;
+        }
+
+        return array_unique( $emails );
+    }
+
+    /**
+     * Build a branded HTML email matching the plugin's transactional email style.
+     *
+     * @param string $subject The email subject.
+     * @param string $body    The email body HTML.
+     * @return string         Complete HTML email.
+     */
+    private static function build_branded_email( $subject, $body ) {
+        $from_name = class_exists( 'SLW_Email_Settings' ) ? SLW_Email_Settings::get( 'from_name' ) : get_bloginfo( 'name' );
+        $signature = class_exists( 'SLW_Email_Settings' ) ? SLW_Email_Settings::get_signature() : '';
+
+        $html = '<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>' . esc_html( $subject ) . '</title>
+</head>
+<body style="margin:0;padding:0;background:#f4f4f4;font-family:Georgia,\'Times New Roman\',serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:20px 0;">
+<tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;">
+    <!-- Header -->
+    <tr>
+        <td style="background:#386174;padding:28px 32px;text-align:center;">
+            <h1 style="margin:0;font-family:Georgia,\'Times New Roman\',serif;font-size:24px;color:#F7F6F3;">'
+            . esc_html( $from_name ) .
+            '</h1>
+        </td>
+    </tr>
+    <!-- Body -->
+    <tr>
+        <td style="padding:32px;font-family:Georgia,\'Times New Roman\',serif;font-size:16px;line-height:1.6;color:#2C2C2C;">'
+            . $body .
+            ( $signature ? '<br><br><div style="border-top:1px solid #e0ddd8;padding-top:16px;margin-top:16px;color:#628393;font-size:14px;">' . nl2br( esc_html( $signature ) ) . '</div>' : '' ) .
+        '</td>
+    </tr>
+    <!-- Footer -->
+    <tr>
+        <td style="background:#1E2A30;padding:20px 32px;text-align:center;font-size:12px;color:#628393;">
+            <p style="margin:0;">' . esc_html( $from_name ) . ' &middot; Wholesale Partners</p>
+        </td>
+    </tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>';
+
+        return $html;
+    }
+
+    /**
+     * Send newsletter via Mautic API.
+     *
+     * @param string $subject    Email subject.
+     * @param string $html       Full HTML email.
+     * @param array  $emails     Recipient email addresses.
+     * @return int|WP_Error      Number of recipients sent to, or error.
+     */
+    private static function send_via_mautic( $subject, $html, $emails ) {
+        // Step 1: Create the email in Mautic
+        $email_result = self::mautic_request( 'POST', '/api/emails/new', array(
+            'headers' => array(
+                'Authorization' => 'Bearer ' . self::get_mautic_token(),
+                'Content-Type'  => 'application/json',
+                'Accept'        => 'application/json',
+                'User-Agent'    => self::USER_AGENT,
+            ),
+            'body' => wp_json_encode( array(
+                'name'       => $subject . ' — ' . current_time( 'Y-m-d H:i' ),
+                'subject'    => $subject,
+                'customHtml' => $html,
+                'emailType'  => 'list',
+                'isPublished' => true,
+            ) ),
+        ) );
+
+        if ( is_wp_error( $email_result ) ) {
+            return $email_result;
+        }
+
+        $email_id = isset( $email_result['email']['id'] ) ? (int) $email_result['email']['id'] : 0;
+        if ( ! $email_id ) {
+            return new \WP_Error( 'mautic_email', 'Failed to create email in Mautic.' );
+        }
+
+        // Step 2: Look up Mautic contact IDs by email address
+        $contact_ids = array();
+        foreach ( $emails as $email_addr ) {
+            $search = self::mautic_request( 'GET', '/api/contacts?search=' . rawurlencode( $email_addr ) . '&limit=1' );
+            if ( ! is_wp_error( $search ) && ! empty( $search['contacts'] ) ) {
+                foreach ( $search['contacts'] as $contact ) {
+                    $contact_ids[] = (int) $contact['id'];
+                    break; // first match
+                }
+            }
+        }
+
+        if ( empty( $contact_ids ) ) {
+            return new \WP_Error( 'no_contacts', 'No matching contacts found in Mautic.' );
+        }
+
+        // Step 3: Send the email to each contact
+        $sent = 0;
+        foreach ( $contact_ids as $cid ) {
+            $send_result = self::mautic_request( 'POST', '/api/emails/' . $email_id . '/contact/' . $cid . '/send' );
+            if ( ! is_wp_error( $send_result ) ) {
+                $sent++;
+            }
+        }
+
+        return $sent;
+    }
+
+    /**
+     * Send newsletter via wp_mail() fallback. Batches in groups of 10 via BCC.
+     *
+     * @param string $subject Email subject.
+     * @param string $html    Full HTML email.
+     * @param array  $emails  Recipient email addresses.
+     * @return int|WP_Error   Number of recipients sent to, or error.
+     */
+    private static function send_via_wp_mail( $subject, $html, $emails ) {
+        $headers = array( 'Content-Type: text/html; charset=UTF-8' );
+
+        if ( class_exists( 'SLW_Email_Settings' ) ) {
+            $headers = array_merge( $headers, SLW_Email_Settings::get_headers() );
+        }
+
+        $from_address = class_exists( 'SLW_Email_Settings' ) ? SLW_Email_Settings::get( 'from_address' ) : get_option( 'admin_email' );
+
+        $batches = array_chunk( $emails, 10 );
+        $sent    = 0;
+
+        foreach ( $batches as $batch ) {
+            $bcc_headers = $headers;
+            foreach ( $batch as $email_addr ) {
+                $bcc_headers[] = 'Bcc: ' . $email_addr;
+            }
+
+            $result = wp_mail( $from_address, $subject, $html, $bcc_headers );
+            if ( $result ) {
+                $sent += count( $batch );
+            }
+        }
+
+        if ( $sent === 0 ) {
+            return new \WP_Error( 'send_failed', 'wp_mail() failed to send the newsletter.' );
+        }
+
+        return $sent;
+    }
+
+    /**
+     * Log a sent newsletter to the option-based log (last 20 entries).
+     *
+     * @param string $subject         The newsletter subject.
+     * @param int    $recipient_count Number of recipients.
+     */
+    private static function log_newsletter( $subject, $recipient_count ) {
+        $log = get_option( 'slw_newsletter_log', array() );
+
+        $current_user = wp_get_current_user();
+
+        array_unshift( $log, array(
+            'subject'         => $subject,
+            'date'            => current_time( 'Y-m-d H:i' ),
+            'recipient_count' => $recipient_count,
+            'sent_by'         => $current_user->display_name ?: $current_user->user_login,
+        ) );
+
+        // Keep only the last 20 entries
+        $log = array_slice( $log, 0, 20 );
+
+        update_option( 'slw_newsletter_log', $log );
     }
 }

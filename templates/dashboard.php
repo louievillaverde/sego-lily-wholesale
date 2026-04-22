@@ -25,7 +25,31 @@ $total_pages  = $order_data['pages'];
 $reorder_nonce = wp_create_nonce( 'slw_reorder_nonce' );
 ?>
 
+<?php
+$saved_carts_nonce = wp_create_nonce( 'slw_saved_carts' );
+$saved_carts = get_user_meta( $user->ID, 'slw_saved_carts', true );
+if ( ! is_array( $saved_carts ) ) {
+	$saved_carts = array();
+}
+?>
+
 <div class="slw-dashboard-wrap">
+
+	<?php if ( get_option( 'slw_store_notice_enabled' ) && get_option( 'slw_store_notice_text' ) ) : ?>
+		<?php
+		$notice_type = get_option( 'slw_store_notice_type', 'info' );
+		$notice_dismissible = get_option( 'slw_store_notice_dismissible', false );
+		$notice_dismissed = get_user_meta( get_current_user_id(), 'slw_notice_dismissed', true );
+		?>
+		<?php if ( ! $notice_dismissible || $notice_dismissed !== md5( get_option( 'slw_store_notice_text' ) ) ) : ?>
+		<div class="slw-notice slw-notice-<?php echo esc_attr( $notice_type ); ?> slw-store-notice<?php echo $notice_dismissible ? ' slw-notice-dismissible' : ''; ?>">
+			<?php echo wp_kses_post( get_option( 'slw_store_notice_text' ) ); ?>
+			<?php if ( $notice_dismissible ) : ?>
+				<button type="button" class="slw-notice-dismiss" data-nonce="<?php echo esc_attr( wp_create_nonce( 'slw_dismiss_notice' ) ); ?>">&times;</button>
+			<?php endif; ?>
+		</div>
+		<?php endif; ?>
+	<?php endif; ?>
 
 	<!-- Header / Welcome -->
 	<div class="slw-dashboard-header">
@@ -83,6 +107,32 @@ $reorder_nonce = wp_create_nonce( 'slw_reorder_nonce' );
 				?>
 				<li><a href="mailto:<?php echo esc_attr( $contact_email ); ?>"><?php echo $contact_label; ?></a></li>
 			</ul>
+		</div>
+
+		<!-- Saved Orders -->
+		<div class="slw-dashboard-card slw-dashboard-card-wide slw-saved-carts-card">
+			<h3>Saved Orders</h3>
+			<?php if ( empty( $saved_carts ) ) : ?>
+				<p class="slw-empty-saved-carts">No saved order templates yet. Save your current cart from the <a href="<?php echo esc_url( home_url( '/wholesale-order' ) ); ?>">order form</a> or use the button below.</p>
+			<?php else : ?>
+			<div class="slw-saved-carts-list">
+				<?php foreach ( $saved_carts as $slug => $cart ) : ?>
+				<div class="slw-saved-cart-row" data-slug="<?php echo esc_attr( $slug ); ?>">
+					<div class="slw-saved-cart-info">
+						<strong><?php echo esc_html( $cart['name'] ); ?></strong>
+						<span class="slw-saved-cart-meta"><?php echo esc_html( count( $cart['items'] ) ); ?> item(s) &middot; Saved <?php echo esc_html( $cart['created'] ); ?></span>
+					</div>
+					<div class="slw-saved-cart-actions">
+						<button type="button" class="slw-btn slw-btn-small slw-btn-primary slw-load-cart-btn" data-slug="<?php echo esc_attr( $slug ); ?>">Load</button>
+						<button type="button" class="slw-btn slw-btn-small slw-btn-ghost slw-delete-cart-btn" data-slug="<?php echo esc_attr( $slug ); ?>">Delete</button>
+					</div>
+				</div>
+				<?php endforeach; ?>
+			</div>
+			<?php endif; ?>
+			<div class="slw-saved-carts-footer">
+				<button type="button" class="slw-btn slw-btn-secondary" id="slw-save-current-cart-btn">Save Current Cart</button>
+			</div>
 		</div>
 
 		<!-- Order History (full width) -->
@@ -180,6 +230,125 @@ $reorder_nonce = wp_create_nonce( 'slw_reorder_nonce' );
 
 	</div>
 </div>
+
+<!-- Saved Carts + Notice Dismiss AJAX -->
+<script>
+(function() {
+	var ajaxUrl = '<?php echo esc_js( admin_url( 'admin-ajax.php' ) ); ?>';
+	var cartsNonce = '<?php echo esc_js( $saved_carts_nonce ); ?>';
+
+	// Save current cart
+	var saveBtn = document.getElementById('slw-save-current-cart-btn');
+	if (saveBtn) {
+		saveBtn.addEventListener('click', function() {
+			var templateName = prompt('Enter a name for this order template:');
+			if (!templateName || !templateName.trim()) return;
+
+			saveBtn.disabled = true;
+			saveBtn.textContent = 'Saving...';
+
+			var formData = new FormData();
+			formData.append('action', 'slw_save_cart');
+			formData.append('nonce', cartsNonce);
+			formData.append('template_name', templateName.trim());
+
+			fetch(ajaxUrl, { method: 'POST', credentials: 'same-origin', body: formData })
+				.then(function(r) { return r.json(); })
+				.then(function(data) {
+					if (data.success) {
+						location.reload();
+					} else {
+						alert(data.data.message || 'Could not save cart.');
+						saveBtn.disabled = false;
+						saveBtn.textContent = 'Save Current Cart';
+					}
+				})
+				.catch(function() {
+					alert('Network error. Please try again.');
+					saveBtn.disabled = false;
+					saveBtn.textContent = 'Save Current Cart';
+				});
+		});
+	}
+
+	// Load saved cart
+	document.querySelectorAll('.slw-load-cart-btn').forEach(function(btn) {
+		btn.addEventListener('click', function() {
+			var slug = this.getAttribute('data-slug');
+			btn.disabled = true;
+			btn.textContent = 'Loading...';
+
+			var formData = new FormData();
+			formData.append('action', 'slw_load_cart');
+			formData.append('nonce', cartsNonce);
+			formData.append('slug', slug);
+
+			fetch(ajaxUrl, { method: 'POST', credentials: 'same-origin', body: formData })
+				.then(function(r) { return r.json(); })
+				.then(function(data) {
+					if (data.success) {
+						window.location.href = data.data.redirect;
+					} else {
+						alert(data.data.message || 'Could not load cart.');
+						btn.disabled = false;
+						btn.textContent = 'Load';
+					}
+				})
+				.catch(function() {
+					alert('Network error. Please try again.');
+					btn.disabled = false;
+					btn.textContent = 'Load';
+				});
+		});
+	});
+
+	// Delete saved cart
+	document.querySelectorAll('.slw-delete-cart-btn').forEach(function(btn) {
+		btn.addEventListener('click', function() {
+			if (!confirm('Delete this saved order template?')) return;
+			var slug = this.getAttribute('data-slug');
+			var row = this.closest('.slw-saved-cart-row');
+			btn.disabled = true;
+			btn.textContent = 'Deleting...';
+
+			var formData = new FormData();
+			formData.append('action', 'slw_delete_cart');
+			formData.append('nonce', cartsNonce);
+			formData.append('slug', slug);
+
+			fetch(ajaxUrl, { method: 'POST', credentials: 'same-origin', body: formData })
+				.then(function(r) { return r.json(); })
+				.then(function(data) {
+					if (data.success) {
+						row.remove();
+					} else {
+						alert(data.data.message || 'Could not delete template.');
+						btn.disabled = false;
+						btn.textContent = 'Delete';
+					}
+				})
+				.catch(function() {
+					alert('Network error. Please try again.');
+					btn.disabled = false;
+					btn.textContent = 'Delete';
+				});
+		});
+	});
+
+	// Dismiss store notice
+	var dismissBtn = document.querySelector('.slw-notice-dismiss');
+	if (dismissBtn) {
+		dismissBtn.addEventListener('click', function() {
+			var notice = this.closest('.slw-store-notice');
+			var formData = new FormData();
+			formData.append('action', 'slw_dismiss_notice');
+			formData.append('nonce', this.getAttribute('data-nonce'));
+			fetch(ajaxUrl, { method: 'POST', credentials: 'same-origin', body: formData });
+			notice.style.display = 'none';
+		});
+	}
+})();
+</script>
 
 <!-- Reorder AJAX -->
 <script>

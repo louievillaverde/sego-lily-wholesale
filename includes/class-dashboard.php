@@ -15,6 +15,14 @@ class SLW_Dashboard {
 	public static function init() {
 		add_shortcode( 'sego_wholesale_dashboard', array( __CLASS__, 'render' ) );
 		add_action( 'wp_ajax_slw_reorder', array( __CLASS__, 'ajax_reorder' ) );
+
+		// Saved carts (order templates)
+		add_action( 'wp_ajax_slw_save_cart', array( __CLASS__, 'ajax_save_cart' ) );
+		add_action( 'wp_ajax_slw_load_cart', array( __CLASS__, 'ajax_load_cart' ) );
+		add_action( 'wp_ajax_slw_delete_cart', array( __CLASS__, 'ajax_delete_cart' ) );
+
+		// Dismiss store notice
+		add_action( 'wp_ajax_slw_dismiss_notice', array( __CLASS__, 'ajax_dismiss_notice' ) );
 	}
 
 	/**
@@ -203,5 +211,176 @@ class SLW_Dashboard {
 		}
 
 		wp_send_json_success( $response );
+	}
+
+	// ── Saved Carts (Order Templates) ─────────────────────────────────────
+
+	/**
+	 * AJAX: Save the current WooCommerce cart as a named template.
+	 */
+	public static function ajax_save_cart() {
+		// Accept nonce from either the order form nonce or the saved carts nonce
+		$valid = false;
+		if ( isset( $_POST['nonce'] ) ) {
+			if ( wp_verify_nonce( $_POST['nonce'], 'slw_saved_carts' ) ) {
+				$valid = true;
+			} elseif ( wp_verify_nonce( $_POST['nonce'], 'slw_order_form' ) ) {
+				$valid = true;
+			}
+		}
+		if ( ! $valid ) {
+			wp_send_json_error( array( 'message' => 'Security check failed.' ) );
+		}
+
+		if ( ! is_user_logged_in() || ! slw_is_wholesale_user() ) {
+			wp_send_json_error( array( 'message' => 'Wholesale access required.' ) );
+		}
+
+		$name = isset( $_POST['template_name'] ) ? sanitize_text_field( $_POST['template_name'] ) : '';
+		if ( empty( $name ) ) {
+			wp_send_json_error( array( 'message' => 'Please enter a name for the template.' ) );
+		}
+
+		$cart = WC()->cart;
+		if ( ! $cart || $cart->is_empty() ) {
+			wp_send_json_error( array( 'message' => 'Your cart is empty. Add items before saving a template.' ) );
+		}
+
+		$user_id = get_current_user_id();
+		$saved   = get_user_meta( $user_id, 'slw_saved_carts', true );
+		if ( ! is_array( $saved ) ) {
+			$saved = array();
+		}
+
+		// Enforce 10-template limit
+		if ( count( $saved ) >= 10 ) {
+			wp_send_json_error( array( 'message' => 'You can save up to 10 order templates. Please delete one before saving a new one.' ) );
+		}
+
+		// Build item list from current cart
+		$items = array();
+		foreach ( $cart->get_cart() as $cart_item ) {
+			$items[] = array(
+				'product_id' => absint( $cart_item['product_id'] ),
+				'quantity'   => absint( $cart_item['quantity'] ),
+			);
+		}
+
+		$slug = sanitize_title( $name ) . '-' . time();
+		$saved[ $slug ] = array(
+			'name'    => $name,
+			'items'   => $items,
+			'created' => current_time( 'Y-m-d' ),
+		);
+
+		update_user_meta( $user_id, 'slw_saved_carts', $saved );
+
+		wp_send_json_success( array(
+			'message' => sprintf( 'Order template "%s" saved with %d item(s).', esc_html( $name ), count( $items ) ),
+		) );
+	}
+
+	/**
+	 * AJAX: Load a saved cart template — clears current cart and adds all template items.
+	 */
+	public static function ajax_load_cart() {
+		if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'slw_saved_carts' ) ) {
+			wp_send_json_error( array( 'message' => 'Security check failed.' ) );
+		}
+
+		if ( ! is_user_logged_in() || ! slw_is_wholesale_user() ) {
+			wp_send_json_error( array( 'message' => 'Wholesale access required.' ) );
+		}
+
+		$slug    = isset( $_POST['slug'] ) ? sanitize_text_field( $_POST['slug'] ) : '';
+		$user_id = get_current_user_id();
+		$saved   = get_user_meta( $user_id, 'slw_saved_carts', true );
+
+		if ( ! is_array( $saved ) || ! isset( $saved[ $slug ] ) ) {
+			wp_send_json_error( array( 'message' => 'Saved template not found.' ) );
+		}
+
+		$template = $saved[ $slug ];
+
+		// Clear the current cart
+		WC()->cart->empty_cart();
+
+		$added   = 0;
+		$skipped = array();
+
+		foreach ( $template['items'] as $item ) {
+			$product_id = absint( $item['product_id'] );
+			$quantity   = absint( $item['quantity'] );
+
+			$product = wc_get_product( $product_id );
+			if ( ! $product || ! $product->exists() || ! $product->is_in_stock() || ! $product->is_purchasable() ) {
+				$name = $product ? $product->get_name() : 'Product #' . $product_id;
+				$skipped[] = $name;
+				continue;
+			}
+
+			$result = WC()->cart->add_to_cart( $product_id, $quantity );
+			if ( $result ) {
+				$added++;
+			}
+		}
+
+		$response = array(
+			'message'  => sprintf( '%d item(s) added to your cart.', $added ),
+			'redirect' => wc_get_cart_url(),
+		);
+
+		if ( ! empty( $skipped ) ) {
+			$response['message'] .= ' Some items were skipped: ' . implode( ', ', $skipped );
+		}
+
+		wp_send_json_success( $response );
+	}
+
+	/**
+	 * AJAX: Delete a saved cart template.
+	 */
+	public static function ajax_delete_cart() {
+		if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'slw_saved_carts' ) ) {
+			wp_send_json_error( array( 'message' => 'Security check failed.' ) );
+		}
+
+		if ( ! is_user_logged_in() || ! slw_is_wholesale_user() ) {
+			wp_send_json_error( array( 'message' => 'Wholesale access required.' ) );
+		}
+
+		$slug    = isset( $_POST['slug'] ) ? sanitize_text_field( $_POST['slug'] ) : '';
+		$user_id = get_current_user_id();
+		$saved   = get_user_meta( $user_id, 'slw_saved_carts', true );
+
+		if ( ! is_array( $saved ) || ! isset( $saved[ $slug ] ) ) {
+			wp_send_json_error( array( 'message' => 'Saved template not found.' ) );
+		}
+
+		unset( $saved[ $slug ] );
+		update_user_meta( $user_id, 'slw_saved_carts', $saved );
+
+		wp_send_json_success( array( 'message' => 'Template deleted.' ) );
+	}
+
+	// ── Store Notice Dismiss ──────────────────────────────────────────────
+
+	/**
+	 * AJAX: Dismiss the store notice. Stores a hash of the notice text so
+	 * if the admin updates the notice, it reappears.
+	 */
+	public static function ajax_dismiss_notice() {
+		if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'slw_dismiss_notice' ) ) {
+			wp_send_json_error( array( 'message' => 'Security check failed.' ) );
+		}
+
+		if ( ! is_user_logged_in() ) {
+			wp_send_json_error( array( 'message' => 'Not logged in.' ) );
+		}
+
+		$notice_text = get_option( 'slw_store_notice_text', '' );
+		update_user_meta( get_current_user_id(), 'slw_notice_dismissed', md5( $notice_text ) );
+
+		wp_send_json_success();
 	}
 }

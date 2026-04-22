@@ -26,6 +26,23 @@ $products = wc_get_products( array(
 ?>
 
 <div class="slw-order-form-wrap">
+
+    <?php if ( get_option( 'slw_store_notice_enabled' ) && get_option( 'slw_store_notice_text' ) ) : ?>
+        <?php
+        $notice_type = get_option( 'slw_store_notice_type', 'info' );
+        $notice_dismissible = get_option( 'slw_store_notice_dismissible', false );
+        $notice_dismissed = get_user_meta( get_current_user_id(), 'slw_notice_dismissed', true );
+        ?>
+        <?php if ( ! $notice_dismissible || $notice_dismissed !== md5( get_option( 'slw_store_notice_text' ) ) ) : ?>
+        <div class="slw-notice slw-notice-<?php echo esc_attr( $notice_type ); ?> slw-store-notice<?php echo $notice_dismissible ? ' slw-notice-dismissible' : ''; ?>">
+            <?php echo wp_kses_post( get_option( 'slw_store_notice_text' ) ); ?>
+            <?php if ( $notice_dismissible ) : ?>
+                <button type="button" class="slw-notice-dismiss" data-nonce="<?php echo esc_attr( wp_create_nonce( 'slw_dismiss_notice' ) ); ?>">&times;</button>
+            <?php endif; ?>
+        </div>
+        <?php endif; ?>
+    <?php endif; ?>
+
     <div class="slw-order-form-header">
         <h2>Wholesale Order Form</h2>
         <p>Hey <?php echo esc_html( $first_name ); ?>! Set your quantities and add items to your cart. All prices shown are your wholesale rate.</p>
@@ -137,13 +154,26 @@ $products = wc_get_products( array(
                     }
                 }
                 $subtitle = implode( ' | ', $subtitle_parts );
+
+                // Case pack size
+                $case_pack = class_exists( 'SLW_Product_Minimums' ) ? SLW_Product_Minimums::get_case_pack_size( $product->get_id() ) : 0;
+                $min_qty   = class_exists( 'SLW_Product_Minimums' ) ? SLW_Product_Minimums::get_product_minimum( $product->get_id() ) : 0;
+                $step      = $case_pack > 0 ? $case_pack : 1;
+                $default_qty = $case_pack > 0 ? $case_pack : 0;
+                $min_input = $case_pack > 0 ? $case_pack : 0;
+                if ( $min_qty > $min_input ) {
+                    $min_input = $min_qty;
+                }
             ?>
-            <tr data-product-id="<?php echo esc_attr( $product->get_id() ); ?>">
+            <tr data-product-id="<?php echo esc_attr( $product->get_id() ); ?>" id="slw-product-<?php echo esc_attr( $product->get_id() ); ?>">
                 <td class="slw-col-image">
                     <img src="<?php echo esc_url( $image ); ?>" alt="<?php echo esc_attr( $product->get_name() ); ?>" width="60" height="60" />
                 </td>
                 <td class="slw-col-product">
                     <strong><?php echo esc_html( $product->get_name() ); ?></strong>
+                    <?php if ( $case_pack > 0 ) : ?>
+                        <br><span class="slw-case-pack-label">Case of <?php echo esc_html( $case_pack ); ?></span>
+                    <?php endif; ?>
                     <?php if ( $subtitle ) : ?>
                         <br><span class="slw-product-meta"><?php echo esc_html( $subtitle ); ?></span>
                     <?php endif; ?>
@@ -154,7 +184,7 @@ $products = wc_get_products( array(
                 <td class="slw-col-price"><?php echo $price_html; ?></td>
                 <td class="slw-col-qty">
                     <?php if ( $product->is_type( 'simple' ) && $product->is_in_stock() ) : ?>
-                        <input type="number" class="slw-qty-input" min="0" max="999" value="0" data-product-id="<?php echo esc_attr( $product->get_id() ); ?>" />
+                        <input type="number" class="slw-qty-input" min="<?php echo esc_attr( $min_input ); ?>" max="999" step="<?php echo esc_attr( $step ); ?>" value="<?php echo esc_attr( $default_qty ); ?>" data-product-id="<?php echo esc_attr( $product->get_id() ); ?>" />
                     <?php elseif ( ! $product->is_in_stock() ) : ?>
                         <span class="slw-out-of-stock">Out of stock</span>
                     <?php else : ?>
@@ -167,12 +197,57 @@ $products = wc_get_products( array(
                     <?php endif; ?>
                 </td>
             </tr>
+            <?php
+            // Product Recommendations row
+            if ( class_exists( 'SLW_Product_Recommendations' ) ) :
+                $rec_ids = SLW_Product_Recommendations::get_recommendations( $product->get_id() );
+                if ( ! empty( $rec_ids ) ) :
+                    $rec_names = array();
+                    foreach ( $rec_ids as $rec_id ) {
+                        $rec_product = wc_get_product( $rec_id );
+                        if ( $rec_product ) {
+                            $rec_names[] = '<a href="#slw-product-' . esc_attr( $rec_id ) . '" class="slw-rec-link" data-target="slw-product-' . esc_attr( $rec_id ) . '">' . esc_html( $rec_product->get_name() ) . '</a>';
+                        }
+                    }
+                    if ( ! empty( $rec_names ) ) :
+            ?>
+            <tr class="slw-recommendation-row">
+                <td colspan="5">
+                    <span class="slw-rec-dot"></span>
+                    <span class="slw-rec-label">Pairs well with:</span>
+                    <?php echo implode( ', ', $rec_names ); ?>
+                </td>
+            </tr>
+            <?php
+                    endif;
+                endif;
+            endif;
+            ?>
             <?php endforeach; ?>
         </tbody>
     </table>
 
+    <!-- Shipping Estimate -->
+    <div class="slw-shipping-calculator" id="slw-shipping-calculator">
+        <div class="slw-shipping-calculator-header">
+            <h3>Shipping Estimate</h3>
+            <p>Get an estimated shipping cost for your order before checkout.</p>
+        </div>
+        <div class="slw-shipping-calculator-form">
+            <div class="slw-shipping-calculator-inputs">
+                <input type="text" id="slw-ship-zip" class="slw-ship-input" placeholder="Zip code" maxlength="10"
+                       value="<?php echo esc_attr( get_user_meta( $user->ID, 'shipping_postcode', true ) ); ?>" />
+                <input type="hidden" id="slw-ship-country" value="<?php echo esc_attr( get_user_meta( $user->ID, 'shipping_country', true ) ?: 'US' ); ?>" />
+                <input type="hidden" id="slw-ship-state" value="<?php echo esc_attr( get_user_meta( $user->ID, 'shipping_state', true ) ); ?>" />
+                <button type="button" class="slw-btn slw-btn-small slw-btn-primary" id="slw-calc-shipping-btn">Calculate Shipping</button>
+            </div>
+            <div id="slw-shipping-results" class="slw-shipping-results" style="display:none;"></div>
+        </div>
+    </div>
+
     <div class="slw-order-form-footer">
         <button type="button" class="slw-btn slw-btn-primary" id="slw-add-all-btn">Add All to Cart</button>
+        <button type="button" class="slw-btn slw-btn-secondary" id="slw-save-template-btn">Save as Template</button>
         <a href="<?php echo esc_url( wc_get_cart_url() ); ?>" class="slw-btn slw-btn-secondary">View Cart</a>
     </div>
 
@@ -308,6 +383,169 @@ $products = wc_get_products( array(
                 return;
             }
             addToCart(items, this);
+        });
+    }
+
+    // "Save as Template" button
+    var saveTemplateBtn = document.getElementById('slw-save-template-btn');
+    if (saveTemplateBtn) {
+        saveTemplateBtn.addEventListener('click', function() {
+            var templateName = prompt('Enter a name for this order template:');
+            if (!templateName || !templateName.trim()) return;
+
+            saveTemplateBtn.disabled = true;
+            saveTemplateBtn.textContent = 'Saving...';
+
+            var formData = new FormData();
+            formData.append('action', 'slw_save_cart');
+            formData.append('nonce', nonce);
+            formData.append('template_name', templateName.trim());
+
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', ajaxUrl);
+            xhr.onload = function() {
+                var resp;
+                try { resp = JSON.parse(xhr.responseText); } catch(e) { resp = null; }
+                if (resp && resp.success) {
+                    showMessage(resp.data.message, 'success');
+                } else {
+                    var msg = (resp && resp.data && resp.data.message) ? resp.data.message : 'Could not save template.';
+                    showMessage(msg, 'error');
+                }
+                saveTemplateBtn.disabled = false;
+                saveTemplateBtn.textContent = 'Save as Template';
+            };
+            xhr.onerror = function() {
+                showMessage('Network error. Please try again.', 'error');
+                saveTemplateBtn.disabled = false;
+                saveTemplateBtn.textContent = 'Save as Template';
+            };
+            xhr.send(formData);
+        });
+    }
+
+    // Recommendation links: smooth scroll to the target product row
+    document.querySelectorAll('.slw-rec-link').forEach(function(link) {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            var targetId = this.getAttribute('data-target');
+            var targetRow = document.getElementById(targetId);
+            if (targetRow) {
+                targetRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                targetRow.classList.add('slw-highlight-row');
+                setTimeout(function() {
+                    targetRow.classList.remove('slw-highlight-row');
+                }, 1500);
+            }
+        });
+    });
+
+    // Shipping calculator
+    var calcShipBtn = document.getElementById('slw-calc-shipping-btn');
+    var shipDebounceTimer = null;
+
+    function getCartItems() {
+        var items = [];
+        document.querySelectorAll('.slw-qty-input').forEach(function(input) {
+            var qty = parseInt(input.value) || 0;
+            if (qty > 0) {
+                items.push({
+                    product_id: input.getAttribute('data-product-id'),
+                    quantity: qty
+                });
+            }
+        });
+        return items;
+    }
+
+    function calculateShipping() {
+        var items = getCartItems();
+        var zip = document.getElementById('slw-ship-zip').value.trim();
+        var resultsEl = document.getElementById('slw-shipping-results');
+
+        if (items.length === 0) {
+            resultsEl.style.display = 'block';
+            resultsEl.innerHTML = '<div class="slw-shipping-notice">Set product quantities above first.</div>';
+            return;
+        }
+        if (!zip) {
+            resultsEl.style.display = 'block';
+            resultsEl.innerHTML = '<div class="slw-shipping-notice">Please enter a zip code.</div>';
+            return;
+        }
+
+        calcShipBtn.disabled = true;
+        calcShipBtn.textContent = 'Calculating...';
+        resultsEl.style.display = 'block';
+        resultsEl.innerHTML = '<div class="slw-shipping-notice">Calculating...</div>';
+
+        var formData = new FormData();
+        formData.append('action', 'slw_estimate_shipping');
+        formData.append('nonce', nonce);
+        formData.append('items', JSON.stringify(items));
+        formData.append('zip_code', zip);
+        formData.append('country', document.getElementById('slw-ship-country').value);
+        formData.append('state', document.getElementById('slw-ship-state').value);
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', ajaxUrl);
+        xhr.onload = function() {
+            var resp;
+            try { resp = JSON.parse(xhr.responseText); } catch(e) { resp = null; }
+
+            if (resp && resp.success && resp.data.rates) {
+                var html = '<div class="slw-shipping-rates">';
+                resp.data.rates.forEach(function(rate) {
+                    html += '<div class="slw-shipping-rate">';
+                    html += '<span class="slw-shipping-rate-label">' + rate.label + '</span>';
+                    html += '<span class="slw-shipping-rate-cost">' + rate.cost + '</span>';
+                    html += '</div>';
+                });
+                html += '</div>';
+                resultsEl.innerHTML = html;
+            } else {
+                var msg = (resp && resp.data && resp.data.message) ? resp.data.message : 'Could not calculate shipping.';
+                resultsEl.innerHTML = '<div class="slw-shipping-notice slw-shipping-notice-error">' + msg + '</div>';
+            }
+            calcShipBtn.disabled = false;
+            calcShipBtn.textContent = 'Calculate Shipping';
+        };
+        xhr.onerror = function() {
+            resultsEl.innerHTML = '<div class="slw-shipping-notice slw-shipping-notice-error">Network error. Please try again.</div>';
+            calcShipBtn.disabled = false;
+            calcShipBtn.textContent = 'Calculate Shipping';
+        };
+        xhr.send(formData);
+    }
+
+    if (calcShipBtn) {
+        calcShipBtn.addEventListener('click', calculateShipping);
+    }
+
+    // Debounced auto-recalculate when quantities change (if zip is filled)
+    document.querySelectorAll('.slw-qty-input').forEach(function(input) {
+        input.addEventListener('change', function() {
+            var zip = document.getElementById('slw-ship-zip');
+            if (zip && zip.value.trim()) {
+                clearTimeout(shipDebounceTimer);
+                shipDebounceTimer = setTimeout(calculateShipping, 800);
+            }
+        });
+    });
+
+    // Dismiss store notice
+    var dismissBtn = document.querySelector('.slw-notice-dismiss');
+    if (dismissBtn) {
+        dismissBtn.addEventListener('click', function() {
+            var notice = this.closest('.slw-store-notice');
+            var formData = new FormData();
+            formData.append('action', 'slw_dismiss_notice');
+            formData.append('nonce', this.getAttribute('data-nonce'));
+
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', ajaxUrl);
+            xhr.send(formData);
+            notice.style.display = 'none';
         });
     }
 })();
