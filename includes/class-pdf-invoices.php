@@ -401,12 +401,32 @@ class SLW_PDF_Invoices {
 			'bg'    => '#fff8e1',
 		);
 
-		// Dummy line items
-		$dummy_items = array(
-			array( 'name' => 'Hydrating Face Serum - 1oz', 'sku' => 'HFS-001', 'qty' => 24, 'price' => 18.00 ),
-			array( 'name' => 'Gentle Cleansing Balm - 2oz', 'sku' => 'GCB-002', 'qty' => 12, 'price' => 14.50 ),
-			array( 'name' => 'Daily Moisturizer SPF 30 - 1.7oz', 'sku' => 'DM-030', 'qty' => 36, 'price' => 22.00 ),
-		);
+		// Use real products from the store if available
+		$dummy_items = array();
+		if ( function_exists( 'wc_get_products' ) ) {
+			$real_products = wc_get_products( array( 'limit' => 3, 'status' => 'publish', 'orderby' => 'date', 'order' => 'DESC' ) );
+			$qtys = array( 24, 12, 36 );
+			$i = 0;
+			foreach ( $real_products as $prod ) {
+				$discount = absint( get_option( 'slw_discount_percent', 50 ) );
+				$wholesale_price = (float) $prod->get_regular_price() * ( 1 - $discount / 100 );
+				$dummy_items[] = array(
+					'name'  => $prod->get_name(),
+					'sku'   => $prod->get_sku() ?: 'SKU-' . $prod->get_id(),
+					'qty'   => $qtys[ $i ] ?? 12,
+					'price' => round( $wholesale_price, 2 ),
+				);
+				$i++;
+			}
+		}
+		// Fallback if no products exist
+		if ( empty( $dummy_items ) ) {
+			$dummy_items = array(
+				array( 'name' => 'Sample Product A', 'sku' => 'SP-001', 'qty' => 24, 'price' => 18.00 ),
+				array( 'name' => 'Sample Product B', 'sku' => 'SP-002', 'qty' => 12, 'price' => 14.50 ),
+				array( 'name' => 'Sample Product C', 'sku' => 'SP-003', 'qty' => 36, 'price' => 22.00 ),
+			);
+		}
 
 		$subtotal = 0;
 		foreach ( $dummy_items as $item ) {

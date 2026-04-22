@@ -122,13 +122,14 @@ class SLW_Updater {
             'slug'          => 'sego-lily-wholesale',
             'version'       => $remote['version'],
             'author'        => '<a href="https://leadpiranha.com">Lead Piranha</a>',
-            'homepage'      => 'https://github.com/' . self::$github_repo,
+            'homepage'      => 'https://leadpiranha.com',
             'download_link' => $remote['download_url'],
+            'icons'         => self::get_icon_urls(),
             'requires'      => '6.0',
-            'tested'        => '6.8',
+            'tested'        => get_bloginfo( 'version' ),
             'requires_php'  => '7.4',
             'sections'      => array(
-                'description' => 'Custom wholesale portal for Sego Lily Skincare. Handles wholesale pricing, applications, order minimums, NET 30 terms, tax exemption, tiered pricing, wholesale-only products, category pricing, wholesale-only coupons, shipping restrictions, bulk user import, and AIOS webhook integration.',
+                'description' => 'Complete B2B wholesale portal for WooCommerce. Tiered pricing, application-based onboarding, NET payment terms, PDF invoices, line sheets, RFQ system, automated reminders, lead capture, email sequence dashboard, and CRM integration.',
                 'changelog'   => ! empty( $remote['changelog'] )
                     ? nl2br( esc_html( $remote['changelog'] ) )
                     : 'See the <a href="' . esc_url( $changelog_url ) . '">release notes on GitHub</a>.',

@@ -445,40 +445,40 @@ class SLW_Email_Sequences {
                     <span class="stat-number"><?php echo esc_html( number_format( $total_sent ) ); ?></span>
                     <span class="stat-label">Emails Sent</span>
                     <svg class="slw-stat-chart" width="80" height="32" viewBox="0 0 80 32">
-                        <rect x="0" y="12" width="32" height="20" rx="3" fill="#628393" opacity="0.3"/>
-                        <rect x="40" y="0" width="32" height="32" rx="3" fill="#386174"/>
-                        <text x="16" y="26" text-anchor="middle" fill="#fff" font-size="8" font-weight="600">Last</text>
-                        <text x="56" y="18" text-anchor="middle" fill="#fff" font-size="8" font-weight="600">This</text>
+                        <rect x="4" y="12" width="28" height="20" rx="3" fill="#628393" opacity="0.3"/>
+                        <rect x="44" y="2" width="28" height="30" rx="3" fill="#386174"/>
+                        <text x="18" y="30" text-anchor="middle" fill="#628393" font-size="7">Last</text>
+                        <text x="58" y="30" text-anchor="middle" fill="#386174" font-size="7">This</text>
                     </svg>
                 </div>
                 <div class="slw-stat-card accent-green">
                     <span class="stat-number"><?php echo esc_html( $avg_open_rate ); ?>%</span>
                     <span class="stat-label">Avg Open Rate</span>
                     <svg class="slw-stat-chart" width="80" height="32" viewBox="0 0 80 32">
-                        <rect x="0" y="8" width="32" height="24" rx="3" fill="#628393" opacity="0.3"/>
-                        <rect x="40" y="4" width="32" height="28" rx="3" fill="#2e7d32"/>
-                        <text x="16" y="24" text-anchor="middle" fill="#fff" font-size="8" font-weight="600">Last</text>
-                        <text x="56" y="22" text-anchor="middle" fill="#fff" font-size="8" font-weight="600">This</text>
+                        <rect x="4" y="10" width="28" height="22" rx="3" fill="#628393" opacity="0.3"/>
+                        <rect x="44" y="4" width="28" height="28" rx="3" fill="#2e7d32"/>
+                        <text x="18" y="30" text-anchor="middle" fill="#628393" font-size="7">Last</text>
+                        <text x="58" y="30" text-anchor="middle" fill="#2e7d32" font-size="7">This</text>
                     </svg>
                 </div>
                 <div class="slw-stat-card accent-gold">
                     <span class="stat-number"><?php echo esc_html( $active_count ); ?></span>
                     <span class="stat-label">Active Sequences</span>
                     <svg class="slw-stat-chart" width="80" height="32" viewBox="0 0 80 32">
-                        <rect x="0" y="16" width="32" height="16" rx="3" fill="#628393" opacity="0.3"/>
-                        <rect x="40" y="4" width="32" height="28" rx="3" fill="#D4AF37"/>
-                        <text x="16" y="28" text-anchor="middle" fill="#fff" font-size="8" font-weight="600">Last</text>
-                        <text x="56" y="22" text-anchor="middle" fill="#fff" font-size="8" font-weight="600">This</text>
+                        <rect x="4" y="16" width="28" height="16" rx="3" fill="#628393" opacity="0.3"/>
+                        <rect x="44" y="4" width="28" height="28" rx="3" fill="#D4AF37"/>
+                        <text x="18" y="30" text-anchor="middle" fill="#628393" font-size="7">Last</text>
+                        <text x="58" y="30" text-anchor="middle" fill="#D4AF37" font-size="7">This</text>
                     </svg>
                 </div>
                 <div class="slw-stat-card">
                     <span class="stat-number"><?php echo esc_html( number_format( $total_contacts ) ); ?></span>
                     <span class="stat-label">Contacts in Sequences</span>
                     <svg class="slw-stat-chart" width="80" height="32" viewBox="0 0 80 32">
-                        <rect x="0" y="10" width="32" height="22" rx="3" fill="#628393" opacity="0.3"/>
-                        <rect x="40" y="2" width="32" height="30" rx="3" fill="#386174"/>
-                        <text x="16" y="26" text-anchor="middle" fill="#fff" font-size="8" font-weight="600">Last</text>
-                        <text x="56" y="20" text-anchor="middle" fill="#fff" font-size="8" font-weight="600">This</text>
+                        <rect x="4" y="10" width="28" height="22" rx="3" fill="#628393" opacity="0.3"/>
+                        <rect x="44" y="2" width="28" height="30" rx="3" fill="#386174"/>
+                        <text x="18" y="30" text-anchor="middle" fill="#628393" font-size="7">Last</text>
+                        <text x="58" y="30" text-anchor="middle" fill="#386174" font-size="7">This</text>
                     </svg>
                 </div>
             </div>

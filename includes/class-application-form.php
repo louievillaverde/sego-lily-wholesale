@@ -263,7 +263,7 @@ class SLW_Application_Form {
                     <tr><th>EIN / Resale Certificate</th><td><?php echo esc_html( SLW_Encryption::decrypt( $app->ein ) ); ?></td></tr>
                     <tr><th>Business Type</th><td><?php echo esc_html( $app->business_type ); ?></td></tr>
                     <tr><th>How They Heard About Us</th><td><?php echo esc_html( $app->how_heard ); ?></td></tr>
-                    <tr><th>Why They Want to Carry Sego Lily</th><td><?php echo nl2br( esc_html( $app->why_carry ) ); ?></td></tr>
+                    <tr><th>Why They Want to Carry Our Products</th><td><?php echo nl2br( esc_html( $app->why_carry ) ); ?></td></tr>
                     <tr><th>Submitted</th><td><?php echo esc_html( $app->submitted_at ); ?></td></tr>
                     <tr><th>IP Address</th><td><?php echo esc_html( $app->ip_address ); ?></td></tr>
                 </table>

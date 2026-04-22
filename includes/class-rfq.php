@@ -365,7 +365,7 @@ class SLW_RFQ {
 						<th style="width:60px;">ID</th>
 						<th>Customer</th>
 						<th>Business</th>
-						<th style="width:80px;"># Products</th>
+						<th style="width:80px;white-space:nowrap;">Items</th>
 						<th style="width:100px;">Status</th>
 						<th style="width:120px;">Date</th>
 						<th style="width:100px;">Actions</th>
