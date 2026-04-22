@@ -132,8 +132,8 @@ class SLW_Lead_Capture {
                         </div>
                     </div>
 
-                    <button type="submit" class="slw-btn slw-btn-primary slw-lead-capture__submit">
-                        Get Wholesale Info
+                    <button type="submit" class="slw-btn slw-btn-cta slw-lead-capture__submit">
+                        Get Started
                     </button>
 
                     <div class="slw-lead-capture__message" style="display:none;"></div>

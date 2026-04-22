@@ -1859,55 +1859,71 @@ button.slw-reorder-btn:hover {
    Lead Capture — Frontend Form
    ======================================================= */
 .slw-lead-capture {
-    max-width: 600px;
+    max-width: 540px;
     margin: 0 auto;
-    padding: 20px;
+    padding: 24px 20px;
 }
 
 .slw-lead-capture__form-wrap {
     background: #fff;
-    border-radius: 8px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-    padding: 32px;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    padding: 40px 36px;
 }
 
 .slw-lead-capture__heading {
     font-family: Georgia, 'Times New Roman', serif;
-    font-size: 24px;
-    color: #386174;
+    font-size: 28px;
+    color: #1E2A30;
     margin: 0 0 8px 0;
+    text-align: center;
 }
 
 .slw-lead-capture__intro {
     color: #628393;
-    font-size: 14px;
-    margin: 0 0 24px 0;
-    line-height: 1.5;
+    font-size: 15px;
+    margin: 0 0 32px 0;
+    line-height: 1.6;
+    text-align: center;
 }
 
 .slw-lead-capture__field {
-    margin-bottom: 16px;
+    margin-bottom: 20px;
 }
 
 .slw-lead-capture__field label {
     display: block;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 600;
-    color: #1E2A30;
+    color: #386174;
     margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.slw-lead-capture__field .slw-required {
+    color: #c62828;
+}
+
+.slw-lead-capture__field .slw-optional {
+    color: #8A9499;
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
 }
 
 .slw-lead-capture__field input,
 .slw-lead-capture__field select,
 .slw-lead-capture__field textarea {
     width: 100%;
-    padding: 10px 12px;
-    border: 1px solid #d0d5dd;
-    border-radius: 6px;
-    font-size: 14px;
+    padding: 14px 16px;
+    border: 1.5px solid #e0ddd8;
+    border-radius: 8px;
+    font-size: 16px;
+    font-family: Georgia, 'Times New Roman', serif;
     color: #1E2A30;
-    background: #fafafa;
-    transition: border-color 0.15s ease;
+    background: #F7F6F3;
+    transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
     box-sizing: border-box;
 }
 
@@ -1930,13 +1946,40 @@ button.slw-reorder-btn:hover {
         flex-direction: column;
         gap: 0;
     }
+    .slw-lead-capture__form-wrap {
+        padding: 28px 20px;
+    }
 }
 
 .slw-lead-capture__submit {
-    margin-top: 8px;
+    margin-top: 12px;
     width: 100%;
-    padding: 12px 24px;
+    padding: 16px 24px !important;
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    border-radius: 8px !important;
+}
+
+.slw-lead-capture__message {
+    margin-top: 16px;
+    padding: 14px 18px;
+    border-radius: 8px;
     font-size: 15px;
+    text-align: center;
+}
+
+.slw-lead-capture__message--success {
+    background: #e8f5e9;
+    color: #2e7d32;
+    border: 1px solid #a5d6a7;
+}
+
+.slw-lead-capture__message--error {
+    background: #fbe9e7;
+    color: #c62828;
+    border: 1px solid #ef9a9a;
 }
 
 .slw-lead-capture__message {
