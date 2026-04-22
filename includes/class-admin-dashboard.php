@@ -57,7 +57,7 @@ class SLW_Admin_Dashboard {
                             </a>
                         </div>
                         <div class="slw-admin-stats__card slw-admin-stats__card--green">
-                            <a href="<?php echo esc_url( admin_url( 'users.php?role=wholesale_customer' ) ); ?>" class="slw-admin-stats__link">
+                            <a href="<?php echo esc_url( admin_url( 'admin.php?page=slw-orders' ) ); ?>" class="slw-admin-stats__link">
                                 <span class="slw-admin-stats__icon dashicons dashicons-groups"></span>
                                 <span class="slw-admin-stats__number"><?php echo esc_html( $stats['active_customers'] ); ?></span>
                                 <span class="slw-admin-stats__label">Active Customers</span>
@@ -67,7 +67,7 @@ class SLW_Admin_Dashboard {
                             <a href="<?php echo esc_url( admin_url( 'edit.php?post_type=shop_order' ) ); ?>" class="slw-admin-stats__link">
                                 <span class="slw-admin-stats__icon dashicons dashicons-cart"></span>
                                 <span class="slw-admin-stats__number"><?php echo esc_html( $stats['orders_this_month'] ); ?></span>
-                                <span class="slw-admin-stats__label">Orders This Month (<?php echo esc_html( wc_price( $stats['revenue_this_month'] ) ); ?>)</span>
+                                <span class="slw-admin-stats__label">Orders This Month (<?php echo wp_kses_post( wc_price( $stats['revenue_this_month'] ) ); ?>)</span>
                             </a>
                         </div>
                         <div class="slw-admin-stats__card slw-admin-stats__card--slate">
@@ -110,7 +110,7 @@ class SLW_Admin_Dashboard {
                                     <span class="dashicons dashicons-upload"></span> Import Users
                                 </a>
                             <?php endif; ?>
-                            <a href="<?php echo esc_url( home_url( '/wholesale-order' ) ); ?>" class="button slw-admin-actions__btn" target="_blank">
+                            <a href="<?php echo esc_url( home_url( '/wholesale-order?slw_preview=1' ) ); ?>" class="button slw-admin-actions__btn" target="_blank">
                                 <span class="dashicons dashicons-store"></span> View Order Form
                             </a>
                             <?php
@@ -140,8 +140,8 @@ class SLW_Admin_Dashboard {
                                 <p class="slw-admin-setup-complete__text">Your wholesale portal is fully configured.</p>
                                 <div class="slw-admin-setup-complete__links">
                                     <a href="<?php echo esc_url( admin_url( 'admin.php?page=slw-settings' ) ); ?>">Settings</a>
-                                    <a href="<?php echo esc_url( home_url( '/wholesale-order' ) ); ?>" target="_blank">View Order Form</a>
-                                    <a href="<?php echo esc_url( home_url( '/wholesale-dashboard' ) ); ?>" target="_blank">Customer Dashboard</a>
+                                    <a href="<?php echo esc_url( home_url( '/wholesale-order?slw_preview=1' ) ); ?>" target="_blank">View Order Form</a>
+                                    <a href="<?php echo esc_url( home_url( '/wholesale-dashboard?slw_preview=1' ) ); ?>" target="_blank">Customer Dashboard</a>
                                 </div>
                             </div>
                         <?php else : ?>
@@ -165,10 +165,10 @@ class SLW_Admin_Dashboard {
                     <div class="slw-admin-card">
                         <h2 class="slw-admin-card__heading">Resources</h2>
                         <ul class="slw-admin-resources">
-                            <li><a href="<?php echo esc_url( admin_url( 'admin.php?page=slw-help' ) ); ?>"><span class="dashicons dashicons-book"></span> Documentation</a></li>
+                            <li><a href="<?php echo esc_url( admin_url( 'admin.php?page=slw-help' ) ); ?>"><span class="dashicons dashicons-book"></span> Help &amp; Setup Guide</a></li>
                             <li><a href="mailto:support@leadpiranha.com"><span class="dashicons dashicons-sos"></span> Contact Support</a></li>
-                            <li><a href="<?php echo esc_url( home_url( '/wholesale-dashboard' ) ); ?>" target="_blank"><span class="dashicons dashicons-dashboard"></span> Customer Dashboard</a></li>
-                            <li><a href="<?php echo esc_url( home_url( '/wholesale-order' ) ); ?>" target="_blank"><span class="dashicons dashicons-store"></span> Order Form</a></li>
+                            <li><a href="<?php echo esc_url( home_url( '/wholesale-dashboard?slw_preview=1' ) ); ?>" target="_blank"><span class="dashicons dashicons-dashboard"></span> Customer Dashboard</a></li>
+                            <li><a href="<?php echo esc_url( home_url( '/wholesale-order?slw_preview=1' ) ); ?>" target="_blank"><span class="dashicons dashicons-store"></span> Order Form</a></li>
                         </ul>
                         <div class="slw-whats-new">
                             <h4 class="slw-whats-new__title">What's New in v<?php echo esc_html( SLW_VERSION ); ?></h4>

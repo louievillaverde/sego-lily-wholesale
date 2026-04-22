@@ -21,7 +21,10 @@ class SLW_Dashboard {
 	 * Render the dashboard. Non-wholesale users get redirected.
 	 */
 	public static function render( $atts = array() ) {
-		if ( ! is_user_logged_in() || ! slw_is_wholesale_user() ) {
+		// Admin preview mode: let admins see what wholesale customers see
+		$is_admin_preview = isset( $_GET['slw_preview'] ) && current_user_can( 'manage_woocommerce' );
+
+		if ( ! $is_admin_preview && ( ! is_user_logged_in() || ! slw_is_wholesale_user() ) ) {
 			if ( ! is_admin() ) {
 				wp_redirect( home_url( '/wholesale-partners' ) );
 				exit;

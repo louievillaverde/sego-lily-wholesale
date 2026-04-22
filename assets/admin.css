@@ -681,9 +681,20 @@ p.description,
 .slw-admin-stats__card--slate { border-left-color: #1E2A30; }
 
 .slw-admin-stats__link {
-	display: block;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
 	padding: 24px 28px;
 	text-decoration: none;
+	color: inherit;
+	outline: none;
+	box-shadow: none;
+}
+
+.slw-admin-stats__link:focus,
+.slw-admin-stats__link:active {
+	outline: none;
+	box-shadow: none;
 	color: inherit;
 }
 
@@ -777,10 +788,27 @@ p.description,
 	align-items: center;
 }
 
-.slw-admin-actions__btn {
-	display: inline-flex;
+.slw-admin-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
 	align-items: center;
+}
+
+.slw-admin-actions__btn {
+	display: inline-flex !important;
+	align-items: center !important;
 	gap: 6px;
+	vertical-align: middle;
+	line-height: 1;
+}
+
+.slw-admin-actions__btn .dashicons {
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+	line-height: 1;
+	vertical-align: middle;
 }
 
 /* Checklist */

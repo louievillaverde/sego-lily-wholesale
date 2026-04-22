@@ -25,8 +25,11 @@ class SLW_Order_Form {
      * Render the order form shortcode. Gate access to wholesale users only.
      */
     public static function render( $atts = array() ) {
+        // Admin preview mode: let admins see what wholesale customers see
+        $is_admin_preview = isset( $_GET['slw_preview'] ) && current_user_can( 'manage_woocommerce' );
+
         // Redirect non-wholesale visitors to the application form
-        if ( ! is_user_logged_in() || ! slw_is_wholesale_user() ) {
+        if ( ! $is_admin_preview && ( ! is_user_logged_in() || ! slw_is_wholesale_user() ) ) {
             if ( ! is_admin() ) {
                 wp_redirect( home_url( '/wholesale-partners' ) );
                 exit;
