@@ -22,6 +22,8 @@ class SLW_Email_Sequences {
         add_action( 'wp_ajax_slw_refresh_sequences',      array( __CLASS__, 'ajax_refresh_sequences' ) );
         add_action( 'wp_ajax_slw_send_newsletter',        array( __CLASS__, 'ajax_send_newsletter' ) );
         add_action( 'wp_ajax_slw_save_sequence_order',   array( __CLASS__, 'ajax_save_sequence_order' ) );
+        add_action( 'wp_ajax_slw_save_nl_template',      array( __CLASS__, 'ajax_save_nl_template' ) );
+        add_action( 'wp_ajax_slw_delete_nl_template',    array( __CLASS__, 'ajax_delete_nl_template' ) );
     }
 
     /**
@@ -761,7 +763,52 @@ class SLW_Email_Sequences {
 
                 <div id="slw-newsletter-compose" class="slw-admin-card slw-newsletter-compose" style="display:none;">
                     <h3>Compose Newsletter</h3>
+                    <?php
+                    $saved_templates = get_option( 'slw_newsletter_templates', array() );
+                    if ( empty( $saved_templates ) ) {
+                        // Seed with the two default templates
+                        $brand  = class_exists( 'SLW_Email_Settings' ) ? SLW_Email_Settings::get_business_name() : get_bloginfo( 'name' );
+                        $owner  = class_exists( 'SLW_Email_Settings' ) ? SLW_Email_Settings::get( 'owner_name' ) : '';
+                        if ( ! $owner ) $owner = 'Holly';
+                        $w_url  = home_url( '/wholesale-partners' );
+                        $p_url  = home_url( '/wholesale-portal' );
+                        $saved_templates = array(
+                            'wholesale-outreach' => array(
+                                'name'    => 'Wholesale Outreach',
+                                'subject' => "Carry {$brand} in your shop?",
+                                'body'    => "Hi {shop_owner_name},\n\nI came across {shop_name} and love what you're doing. I think our products would be a great fit for your customers.\n\nI'm {$owner} — I run {$brand}. We make small-batch, clean-ingredient skincare and our wholesale partners get 50% off retail pricing.\n\nIf you're open to it, I'd love to send you our price list or set up a quick call:\n\n{$w_url}\n\nNo pressure at all — just thought it could be a good match.\n\nTalk soon,\n{$owner}",
+                            ),
+                            'quarterly-newsletter' => array(
+                                'name'    => 'Quarterly Newsletter',
+                                'subject' => "What's new this quarter at {$brand}",
+                                'body'    => "Hi there,\n\nHope business is going well! Here's a quick update from our end.\n\nNEW PRODUCTS\n[Describe any new products launched this quarter]\n\nWHAT'S SELLING BEST\n[Share your top 2-3 bestsellers and why customers love them]\n\nSEASONAL RECOMMENDATION\n[Suggest a product or bundle that fits the upcoming season]\n\nREORDER\nReady to restock? Place your next order here:\n{$p_url}\n\nAs always, reach out anytime if you need samples, marketing materials, or just want to chat.\n\nThanks for being a partner,\n{$owner}",
+                            ),
+                        );
+                        update_option( 'slw_newsletter_templates', $saved_templates );
+                    }
+                    ?>
                     <table class="form-table">
+                        <tr>
+                            <th scope="row"><label for="slw-nl-template">Template</label></th>
+                            <td>
+                                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                                    <select id="slw-nl-template" style="min-width:200px;">
+                                        <option value="">Blank (start fresh)</option>
+                                        <?php foreach ( $saved_templates as $tpl_slug => $tpl ) : ?>
+                                            <option value="<?php echo esc_attr( $tpl_slug ); ?>"
+                                                data-subject="<?php echo esc_attr( $tpl['subject'] ); ?>"
+                                                data-body="<?php echo esc_attr( $tpl['body'] ); ?>">
+                                                <?php echo esc_html( $tpl['name'] ); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <button type="button" class="button" id="slw-nl-load-tpl">Load</button>
+                                    <button type="button" class="button" id="slw-nl-save-tpl">Save Current as Template</button>
+                                    <button type="button" class="button" id="slw-nl-delete-tpl" style="color:#c62828;">Delete Template</button>
+                                </div>
+                                <p class="description" style="margin-top:6px;">Load a template to pre-fill the subject and body, or save your current draft as a new reusable template.</p>
+                            </td>
+                        </tr>
                         <tr>
                             <th scope="row"><label for="slw-nl-subject">Subject Line</label></th>
                             <td><input type="text" id="slw-nl-subject" class="large-text" placeholder="Your newsletter subject..." /></td>
@@ -788,7 +835,8 @@ class SLW_Email_Sequences {
                                     <label><input type="radio" name="slw_nl_audience" value="standard" /> Standard tier only</label><br>
                                     <label><input type="radio" name="slw_nl_audience" value="preferred" /> Preferred tier only</label><br>
                                     <label><input type="radio" name="slw_nl_audience" value="vip" /> VIP tier only</label><br>
-                                    <label><input type="radio" name="slw_nl_audience" value="select" /> Select individually</label>
+                                    <label><input type="radio" name="slw_nl_audience" value="select" /> Select individually</label><br>
+                                    <label><input type="radio" name="slw_nl_audience" value="custom" /> Custom email address</label>
                                 </fieldset>
                                 <div id="slw-nl-individual-select" style="display:none;margin-top:10px;">
                                     <select id="slw-nl-recipients" multiple="multiple" style="width:100%;min-height:120px;">
@@ -807,6 +855,10 @@ class SLW_Email_Sequences {
                                         <?php endforeach; ?>
                                     </select>
                                     <p class="description">Hold Ctrl/Cmd to select multiple customers.</p>
+                                </div>
+                                <div id="slw-nl-custom-email" style="display:none;margin-top:10px;">
+                                    <input type="email" id="slw-nl-custom-address" class="regular-text" placeholder="name@example.com" />
+                                    <p class="description">Enter any email address. Useful for sending to prospects not yet in your wholesale list.</p>
                                 </div>
                             </td>
                         </tr>
@@ -1090,13 +1142,85 @@ class SLW_Email_Sequences {
                 $('#slw-newsletter-compose').slideUp(200);
             });
 
-            // Show/hide individual recipient select
+            // Show/hide audience sub-options
             $('input[name="slw_nl_audience"]').on('change', function() {
-                if ($(this).val() === 'select') {
-                    $('#slw-nl-individual-select').show();
-                } else {
-                    $('#slw-nl-individual-select').hide();
+                var val = $(this).val();
+                $('#slw-nl-individual-select').toggle(val === 'select');
+                $('#slw-nl-custom-email').toggle(val === 'custom');
+            });
+
+            // Template load
+            $('#slw-nl-load-tpl').on('click', function() {
+                var $sel = $('#slw-nl-template option:selected');
+                if (!$sel.val()) {
+                    $('#slw-nl-subject').val('');
+                    if (typeof tinyMCE !== 'undefined' && tinyMCE.get('slw_nl_body')) {
+                        tinyMCE.get('slw_nl_body').setContent('');
+                    }
+                    return;
                 }
+                $('#slw-nl-subject').val($sel.data('subject') || '');
+                var body = $sel.data('body') || '';
+                body = body.replace(/\n/g, '<br>');
+                if (typeof tinyMCE !== 'undefined' && tinyMCE.get('slw_nl_body')) {
+                    tinyMCE.get('slw_nl_body').setContent(body);
+                } else {
+                    $('#slw_nl_body').val($sel.data('body') || '');
+                }
+            });
+
+            // Template save
+            $('#slw-nl-save-tpl').on('click', function() {
+                var name = prompt('Template name:');
+                if (!name || !name.trim()) return;
+                var subject = $('#slw-nl-subject').val().trim();
+                var body = '';
+                if (typeof tinyMCE !== 'undefined' && tinyMCE.get('slw_nl_body')) {
+                    body = tinyMCE.get('slw_nl_body').getContent({format: 'text'});
+                } else {
+                    body = $('#slw_nl_body').val();
+                }
+                var $btn = $(this);
+                $btn.prop('disabled', true).text('Saving...');
+                $.post(ajaxurl, {
+                    action: 'slw_save_nl_template',
+                    nonce: '<?php echo esc_js( wp_create_nonce( "slw_sequences_nonce" ) ); ?>',
+                    template_name: name.trim(),
+                    subject: subject,
+                    body: body
+                }, function(res) {
+                    $btn.prop('disabled', false).text('Save Current as Template');
+                    if (res.success) {
+                        var d = res.data;
+                        var exists = $('#slw-nl-template option[value="'+d.slug+'"]');
+                        if (exists.length) {
+                            exists.text(d.name).data('subject', d.subject).data('body', d.body);
+                        } else {
+                            $('#slw-nl-template').append('<option value="'+d.slug+'" data-subject="'+d.subject.replace(/"/g,'&quot;')+'" data-body="'+d.body.replace(/"/g,'&quot;')+'">'+d.name+'</option>');
+                        }
+                        $('#slw-nl-template').val(d.slug);
+                        alert('Template saved!');
+                    } else {
+                        alert(res.data || 'Could not save template.');
+                    }
+                });
+            });
+
+            // Template delete
+            $('#slw-nl-delete-tpl').on('click', function() {
+                var slug = $('#slw-nl-template').val();
+                if (!slug) { alert('Select a template first.'); return; }
+                if (!confirm('Delete this template?')) return;
+                $.post(ajaxurl, {
+                    action: 'slw_delete_nl_template',
+                    nonce: '<?php echo esc_js( wp_create_nonce( "slw_sequences_nonce" ) ); ?>',
+                    slug: slug
+                }, function(res) {
+                    if (res.success) {
+                        $('#slw-nl-template option[value="'+slug+'"]').remove();
+                        $('#slw-nl-template').val('');
+                    }
+                });
             });
 
             // Send newsletter
@@ -1124,15 +1248,25 @@ class SLW_Email_Sequences {
 
                 var audience = $('input[name="slw_nl_audience"]:checked').val();
                 var recipients = [];
+                var customEmail = '';
                 if (audience === 'select') {
                     recipients = $('#slw-nl-recipients').val() || [];
                     if (recipients.length === 0) {
                         $status.html('<span style="color:#b71c1c;">Please select at least one recipient.</span>');
                         return;
                     }
+                } else if (audience === 'custom') {
+                    customEmail = $('#slw-nl-custom-address').val().trim();
+                    if (!customEmail) {
+                        $status.html('<span style="color:#b71c1c;">Please enter an email address.</span>');
+                        return;
+                    }
                 }
 
-                if (!confirm('Send this newsletter to ' + (audience === 'select' ? recipients.length + ' selected' : audience) + ' wholesale customers?')) {
+                var confirmMsg = audience === 'select' ? recipients.length + ' selected customers'
+                    : audience === 'custom' ? customEmail
+                    : audience + ' wholesale customers';
+                if (!confirm('Send this newsletter to ' + confirmMsg + '?')) {
                     return;
                 }
 
@@ -1145,7 +1279,8 @@ class SLW_Email_Sequences {
                     subject: subject,
                     body: body,
                     audience: audience,
-                    recipients: recipients
+                    recipients: recipients,
+                    custom_email: customEmail
                 }, function(response) {
                     $btn.prop('disabled', false).text('Send Newsletter');
                     if (response.success) {
@@ -1208,17 +1343,22 @@ class SLW_Email_Sequences {
             wp_send_json_error( 'Permission denied.' );
         }
 
-        $subject    = sanitize_text_field( $_POST['subject'] ?? '' );
-        $body       = wp_kses_post( $_POST['body'] ?? '' );
-        $audience   = sanitize_text_field( $_POST['audience'] ?? 'all' );
-        $recipients = isset( $_POST['recipients'] ) ? array_map( 'absint', (array) $_POST['recipients'] ) : array();
+        $subject      = sanitize_text_field( $_POST['subject'] ?? '' );
+        $body         = wp_kses_post( $_POST['body'] ?? '' );
+        $audience     = sanitize_text_field( $_POST['audience'] ?? 'all' );
+        $recipients   = isset( $_POST['recipients'] ) ? array_map( 'absint', (array) $_POST['recipients'] ) : array();
+        $custom_email = sanitize_email( $_POST['custom_email'] ?? '' );
 
         if ( empty( $subject ) || empty( $body ) ) {
             wp_send_json_error( 'Subject and body are required.' );
         }
 
         // Resolve the recipient list
-        $email_list = self::resolve_newsletter_recipients( $audience, $recipients );
+        if ( $audience === 'custom' && $custom_email ) {
+            $email_list = array( $custom_email );
+        } else {
+            $email_list = self::resolve_newsletter_recipients( $audience, $recipients );
+        }
 
         if ( empty( $email_list ) ) {
             wp_send_json_error( 'No recipients found for the selected audience.' );
@@ -1487,6 +1627,61 @@ class SLW_Email_Sequences {
         $log = array_slice( $log, 0, 20 );
 
         update_option( 'slw_newsletter_log', $log );
+    }
+
+    /* =================================================================
+       Newsletter Template AJAX Handlers
+       ================================================================= */
+
+    public static function ajax_save_nl_template() {
+        check_ajax_referer( 'slw_sequences_nonce', 'nonce' );
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_send_json_error( 'Permission denied.' );
+        }
+
+        $name    = sanitize_text_field( $_POST['template_name'] ?? '' );
+        $subject = sanitize_text_field( $_POST['subject'] ?? '' );
+        $body    = wp_kses_post( $_POST['body'] ?? '' );
+
+        if ( empty( $name ) || empty( $subject ) ) {
+            wp_send_json_error( 'Template name and subject are required.' );
+        }
+
+        $slug = sanitize_title( $name );
+        $templates = get_option( 'slw_newsletter_templates', array() );
+        $templates[ $slug ] = array(
+            'name'    => $name,
+            'subject' => $subject,
+            'body'    => $body,
+        );
+        update_option( 'slw_newsletter_templates', $templates );
+
+        wp_send_json_success( array(
+            'slug'    => $slug,
+            'name'    => $name,
+            'subject' => $subject,
+            'body'    => $body,
+        ) );
+    }
+
+    public static function ajax_delete_nl_template() {
+        check_ajax_referer( 'slw_sequences_nonce', 'nonce' );
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_send_json_error( 'Permission denied.' );
+        }
+
+        $slug = sanitize_key( $_POST['slug'] ?? '' );
+        if ( empty( $slug ) ) {
+            wp_send_json_error( 'No template selected.' );
+        }
+
+        $templates = get_option( 'slw_newsletter_templates', array() );
+        if ( isset( $templates[ $slug ] ) ) {
+            unset( $templates[ $slug ] );
+            update_option( 'slw_newsletter_templates', $templates );
+        }
+
+        wp_send_json_success();
     }
 
     /* =================================================================
