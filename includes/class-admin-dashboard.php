@@ -20,8 +20,16 @@ class SLW_Admin_Dashboard {
     public static function enqueue_admin_assets( $hook ) {
         $screen = get_current_screen();
         if ( $screen && strpos( $screen->id, 'slw-' ) !== false ) {
+            // Load BOTH the admin CSS (card layouts, docs, modern UI)
+            // AND the frontend CSS (shared components like status badges, buttons)
             wp_enqueue_style(
                 'slw-admin',
+                SLW_PLUGIN_URL . 'assets/admin.css',
+                array(),
+                SLW_VERSION
+            );
+            wp_enqueue_style(
+                'slw-frontend',
                 SLW_PLUGIN_URL . 'assets/sego-lily-wholesale.css',
                 array(),
                 SLW_VERSION
