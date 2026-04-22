@@ -38,6 +38,12 @@ class SLW_Order_Form {
         }
 
         ob_start();
+
+        // Show admin preview banner
+        if ( $is_admin_preview && class_exists( 'SLW_Dashboard' ) ) {
+            SLW_Dashboard::render_preview_banner( 'Order Form' );
+        }
+
         include SLW_PLUGIN_DIR . 'templates/order-form.php';
         return ob_get_clean();
     }

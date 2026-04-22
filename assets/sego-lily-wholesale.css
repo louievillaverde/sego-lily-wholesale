@@ -333,23 +333,33 @@
     transform: translateY(0);
 }
 
-.slw-btn-primary {
-    background: #386174;
-    color: #F7F6F3;
+.slw-btn-primary,
+button.slw-btn-primary,
+a.slw-btn-primary {
+    background: #386174 !important;
+    color: #F7F6F3 !important;
+    border: none !important;
 }
 
-.slw-btn-primary:hover {
-    background: #2C4F5E;
-    color: #F7F6F3;
+.slw-btn-primary:hover,
+button.slw-btn-primary:hover,
+a.slw-btn-primary:hover {
+    background: #2C4F5E !important;
+    color: #F7F6F3 !important;
 }
 
-.slw-btn-secondary {
-    background: #628393;
-    color: #F7F6F3;
+.slw-btn-secondary,
+button.slw-btn-secondary,
+a.slw-btn-secondary {
+    background: #628393 !important;
+    color: #F7F6F3 !important;
+    border: none !important;
 }
 
-.slw-btn-secondary:hover {
-    background: #4e6e7d;
+.slw-btn-secondary:hover,
+button.slw-btn-secondary:hover,
+a.slw-btn-secondary:hover {
+    background: #4e6e7d !important;
     color: #F7F6F3;
 }
 
@@ -833,18 +843,20 @@ button.slw-btn-cta:hover {
 /* -------------------------------------------------------
    Reorder Button
    ------------------------------------------------------- */
-.slw-reorder-btn {
-    background: #D4AF37;
-    color: #1E2A30;
-    border: none;
+.slw-reorder-btn,
+button.slw-reorder-btn {
+    background: #D4AF37 !important;
+    color: #1E2A30 !important;
+    border: none !important;
     font-family: Georgia, 'Times New Roman', serif;
     font-weight: bold;
     cursor: pointer;
     transition: background-color 0.2s, transform 0.1s;
 }
 
-.slw-reorder-btn:hover {
-    background: #c49e2e;
+.slw-reorder-btn:hover,
+button.slw-reorder-btn:hover {
+    background: #c49e2e !important;
     transform: translateY(-1px);
 }
 

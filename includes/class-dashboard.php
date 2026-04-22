@@ -33,8 +33,51 @@ class SLW_Dashboard {
 		}
 
 		ob_start();
+
+		// Show admin preview banner with "View as" customer selector
+		if ( $is_admin_preview ) {
+			self::render_preview_banner( 'Customer Dashboard' );
+		}
+
 		include SLW_PLUGIN_DIR . 'templates/dashboard.php';
 		return ob_get_clean();
+	}
+
+	/**
+	 * Render the admin preview banner with "View as Customer" dropdown.
+	 */
+	public static function render_preview_banner( $page_name = 'Page' ) {
+		$wholesale_users = get_users( array(
+			'role'    => 'wholesale_customer',
+			'number'  => 50,
+			'orderby' => 'display_name',
+			'order'   => 'ASC',
+			'fields'  => array( 'ID', 'display_name', 'user_email' ),
+		) );
+		$viewing_as = isset( $_GET['slw_view_as'] ) ? absint( $_GET['slw_view_as'] ) : 0;
+		$current_url = remove_query_arg( 'slw_view_as' );
+		?>
+		<div class="slw-preview-banner" style="background:#386174;color:#F7F6F3;padding:12px 20px;border-radius:6px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+			<div style="display:flex;align-items:center;gap:8px;">
+				<span style="background:#D4AF37;color:#1E2A30;font-size:11px;font-weight:700;padding:3px 10px;border-radius:3px;text-transform:uppercase;letter-spacing:0.5px;">Admin Preview</span>
+				<span>You're previewing the <strong><?php echo esc_html( $page_name ); ?></strong> as a wholesale customer sees it.</span>
+			</div>
+			<?php if ( ! empty( $wholesale_users ) ) : ?>
+			<form method="get" style="display:flex;align-items:center;gap:8px;margin:0;">
+				<input type="hidden" name="slw_preview" value="1" />
+				<label style="font-size:13px;color:#F7F6F3;opacity:0.9;">View as:</label>
+				<select name="slw_view_as" style="padding:4px 8px;border-radius:4px;border:1px solid rgba(255,255,255,0.3);background:rgba(255,255,255,0.15);color:#F7F6F3;font-size:13px;" onchange="this.form.submit()">
+					<option value="0">Default (admin)</option>
+					<?php foreach ( $wholesale_users as $wu ) : ?>
+						<option value="<?php echo esc_attr( $wu->ID ); ?>" <?php selected( $viewing_as, $wu->ID ); ?>>
+							<?php echo esc_html( $wu->display_name ); ?> (<?php echo esc_html( $wu->user_email ); ?>)
+						</option>
+					<?php endforeach; ?>
+				</select>
+			</form>
+			<?php endif; ?>
+		</div>
+		<?php
 	}
 
 	/**
