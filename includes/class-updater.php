@@ -33,9 +33,7 @@ class SLW_Updater {
         add_filter( 'site_transient_update_plugins', array( __CLASS__, 'check_update' ) );
         add_filter( 'plugins_api', array( __CLASS__, 'plugin_info' ), 20, 3 );
 
-        // Inject plugin icon on the plugins list and updates pages
-        add_action( 'admin_head-plugins.php', array( __CLASS__, 'inject_plugin_icon_css' ) );
-        add_action( 'admin_head-update-core.php', array( __CLASS__, 'inject_plugin_icon_css' ) );
+        // No CSS injection needed — icon shows via transient on the updates page
 
         // Clear cached release data when the admin manually checks for updates
         add_action( 'load-update-core.php', array( __CLASS__, 'flush_cache_on_manual_check' ) );
@@ -145,7 +143,7 @@ class SLW_Updater {
             'tested'        => get_bloginfo( 'version' ),
             'requires_php'  => '7.4',
             'sections'      => array(
-                'description' => 'Complete B2B wholesale portal for WooCommerce. Tiered pricing, application-based onboarding, NET payment terms, PDF invoices, line sheets, RFQ system, automated reminders, lead capture, email sequence dashboard, and CRM integration.',
+                'description' => 'All-in-one B2B wholesale portal for WooCommerce. Customer portal, tiered pricing, application workflow, PDF invoices, email sequences, NET payment terms, lead capture, trade show tools, and automated reminders.',
                 'changelog'   => ! empty( $remote['changelog'] )
                     ? nl2br( esc_html( $remote['changelog'] ) )
                     : 'See the <a href="' . esc_url( $changelog_url ) . '">release notes on GitHub</a>.',
