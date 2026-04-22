@@ -150,7 +150,7 @@ class SLW_Help {
             array(
                 'label' => 'Help & Docs',
                 'icon'  => 'dashicons-book',
-                'url'   => admin_url( 'admin.php?page=slw-help' ),
+                'url'   => admin_url( 'admin.php?page=slw-docs' ),
             ),
             array(
                 'label' => 'Settings',
@@ -174,15 +174,15 @@ class SLW_Help {
             'external' => true,
         );
         $links[] = array(
-            'label'    => 'Order Form',
+            'label'    => 'Order Form (Preview)',
             'icon'     => 'dashicons-store',
-            'url'      => home_url( '/wholesale-order' ),
+            'url'      => home_url( '/wholesale-order?slw_preview=1' ),
             'external' => true,
         );
         $links[] = array(
-            'label'    => 'Customer Dashboard',
+            'label'    => 'Customer Dashboard (Preview)',
             'icon'     => 'dashicons-dashboard',
-            'url'      => home_url( '/wholesale-dashboard' ),
+            'url'      => home_url( '/wholesale-dashboard?slw_preview=1' ),
             'external' => true,
         );
 
