@@ -41,9 +41,14 @@ class SLW_Invoice_Settings {
 		$default  = isset( self::$defaults[ $full_key ] ) ? self::$defaults[ $full_key ] : '';
 		$value    = get_option( $full_key );
 
-		// Dynamic default for business_name: use site name
-		if ( $full_key === 'slw_invoice_business_name' && ( $value === false || $value === '' ) && $default === '' ) {
-			return get_bloginfo( 'name' );
+		// Dynamic defaults for fields that should auto-populate from WP settings
+		if ( ( $value === false || $value === '' ) && $default === '' ) {
+			if ( $full_key === 'slw_invoice_business_name' ) {
+				return get_bloginfo( 'name' );
+			}
+			if ( $full_key === 'slw_invoice_business_email' ) {
+				return get_option( 'admin_email', '' );
+			}
 		}
 
 		return ( $value !== false && $value !== '' ) ? $value : $default;

@@ -59,9 +59,7 @@ class SLW_Updater {
                 'new_version'  => $remote['version'],
                 'url'          => 'https://github.com/' . self::$github_repo,
                 'package'      => $remote['download_url'],
-                'icons'        => array(
-                    'svg' => SLW_PLUGIN_URL . 'assets/icon.svg',
-                ),
+                'icons'        => self::get_icon_urls(),
                 'banners'      => array(),
                 'requires'     => '6.0',
                 'tested'       => get_bloginfo( 'version' ),
@@ -185,5 +183,31 @@ class SLW_Updater {
 
         set_transient( self::$cache_key, $data, self::$cache_ttl );
         return $data;
+    }
+
+    /**
+     * Return icon URLs for the plugins list / updates screen.
+     * Uses both SVG (data URI for guaranteed rendering) and the file URL.
+     */
+    private static function get_icon_urls() {
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">'
+            . '<rect x="24" y="44" width="80" height="68" rx="4" fill="#386174"/>'
+            . '<path d="M16 44L64 16L112 44Z" fill="#2C4F5E"/>'
+            . '<rect x="48" y="72" width="32" height="40" rx="3" fill="#F7F6F3"/>'
+            . '<circle cx="73" cy="92" r="2.5" fill="#D4AF37"/>'
+            . '<rect x="30" y="52" width="14" height="14" rx="2" fill="#F7F6F3" opacity="0.85"/>'
+            . '<rect x="84" y="52" width="14" height="14" rx="2" fill="#F7F6F3" opacity="0.85"/>'
+            . '<g transform="translate(90,20) rotate(15)">'
+            . '<rect width="24" height="16" rx="3" fill="#D4AF37"/>'
+            . '<circle cx="5" cy="8" r="2" fill="#1E2A30"/>'
+            . '<line x1="10" y1="5" x2="20" y2="5" stroke="#1E2A30" stroke-width="1.5" stroke-linecap="round"/>'
+            . '<line x1="10" y1="9" x2="17" y2="9" stroke="#1E2A30" stroke-width="1.5" stroke-linecap="round"/>'
+            . '</g></svg>';
+
+        return array(
+            'svg'     => 'data:image/svg+xml;base64,' . base64_encode( $svg ),
+            '1x'      => SLW_PLUGIN_URL . 'assets/icon.svg',
+            'default' => SLW_PLUGIN_URL . 'assets/icon.svg',
+        );
     }
 }

@@ -430,21 +430,24 @@ class SLW_PDF_Invoices {
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body {
 	font-family: Inter, system-ui, -apple-system, sans-serif;
-	font-size: 14px;
-	line-height: 1.6;
+	font-size: 13px;
+	line-height: 1.5;
 	color: #1E2A30;
-	background: #f5f5f5;
+	background: #f9f9f9;
 	-webkit-print-color-adjust: exact;
 	print-color-adjust: exact;
 }
 .invoice-container {
-	max-width: 800px;
-	margin: 24px auto;
+	max-width: 760px;
+	margin: 12px auto;
 	background: #fff;
-	border-radius: 8px;
+	border-radius: 6px;
 	box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 	overflow: hidden;
 }
+.invoice-header, .invoice-title-bar { padding-left: 32px; padding-right: 32px; }
+.invoice-body { padding: 24px 32px; }
+.invoice-footer { padding: 16px 32px; }
 .invoice-preview-badge {
 	display: block;
 	background: #D4AF37;

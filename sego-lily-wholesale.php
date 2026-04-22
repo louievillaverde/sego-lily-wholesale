@@ -3,7 +3,7 @@
  * Plugin Name:       Wholesale Portal
  * Plugin URI:        https://github.com/louievillaverde/sego-lily-wholesale
  * Description:       Turn any WooCommerce store into a full B2B wholesale operation. Tiered wholesale pricing, application-based onboarding, order minimums, NET payment terms, tax exemption, customizable PDF invoices, downloadable line sheets, request-for-quote, automated reorder reminders, lead capture, bulk user import, and CRM webhook integration. Built by Lead Piranha.
- * Version:           2.3.1
+ * Version:           2.3.2
  * Author:            Lead Piranha
  * Author URI:        https://leadpiranha.com
  * Requires at least: 6.0
@@ -28,7 +28,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SLW_VERSION', '2.3.1' );
+define( 'SLW_VERSION', '2.3.2' );
 define( 'SLW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SLW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -52,6 +52,18 @@ add_action( 'plugins_loaded', function() {
             echo '<div class="notice notice-error"><p><strong>Wholesale Portal</strong> requires WooCommerce to be installed and active.</p></div>';
         });
         return;
+    }
+
+    // Warn if WooCommerce Wholesale Suite is also active — both plugins
+    // register similar page slugs and hooks which causes admin page mix-ups.
+    if ( class_exists( 'WooCommerceWholeSalePrices' ) || defined( 'WWPP_PLUGIN_DIR' ) || defined( 'WWP_PLUGIN_DIR' ) ) {
+        add_action( 'admin_notices', function() {
+            echo '<div class="notice notice-warning is-dismissible"><p>'
+                . '<strong>Wholesale Portal:</strong> WooCommerce Wholesale Suite is also active. '
+                . 'Both plugins manage wholesale pricing and may conflict. Please deactivate Wholesale Suite '
+                . 'to avoid duplicate pricing rules and admin page conflicts.'
+                . '</p></div>';
+        });
     }
 
     // Load all modules — core
