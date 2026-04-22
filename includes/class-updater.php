@@ -35,6 +35,26 @@ class SLW_Updater {
 
         // Clear cached release data when the admin manually checks for updates
         add_action( 'load-update-core.php', array( __CLASS__, 'flush_cache_on_manual_check' ) );
+
+        // Flush stale icon/transient data after plugin updates so the new
+        // icon renders immediately instead of showing the old cached one.
+        add_action( 'upgrader_process_complete', array( __CLASS__, 'flush_after_update' ), 10, 2 );
+    }
+
+    /**
+     * After any plugin update completes, flush our cache so the next
+     * transient check picks up the current icon + version data.
+     */
+    public static function flush_after_update( $upgrader, $options ) {
+        if ( $options['action'] !== 'update' || $options['type'] !== 'plugin' ) {
+            return;
+        }
+        $our_plugin = 'sego-lily-wholesale/sego-lily-wholesale.php';
+        $plugins = $options['plugins'] ?? array();
+        if ( in_array( $our_plugin, $plugins, true ) ) {
+            delete_transient( self::$cache_key );
+            delete_site_transient( 'update_plugins' );
+        }
     }
 
     /**

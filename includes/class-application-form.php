@@ -491,7 +491,8 @@ class SLW_Application_Form {
 
         $body  = "Hi {$first_name},\n\n";
         $body .= "Great news! Your wholesale application for {$app->business_name} has been approved.\n\n";
-        $body .= "You now have access to wholesale pricing on all " . $business_name . " products at 50% off retail.\n\n";
+        $discount = get_option( 'slw_discount_percent', 50 );
+        $body .= "You now have access to wholesale pricing on all " . $business_name . " products at " . $discount . "% off retail.\n\n";
         if ( ! $existing_user ) {
             $body .= "Your login details:\n";
             $body .= "Username: {$username}\n";
@@ -501,7 +502,8 @@ class SLW_Application_Form {
         } else {
             $body .= "Log in with your existing account: {$login_url}\n\n";
         }
-        $body .= "Your first order has a \$300 minimum. After that, you can reorder any amount.\n\n";
+        $minimum = number_format( (float) get_option( 'slw_first_order_minimum', 300 ), 0 );
+        $body .= "Your first order has a \${$minimum} minimum. After that, you can reorder any amount.\n\n";
         $body .= "Once you're logged in, head to {$site_url}/wholesale-order to browse products and place your order.\n\n";
         $body .= "Questions? Reply to this email or reach out at {$reply_email}.\n\n";
         $body .= "Welcome to the family,\n" . SLW_Email_Settings::get_signature();
