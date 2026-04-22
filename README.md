@@ -1,55 +1,95 @@
 # Wholesale Portal
 
-Complete B2B wholesale solution for WooCommerce. Turn any store into a full wholesale operation with tiered pricing, application-based onboarding, invoicing, and automation.
+Complete B2B wholesale solution for WooCommerce. Turn any store into a full wholesale operation with a unified customer portal, tiered pricing, automated email sequences, and everything a wholesale business needs to scale.
 
 Built by [Lead Piranha](https://leadpiranha.com).
+
+## Customer Portal
+
+A unified, tabbed experience at `/wholesale-portal` where wholesale partners manage everything:
+
+- **Dashboard** — Welcome hub with order history, saved order templates, quick links
+- **Order Form** — Full product catalog with wholesale pricing, case packs, shipping calculator, product recommendations
+- **Invoices** — Download and print invoices for past orders
+- **Account** — Profile, shipping address, password management
+- **Request a Quote** — Multi-product quote requests for custom/large orders
+- **Price List** — Downloadable wholesale catalog with retail vs wholesale pricing
+- **Help / Contact** — FAQ, brand assets info, support contact
+
+## Admin Dashboard
+
+Modern SaaS-style admin under **Wholesale** in the WordPress sidebar:
+
+| Page | Purpose |
+|---|---|
+| Dashboard | Quick stats, recent activity, setup checklist |
+| Applications | Review, approve, or decline wholesale applications |
+| Orders | Wholesale-only order view with filters, CSV export |
+| Sequences | Email campaign stats from Mautic/Mailchimp, newsletter compose, drag-reorder |
+| Quotes | Manage request-for-quote submissions |
+| Leads | Lightweight prospect capture + management pipeline |
+| Tiers | Configure Standard/Preferred/VIP wholesale tiers |
+| Import | Add single customers or bulk import via CSV |
+| Preview | See the customer portal exactly as partners see it |
+| Invoices | Customize invoice branding, email sender settings, live preview |
+| Settings | Discounts, minimums, NET terms, shipping restrictions, store notice |
+| Help | 32 searchable documentation articles + system info |
 
 ## Features
 
 ### Pricing
-- Role-based wholesale pricing (retail customers see regular prices)
+- Global wholesale discount percentage
 - Multiple wholesale tiers (Standard, Preferred, VIP) with auto-upgrade
 - Per-product price overrides
 - Category-level discount overrides
-- Tiered quantity pricing (buy 12+ for $X, buy 24+ for $Y)
-- Per-product minimum wholesale quantities
+- Tiered quantity pricing (buy X+ for Y)
+- Per-product minimum quantities
+- Case pack ordering (buy in multiples of 6, 12, etc.)
 
-### Application & Onboarding
-- Public application form with 3-step wizard
-- Admin approval/decline workflow with email notifications
-- Automatic WooCommerce account creation on approval
-- Lead capture form for prospects not ready to apply
-- Bulk user import via CSV
-- Manual single-customer creation
+### Onboarding
+- 3-step application wizard with bot protection
+- Admin approval/decline with email notifications
+- Automatic WooCommerce account creation
+- Lead capture form for prospects
+- Bulk user import via CSV + single-customer form
 
 ### Orders & Payments
 - First order minimum + reorder minimum
 - NET 30/60/90 payment terms (per customer)
-- Tax exemption (per customer or global default)
+- Tax exemption (per customer or global)
 - Shipping method restrictions per role
 - Wholesale-only products and coupons
 - Quick reorder from past orders
+- Saved order templates ("My Usual Order")
+- Shipping calculator on order form
+- Product recommendation pairings
 
 ### Invoicing
-- Customizable PDF invoices (logo, colors, business info, footer)
+- Customizable PDF invoices (logo, colors, business info)
 - Live invoice preview in settings
-- Download/print from WooCommerce orders
-- Send invoice to customer via email
+- Send invoices to customers via email
 - Downloadable wholesale price list / line sheet
 
-### Automation
-- Webhook integration for CRM/email automation
-- Automated reorder reminders (configurable 45/75/120 day thresholds)
-- Tier auto-upgrade based on order count or lifetime spend
+### Email & Automation
+- Email sequence dashboard (Mautic, Mailchimp, ActiveCampaign, Klaviyo, ConvertKit)
+- Newsletter compose + send from admin
+- 7 automated campaign triggers:
+  - Onboarding sequence (application approved)
+  - Cart abandonment recovery (2hr detection)
+  - Reorder reminders (45/75/120 days)
+  - Win-back (180 days lapsed)
+  - Referral request (3rd order)
+  - Payment due reminders (NET terms)
+  - Admin alert (stale applications 72hr+)
+- White-label email settings (From, Reply-To, signature)
+- Webhook integration for any CRM
 
-### Admin Tools
-- Dashboard with quick stats, activity feed, and getting started guide
-- Wholesale-only orders view with filters and CSV export
-- Request for Quote (RFQ) system
-- Lead capture management with status tracking
-- Application management with CSV export
-- White-label email settings (From name, address, signature)
-- Modern admin UI
+### Security
+- AES-256 field-level encryption for EIN/resale certificates
+- Admin audit log (approvals, status changes, tier upgrades)
+- Honeypot + rate limiting on public forms
+- Nonce verification on all forms and AJAX
+- WooCommerce HPOS compatible
 
 ## Requirements
 
@@ -61,27 +101,12 @@ Built by [Lead Piranha](https://leadpiranha.com).
 
 1. Upload the plugin ZIP via Plugins > Add New > Upload Plugin
 2. Activate
-3. The plugin auto-creates four pages: `/wholesale-partners`, `/wholesale-order`, `/wholesale-dashboard`, `/wholesale-rfq`
+3. The plugin auto-creates pages: `/wholesale-partners`, `/wholesale-order`, `/wholesale-dashboard`, `/wholesale-portal`, `/wholesale-rfq`, `/wholesale-leads`
 4. Configure at Wholesale > Settings
 
 ## Updates
 
-The plugin has a built-in updater. New versions appear in Dashboard > Updates automatically. Click "Update Now" — settings, users, orders, and applications are preserved across updates.
-
-## Admin Menu
-
-After activation, "Wholesale" appears in your admin sidebar:
-
-- **Dashboard** — Quick stats, recent activity, setup checklist
-- **Applications** — Review and approve/decline wholesale applications
-- **Orders** — Wholesale-only order view with filters and export
-- **Quotes** — Request for Quote submissions
-- **Tiers** — Configure wholesale tier discounts and auto-upgrade thresholds
-- **Leads** — Manage captured wholesale prospects
-- **Import** — Add individual customers or bulk import via CSV
-- **Settings** — Discounts, minimums, payment terms, webhooks, shipping
-- **Invoices** — Logo, colors, business info, email settings, preview
-- **Help** — Setup guide, system info, quick links
+Built-in self-updater checks GitHub releases every 12 hours. Updates appear in Dashboard > Updates — click "Update Now." All data preserved across updates.
 
 ## Support
 

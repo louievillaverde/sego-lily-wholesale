@@ -2,8 +2,8 @@
 /**
  * Plugin Name:       Wholesale Portal
  * Plugin URI:        https://github.com/louievillaverde/sego-lily-wholesale
- * Description:       Turn any WooCommerce store into a full B2B wholesale operation. Tiered wholesale pricing, application-based onboarding, order minimums, NET payment terms, tax exemption, customizable PDF invoices, downloadable line sheets, request-for-quote, automated reorder reminders, lead capture, bulk user import, and CRM webhook integration. Built by Lead Piranha.
- * Version:           3.2.1
+ * Description:       Complete B2B wholesale portal for WooCommerce. Unified customer portal with tabbed navigation, tiered pricing with auto-upgrade, 3-step application wizard, wholesale order management, customizable PDF invoices and line sheets, email sequence dashboard with Mautic/Mailchimp/Klaviyo integration, newsletter compose, request-for-quote, NET 30/60/90 payment terms, automated cart recovery and reorder reminders, lead capture pipeline, case pack ordering, saved order templates, shipping calculator, product recommendations, field-level encryption, and 32-article in-plugin documentation. Built by Lead Piranha.
+ * Version:           3.2.2
  * Author:            Lead Piranha
  * Author URI:        https://leadpiranha.com
  * Requires at least: 6.0
@@ -28,7 +28,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SLW_VERSION', '3.2.1' );
+define( 'SLW_VERSION', '3.2.2' );
 define( 'SLW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SLW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
