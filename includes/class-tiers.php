@@ -224,6 +224,7 @@ class SLW_Tiers {
 
 	/**
 	 * Hook: check for tier upgrade when an order completes.
+	 * Also fires the wholesale-3rd-order webhook on the 3rd completed order.
 	 *
 	 * @param int $order_id
 	 */
@@ -239,6 +240,47 @@ class SLW_Tiers {
 		}
 
 		self::check_and_upgrade( $user_id );
+		self::maybe_fire_third_order_webhook( $user_id );
+	}
+
+	/**
+	 * Fire the wholesale-3rd-order webhook when a user completes exactly
+	 * their 3rd wholesale order. Tracked via user meta to prevent duplicates.
+	 *
+	 * @param int $user_id
+	 */
+	private static function maybe_fire_third_order_webhook( $user_id ) {
+		// Already fired? Skip.
+		if ( get_user_meta( $user_id, 'slw_3rd_order_webhook_fired', true ) ) {
+			return;
+		}
+
+		// Count completed orders (HPOS-compatible)
+		$order_ids = wc_get_orders( array(
+			'customer_id' => $user_id,
+			'status'      => 'completed',
+			'return'      => 'ids',
+			'limit'       => -1,
+		) );
+
+		$count = count( $order_ids );
+
+		if ( $count !== 3 ) {
+			return;
+		}
+
+		$user_data  = get_userdata( $user_id );
+		$first_name = $user_data->first_name ?: $user_data->display_name;
+		$business   = get_user_meta( $user_id, 'slw_business_name', true );
+
+		SLW_Webhooks::fire( 'wholesale-3rd-order', array(
+			'email'         => $user_data->user_email,
+			'first_name'    => $first_name,
+			'business_name' => $business,
+			'total_orders'  => 3,
+		) );
+
+		update_user_meta( $user_id, 'slw_3rd_order_webhook_fired', current_time( 'mysql' ) );
 	}
 
 	// ── User Stats (HPOS-compatible) ──────────────────────────────────────

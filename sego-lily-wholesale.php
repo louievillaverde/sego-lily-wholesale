@@ -3,7 +3,7 @@
  * Plugin Name:       Wholesale Portal
  * Plugin URI:        https://github.com/louievillaverde/sego-lily-wholesale
  * Description:       Turn any WooCommerce store into a full B2B wholesale operation. Tiered wholesale pricing, application-based onboarding, order minimums, NET payment terms, tax exemption, customizable PDF invoices, downloadable line sheets, request-for-quote, automated reorder reminders, lead capture, bulk user import, and CRM webhook integration. Built by Lead Piranha.
- * Version:           3.0.4
+ * Version:           3.1.0
  * Author:            Lead Piranha
  * Author URI:        https://leadpiranha.com
  * Requires at least: 6.0
@@ -28,7 +28,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SLW_VERSION', '3.0.4' );
+define( 'SLW_VERSION', '3.1.0' );
 define( 'SLW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SLW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -265,6 +265,11 @@ register_activation_hook( __FILE__, function() {
         update_option( 'slw_webhook_url', '' );
     }
 
+    // Schedule the 2-hour cart abandon cron event
+    if ( ! wp_next_scheduled( 'slw_cart_abandon_check' ) ) {
+        wp_schedule_event( time(), 'every_two_hours', 'slw_cart_abandon_check' );
+    }
+
     flush_rewrite_rules();
 });
 
@@ -278,6 +283,13 @@ register_deactivation_hook( __FILE__, function() {
     if ( $timestamp ) {
         wp_unschedule_event( $timestamp, 'slw_daily_reorder_check' );
     }
+
+    // Unschedule the 2-hour cart abandon check
+    $cart_timestamp = wp_next_scheduled( 'slw_cart_abandon_check' );
+    if ( $cart_timestamp ) {
+        wp_unschedule_event( $cart_timestamp, 'slw_cart_abandon_check' );
+    }
+
     flush_rewrite_rules();
 });
 
