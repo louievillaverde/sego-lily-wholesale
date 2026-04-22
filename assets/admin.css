@@ -788,27 +788,30 @@ p.description,
 	align-items: center;
 }
 
-.slw-admin-actions {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 10px;
-	align-items: center;
-}
-
+.slw-admin-dashboard .slw-admin-actions .button,
+.slw-admin-dashboard .slw-admin-actions a.button,
+.slw-admin-actions .slw-admin-actions__btn,
 .slw-admin-actions__btn {
 	display: inline-flex !important;
 	align-items: center !important;
-	gap: 6px;
-	vertical-align: middle;
-	line-height: 1;
+	justify-content: center !important;
+	gap: 6px !important;
+	vertical-align: middle !important;
+	line-height: 1 !important;
+	height: auto !important;
+	padding: 8px 14px !important;
 }
 
-.slw-admin-actions__btn .dashicons {
-	font-size: 16px;
-	width: 16px;
-	height: 16px;
-	line-height: 1;
-	vertical-align: middle;
+.slw-admin-dashboard .slw-admin-actions .dashicons,
+.slw-admin-actions__btn .dashicons,
+.slw-admin-actions .button .dashicons {
+	font-size: 16px !important;
+	width: 16px !important;
+	height: 16px !important;
+	line-height: 1 !important;
+	vertical-align: middle !important;
+	margin: 0 !important;
+	padding: 0 !important;
 }
 
 /* Checklist */
