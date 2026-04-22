@@ -214,39 +214,219 @@ class SLW_Lead_Capture {
         ob_start();
         ?>
         <style>
-        /* Inline critical booth CSS — overrides Elementor/theme conflicts */
-        #slw-booth { max-width: 600px; margin: 0 auto; padding: 40px 20px; font-family: Georgia, 'Times New Roman', serif; text-align: center; }
+        /* Inline critical booth CSS — full page takeover for booth/tablet use */
+
+        /* Full-page cream background */
+        body.page-template-default:has(#slw-booth) { background: #F7F6F3 !important; }
+        body { background: #F7F6F3 !important; }
+
+        /* Main container — centered, full-height, vertically aligned */
+        #slw-booth {
+            max-width: 680px;
+            margin: 0 auto;
+            padding: 60px 24px;
+            font-family: Georgia, 'Times New Roman', serif;
+            text-align: center;
+            min-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
         #slw-booth * { box-sizing: border-box; }
+
+        /* Step visibility + animation */
         #slw-booth .slw-booth__step { display: none; animation: slw-booth-fade-in 0.3s ease both; }
-        #slw-booth .slw-booth__step--active { display: block; }
-        @keyframes slw-booth-fade-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-        #slw-booth .slw-booth__title { font-family: Georgia, 'Times New Roman', serif; font-size: 28px; font-weight: 700; color: #1E2A30; margin: 0 0 8px; }
-        #slw-booth .slw-booth__subtitle { font-size: 16px; color: #628393; margin: 0 0 32px; }
-        #slw-booth .slw-booth__cards { display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; }
-        #slw-booth .slw-booth__card { background: #fff !important; border: 2px solid #e0ddd8 !important; border-radius: 16px !important; padding: 40px 32px !important; cursor: pointer; text-align: center; width: 240px; display: flex; flex-direction: column; align-items: center; gap: 12px; transition: all 0.2s; appearance: none; -webkit-appearance: none; font-family: inherit; }
-        #slw-booth .slw-booth__card:hover, #slw-booth .slw-booth__card:focus { background: #386174 !important; border-color: #386174 !important; box-shadow: 0 6px 24px rgba(56,97,116,0.2); transform: translateY(-3px); outline: none; }
-        #slw-booth .slw-booth__card:hover .slw-booth__card-label, #slw-booth .slw-booth__card:focus .slw-booth__card-label { color: #F7F6F3 !important; }
-        #slw-booth .slw-booth__card:hover .slw-booth__card-desc, #slw-booth .slw-booth__card:focus .slw-booth__card-desc { color: rgba(247,246,243,0.8) !important; }
-        #slw-booth .slw-booth__card:hover svg, #slw-booth .slw-booth__card:focus svg { stroke: #D4AF37 !important; }
-        #slw-booth .slw-booth__card-label { font-family: Georgia, 'Times New Roman', serif; font-size: 22px; font-weight: 700; color: #1E2A30; }
-        #slw-booth .slw-booth__card-desc { font-size: 15px; color: #628393; }
-        #slw-booth .slw-booth__input { display: block; width: 100%; max-width: 420px; margin: 24px auto 0; padding: 14px 20px; height: 52px; font-size: 20px; font-family: Georgia, 'Times New Roman', serif; border: 2px solid #e0ddd8 !important; border-radius: 12px !important; background: #fff !important; color: #1E2A30; text-align: center; appearance: none; -webkit-appearance: none; }
-        #slw-booth .slw-booth__input:focus { border-color: #386174 !important; box-shadow: 0 0 0 3px rgba(56,97,116,0.12); outline: none; }
-        #slw-booth .slw-booth__pills { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; margin-top: 28px; }
-        #slw-booth .slw-booth__pill { background: #fff !important; border: 2px solid #e0ddd8 !important; border-radius: 28px !important; padding: 12px 28px !important; font-size: 18px; font-family: Georgia, 'Times New Roman', serif; color: #1E2A30 !important; cursor: pointer; min-height: 48px; transition: all 0.2s; appearance: none; -webkit-appearance: none; }
+        #slw-booth .slw-booth__step--active { display: flex; flex-direction: column; align-items: center; }
+        @keyframes slw-booth-fade-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Headings */
+        #slw-booth .slw-booth__title {
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: 32px;
+            font-weight: 700;
+            color: #1E2A30;
+            margin: 0 0 8px;
+            line-height: 1.2;
+        }
+        #slw-booth .slw-booth__subtitle {
+            font-size: 17px;
+            color: #628393;
+            margin: 0 0 40px;
+        }
+
+        /* Card selector — wider, overflow-safe */
+        #slw-booth .slw-booth__cards {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            width: 100%;
+        }
+        #slw-booth .slw-booth__card {
+            background: #fff !important;
+            border: 2px solid #e0ddd8 !important;
+            border-radius: 16px !important;
+            padding: 36px 24px !important;
+            cursor: pointer;
+            text-align: center;
+            width: 260px;
+            max-width: calc(50% - 10px);
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            gap: 10px;
+            transition: all 0.2s;
+            appearance: none;
+            -webkit-appearance: none;
+            font-family: inherit;
+            overflow: hidden;
+            word-wrap: break-word;
+        }
+        #slw-booth .slw-booth__card:hover,
+        #slw-booth .slw-booth__card:focus {
+            background: #386174 !important;
+            border-color: #386174 !important;
+            box-shadow: 0 8px 32px rgba(56,97,116,0.2);
+            transform: translateY(-4px);
+            outline: none;
+        }
+        #slw-booth .slw-booth__card-icon { display: block; margin-bottom: 4px; flex-shrink: 0; }
+        #slw-booth .slw-booth__card-label {
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: 20px;
+            font-weight: 700;
+            color: #1E2A30;
+            line-height: 1.3;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+        #slw-booth .slw-booth__card-desc {
+            font-size: 14px;
+            color: #628393;
+            line-height: 1.4;
+        }
+        #slw-booth .slw-booth__card:hover .slw-booth__card-label,
+        #slw-booth .slw-booth__card:focus .slw-booth__card-label { color: #F7F6F3 !important; }
+        #slw-booth .slw-booth__card:hover .slw-booth__card-desc,
+        #slw-booth .slw-booth__card:focus .slw-booth__card-desc { color: rgba(247,246,243,0.8) !important; }
+        #slw-booth .slw-booth__card:hover svg,
+        #slw-booth .slw-booth__card:focus svg { stroke: #D4AF37 !important; }
+
+        /* Text inputs */
+        #slw-booth .slw-booth__input {
+            display: block;
+            width: 100%;
+            max-width: 440px;
+            margin: 24px auto 0;
+            padding: 16px 20px;
+            height: auto;
+            font-size: 20px;
+            font-family: Georgia, 'Times New Roman', serif;
+            border: 2px solid #e0ddd8 !important;
+            border-radius: 12px !important;
+            background: #fff !important;
+            color: #1E2A30;
+            text-align: center;
+            appearance: none;
+            -webkit-appearance: none;
+        }
+        #slw-booth .slw-booth__input:focus {
+            border-color: #386174 !important;
+            box-shadow: 0 0 0 3px rgba(56,97,116,0.12);
+            outline: none;
+        }
+
+        /* Pill buttons */
+        #slw-booth .slw-booth__pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: center;
+            margin-top: 28px;
+            width: 100%;
+            max-width: 500px;
+        }
+        #slw-booth .slw-booth__pill {
+            background: #fff !important;
+            border: 2px solid #e0ddd8 !important;
+            border-radius: 28px !important;
+            padding: 14px 24px !important;
+            font-size: 16px;
+            font-family: Georgia, 'Times New Roman', serif;
+            color: #1E2A30 !important;
+            cursor: pointer;
+            min-height: 48px;
+            transition: all 0.2s;
+            appearance: none;
+            -webkit-appearance: none;
+            flex: 0 1 auto;
+        }
         #slw-booth .slw-booth__pill:hover { border-color: #386174 !important; }
         #slw-booth .slw-booth__pill--selected { background: #386174 !important; border-color: #386174 !important; color: #F7F6F3 !important; }
+
+        /* Incentive page */
         #slw-booth .slw-booth__thanks { font-size: 18px; color: #386174; margin: 0 0 16px; font-style: italic; }
-        #slw-booth .slw-booth__incentive-heading { font-family: Georgia, 'Times New Roman', serif; font-size: 32px; font-weight: 700; color: #1E2A30; margin: 0 0 24px; line-height: 1.3; }
-        #slw-booth .slw-booth__incentive-sub { font-size: 18px; color: #628393; margin: 0 0 32px; }
-        #slw-booth .slw-booth__code-badge { display: block; max-width: 380px; margin: 0 auto 24px; background: linear-gradient(135deg, #D4AF37, #c49b2a) !important; border: none !important; border-radius: 12px !important; padding: 20px 28px; font-size: 22px; font-weight: 700; font-family: Georgia, 'Times New Roman', serif; color: #1E2A30 !important; text-align: center; box-shadow: 0 4px 16px rgba(212,175,55,0.3); }
-        #slw-booth .slw-booth__cta-group { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-top: 24px; }
-        #slw-booth .slw-booth__cta { display: inline-flex !important; align-items: center; justify-content: center; padding: 18px 40px !important; font-size: 18px !important; font-family: Georgia, 'Times New Roman', serif !important; font-weight: 700 !important; border-radius: 10px !important; text-decoration: none !important; min-height: 56px; min-width: 180px; text-align: center; cursor: pointer; border: none !important; transition: all 0.2s; }
+        #slw-booth .slw-booth__incentive-heading { font-family: Georgia, 'Times New Roman', serif; font-size: 28px; font-weight: 700; color: #1E2A30; margin: 0 0 24px; line-height: 1.3; }
+        #slw-booth .slw-booth__incentive-sub { font-size: 17px; color: #628393; margin: 0 0 32px; }
+        #slw-booth .slw-booth__code-badge {
+            display: block;
+            max-width: 380px;
+            width: 100%;
+            margin: 0 auto 24px;
+            background: linear-gradient(135deg, #D4AF37, #c49b2a) !important;
+            border: none !important;
+            border-radius: 12px !important;
+            padding: 20px 24px;
+            font-size: 20px;
+            font-weight: 700;
+            font-family: Georgia, 'Times New Roman', serif;
+            color: #1E2A30 !important;
+            text-align: center;
+            box-shadow: 0 4px 16px rgba(212,175,55,0.3);
+        }
+
+        /* CTA buttons */
+        #slw-booth .slw-booth__cta-group { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-top: 24px; width: 100%; }
+        #slw-booth .slw-booth__cta {
+            display: inline-flex !important;
+            align-items: center;
+            justify-content: center;
+            padding: 16px 32px !important;
+            font-size: 17px !important;
+            font-family: Georgia, 'Times New Roman', serif !important;
+            font-weight: 700 !important;
+            border-radius: 10px !important;
+            text-decoration: none !important;
+            min-height: 52px;
+            text-align: center;
+            cursor: pointer;
+            border: none !important;
+            transition: all 0.2s;
+            flex: 1 1 auto;
+            max-width: 280px;
+        }
         #slw-booth .slw-booth__cta--primary { background: #386174 !important; color: #F7F6F3 !important; box-shadow: 0 4px 16px rgba(56,97,116,0.3); }
-        #slw-booth .slw-booth__cta--primary:hover { background: #2C4F5E !important; box-shadow: 0 6px 24px rgba(56,97,116,0.4); transform: translateY(-2px); }
+        #slw-booth .slw-booth__cta--primary:hover { background: #2C4F5E !important; transform: translateY(-2px); }
         #slw-booth .slw-booth__cta--secondary { background: #D4AF37 !important; color: #1E2A30 !important; box-shadow: 0 4px 16px rgba(212,175,55,0.25); }
         #slw-booth .slw-booth__cta--secondary:hover { background: #BF9A2C !important; transform: translateY(-2px); }
+
         #slw-booth .slw-booth__question-label { font-size: 14px; color: #628393; margin: 16px 0 0; }
+
+        /* Tablet + mobile */
+        @media (max-width: 600px) {
+            #slw-booth { padding: 40px 16px; }
+            #slw-booth .slw-booth__title { font-size: 26px; }
+            #slw-booth .slw-booth__card { width: 100%; max-width: 100%; padding: 28px 20px !important; }
+            #slw-booth .slw-booth__cards { flex-direction: column; align-items: center; }
+            #slw-booth .slw-booth__input { font-size: 18px; }
+            #slw-booth .slw-booth__pill { font-size: 15px; padding: 12px 20px !important; }
+            #slw-booth .slw-booth__incentive-heading { font-size: 24px; }
+            #slw-booth .slw-booth__cta { max-width: 100%; width: 100%; }
+            #slw-booth .slw-booth__cta-group { flex-direction: column; align-items: center; }
+        }
+
+        /* Loading overlay */
+        #slw-booth .slw-booth__loading { position: absolute; inset: 0; background: rgba(247,246,243,0.85); display: flex; align-items: center; justify-content: center; z-index: 10; border-radius: 16px; }
         </style>
         <div class="slw-booth" id="slw-booth">
             <?php wp_nonce_field( 'slw_capture_lead', 'slw_lead_nonce' ); ?>
