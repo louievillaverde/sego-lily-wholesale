@@ -3,7 +3,7 @@
  * Plugin Name:       Wholesale Portal
  * Plugin URI:        https://github.com/louievillaverde/sego-lily-wholesale
  * Description:       Complete B2B wholesale portal for WooCommerce. Unified customer portal with tabbed navigation, tiered pricing with auto-upgrade, 3-step application wizard, wholesale order management, customizable PDF invoices and line sheets, email sequence dashboard with Mautic/Mailchimp/Klaviyo integration, newsletter compose, request-for-quote, NET 30/60/90 payment terms, automated cart recovery and reorder reminders, lead capture pipeline, case pack ordering, saved order templates, shipping calculator, product recommendations, field-level encryption, and 32-article in-plugin documentation. Built by Lead Piranha.
- * Version:           3.2.3
+ * Version:           3.3.0
  * Author:            Lead Piranha
  * Author URI:        https://leadpiranha.com
  * Requires at least: 6.0
@@ -28,7 +28,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SLW_VERSION', '3.2.3' );
+define( 'SLW_VERSION', '3.3.0' );
 define( 'SLW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SLW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -145,6 +145,7 @@ add_action( 'plugins_loaded', function() {
             || has_shortcode( get_post()->post_content ?? '', 'sego_wholesale_dashboard' )
             || has_shortcode( get_post()->post_content ?? '', 'sego_wholesale_rfq' )
             || has_shortcode( get_post()->post_content ?? '', 'wholesale_lead_capture' )
+            || has_shortcode( get_post()->post_content ?? '', 'wholesale_lead_capture_quick' )
             || has_shortcode( get_post()->post_content ?? '', 'wholesale_portal' ) ) {
             wp_enqueue_style(
                 'sego-lily-wholesale',
@@ -189,6 +190,10 @@ register_activation_hook( __FILE__, function() {
         'wholesale-leads' => array(
             'title'   => 'Become a Wholesale Partner',
             'content' => '[wholesale_lead_capture]',
+        ),
+        'wholesale-booth' => array(
+            'title'   => 'Wholesale Booth',
+            'content' => '[wholesale_lead_capture_quick]',
         ),
         'wholesale-portal' => array(
             'title'   => 'Wholesale Portal',
@@ -310,7 +315,7 @@ register_deactivation_hook( __FILE__, function() {
  * once the table exists (option cached in memory).
  */
 add_action( 'admin_init', function() {
-    if ( get_option( 'slw_db_version' ) === '1.2' ) {
+    if ( get_option( 'slw_db_version' ) === '1.3' ) {
         return;  // already verified
     }
     global $wpdb;
@@ -374,6 +379,7 @@ add_action( 'admin_init', function() {
             'wholesale-dashboard' => array( 'My Wholesale Account',  '[sego_wholesale_dashboard]' ),
             'wholesale-rfq'       => array( 'Request a Quote',       '[sego_wholesale_rfq]' ),
             'wholesale-leads'     => array( 'Become a Wholesale Partner', '[wholesale_lead_capture]' ),
+            'wholesale-booth'     => array( 'Wholesale Booth',           '[wholesale_lead_capture_quick]' ),
             'wholesale-portal'    => array( 'Wholesale Portal',          '[wholesale_portal]' ),
         ) as $slug => $data ) {
             if ( ! get_page_by_path( $slug ) ) {
@@ -387,7 +393,7 @@ add_action( 'admin_init', function() {
             }
         }
     }
-    update_option( 'slw_db_version', '1.2' );
+    update_option( 'slw_db_version', '1.3' );
 });
 
 /**

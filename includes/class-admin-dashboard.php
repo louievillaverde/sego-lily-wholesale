@@ -88,6 +88,48 @@ class SLW_Admin_Dashboard {
                         </div>
                     </div>
 
+                    <!-- Funnel View -->
+                    <div class="slw-funnel">
+                        <?php
+                        $funnel = self::get_funnel_counts();
+                        $funnel_stages = array(
+                            array(
+                                'count' => $funnel['leads'],
+                                'label' => 'Leads',
+                                'url'   => admin_url( 'admin.php?page=slw-leads' ),
+                                'class' => 'slw-funnel__stage--teal-1',
+                            ),
+                            array(
+                                'count' => $funnel['pending_apps'],
+                                'label' => 'Pending Applications',
+                                'url'   => admin_url( 'admin.php?page=slw-applications&status=pending' ),
+                                'class' => 'slw-funnel__stage--teal-2',
+                            ),
+                            array(
+                                'count' => $funnel['approved_this_month'],
+                                'label' => 'Approved This Month',
+                                'url'   => admin_url( 'admin.php?page=slw-applications&status=approved' ),
+                                'class' => 'slw-funnel__stage--teal-3',
+                            ),
+                            array(
+                                'count' => $funnel['first_orders'],
+                                'label' => 'First Order',
+                                'url'   => admin_url( 'admin.php?page=slw-orders' ),
+                                'class' => 'slw-funnel__stage--gold',
+                            ),
+                        );
+                        foreach ( $funnel_stages as $i => $stage ) :
+                        ?>
+                            <?php if ( $i > 0 ) : ?>
+                                <span class="slw-funnel__arrow dashicons dashicons-arrow-right-alt"></span>
+                            <?php endif; ?>
+                            <a href="<?php echo esc_url( $stage['url'] ); ?>" class="slw-funnel__stage <?php echo esc_attr( $stage['class'] ); ?>">
+                                <span class="slw-funnel__count"><?php echo esc_html( $stage['count'] ); ?></span>
+                                <span class="slw-funnel__label"><?php echo esc_html( $stage['label'] ); ?></span>
+                            </a>
+                        <?php endforeach; ?>
+                    </div>
+
                     <!-- Recent Activity -->
                     <div class="slw-admin-card">
                         <h2 class="slw-admin-card__heading">Recent Activity</h2>
@@ -334,6 +376,59 @@ class SLW_Admin_Dashboard {
             array( 'label' => 'Customize your application form',   'done' => (bool) get_page_by_path( 'wholesale-partners' ) ),
             array( 'label' => 'Configure invoice branding',        'done' => (bool) get_option( 'slw_invoice_logo_id' ) ),
             array( 'label' => 'Test the wholesale flow',           'done' => false ), // manual step
+        );
+    }
+
+    /**
+     * Get lightweight funnel counts for the pipeline visualization.
+     */
+    private static function get_funnel_counts() {
+        global $wpdb;
+
+        // Total leads
+        $leads_table = $wpdb->prefix . 'slw_leads';
+        $leads = 0;
+        if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $leads_table ) ) === $leads_table ) {
+            $leads = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$leads_table}" );
+        }
+
+        // Pending applications
+        $app_table = $wpdb->prefix . 'slw_applications';
+        $pending_apps = 0;
+        $approved_this_month = 0;
+        if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $app_table ) ) === $app_table ) {
+            $pending_apps = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$app_table} WHERE status = 'pending'" );
+            $first_of_month = gmdate( 'Y-m-01' );
+            $approved_this_month = (int) $wpdb->get_var( $wpdb->prepare(
+                "SELECT COUNT(*) FROM {$app_table} WHERE status = 'approved' AND reviewed_at >= %s",
+                $first_of_month
+            ) );
+        }
+
+        // First orders this month: users with first-order-placed meta whose wholesale orders started this month
+        $first_orders = 0;
+        if ( function_exists( 'wc_get_orders' ) ) {
+            $first_of_month = gmdate( 'Y-m-01' );
+            $users_with_first_order = get_users( array(
+                'meta_key'   => 'slw_first_order_placed',
+                'meta_value' => '1',
+                'fields'     => 'ID',
+            ) );
+            if ( ! empty( $users_with_first_order ) ) {
+                foreach ( $users_with_first_order as $uid ) {
+                    $order_date = get_user_meta( $uid, 'slw_first_order_date', true );
+                    if ( $order_date && $order_date >= $first_of_month ) {
+                        $first_orders++;
+                    }
+                }
+            }
+        }
+
+        return array(
+            'leads'               => $leads,
+            'pending_apps'        => $pending_apps,
+            'approved_this_month' => $approved_this_month,
+            'first_orders'        => $first_orders,
         );
     }
 

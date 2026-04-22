@@ -2518,3 +2518,278 @@ p.description,
 #slw-campaigns-sortable .slw-campaign-card {
 	transition: opacity 0.2s;
 }
+
+/* ──────────────────────────────────────────────────────────────────────
+   Funnel View
+   ────────────────────────────────────────────────────────────────────── */
+
+.slw-funnel {
+	display: flex;
+	align-items: center;
+	gap: 0;
+	margin-bottom: 24px;
+	padding: 20px;
+	background: #fff;
+	border-radius: 8px;
+	border: 1px solid #e2e8f0;
+	overflow-x: auto;
+}
+
+.slw-funnel__stage {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 20px 28px;
+	border-radius: 8px;
+	text-decoration: none;
+	color: #fff;
+	min-width: 140px;
+	text-align: center;
+	transition: transform 0.15s ease, box-shadow 0.15s ease;
+	position: relative;
+}
+
+.slw-funnel__stage:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+	color: #fff;
+}
+
+.slw-funnel__stage--teal-1 {
+	background: linear-gradient(135deg, #386174, #4a7a8f);
+}
+
+.slw-funnel__stage--teal-2 {
+	background: linear-gradient(135deg, #4a7a8f, #5c92a5);
+}
+
+.slw-funnel__stage--teal-3 {
+	background: linear-gradient(135deg, #5c92a5, #6ea8bb);
+}
+
+.slw-funnel__stage--gold {
+	background: linear-gradient(135deg, #D4AF37, #c49b2a);
+}
+
+.slw-funnel__count {
+	font-size: 28px;
+	font-weight: 700;
+	line-height: 1.2;
+}
+
+.slw-funnel__label {
+	font-size: 12px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	opacity: 0.9;
+	margin-top: 4px;
+}
+
+.slw-funnel__arrow {
+	font-size: 24px;
+	color: #a0aec0;
+	margin: 0 8px;
+	flex-shrink: 0;
+}
+
+@media (max-width: 782px) {
+	.slw-funnel {
+		flex-direction: column;
+		gap: 8px;
+	}
+	.slw-funnel__stage {
+		width: 100%;
+		min-width: 0;
+		padding: 14px 20px;
+		flex-direction: row;
+		gap: 12px;
+	}
+	.slw-funnel__arrow {
+		transform: rotate(90deg);
+		margin: 0;
+	}
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   Source Badges
+   ────────────────────────────────────────────────────────────────────── */
+
+.slw-source-badge {
+	display: inline-block;
+	padding: 2px 10px;
+	border-radius: 12px;
+	font-size: 11px;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.3px;
+	white-space: nowrap;
+}
+
+.slw-source-badge--gold {
+	background: #fef3c7;
+	color: #92400e;
+}
+
+.slw-source-badge--green {
+	background: #d1fae5;
+	color: #065f46;
+}
+
+.slw-source-badge--teal {
+	background: #e0f2f1;
+	color: #386174;
+}
+
+.slw-source-badge--purple {
+	background: #ede9fe;
+	color: #5b21b6;
+}
+
+.slw-source-badge--gray {
+	background: #f1f5f9;
+	color: #64748b;
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   Quick Add Lead Card
+   ────────────────────────────────────────────────────────────────────── */
+
+.slw-quick-add-card {
+	margin-bottom: 16px;
+}
+
+.slw-quick-add-card__header {
+	cursor: pointer;
+}
+
+.slw-quick-add-card__toggle {
+	float: right;
+	color: #94a3b8;
+	transition: transform 0.2s;
+}
+
+.slw-quick-add-card__body--hidden {
+	display: none;
+}
+
+.slw-quick-add-form__grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 12px;
+	margin-top: 16px;
+}
+
+.slw-quick-add-form__grid label {
+	display: block;
+	font-weight: 600;
+	font-size: 13px;
+	margin-bottom: 4px;
+	color: #1E2A30;
+}
+
+.slw-quick-add-form__grid input,
+.slw-quick-add-form__grid select,
+.slw-quick-add-form__grid textarea {
+	width: 100%;
+	padding: 8px 10px;
+	border: 1px solid #cbd5e1;
+	border-radius: 6px;
+	font-size: 14px;
+}
+
+.slw-quick-add-form__field--full {
+	grid-column: 1 / -1;
+}
+
+@media (max-width: 782px) {
+	.slw-quick-add-form__grid {
+		grid-template-columns: 1fr;
+	}
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   Trade Show Tools
+   ────────────────────────────────────────────────────────────────────── */
+
+.slw-trade-show-tools {
+	margin-top: 24px;
+}
+
+.slw-trade-show-tools__desc {
+	color: #64748b;
+	font-size: 14px;
+	margin: 8px 0 20px;
+}
+
+.slw-trade-show-tools__grid {
+	display: flex;
+	gap: 32px;
+	align-items: flex-start;
+}
+
+.slw-trade-show-tools__qr {
+	flex-shrink: 0;
+	padding: 12px;
+	background: #fff;
+	border: 2px solid #e2e8f0;
+	border-radius: 12px;
+}
+
+.slw-trade-show-tools__qr img {
+	display: block;
+	border-radius: 4px;
+}
+
+.slw-trade-show-tools__controls {
+	flex: 1;
+}
+
+.slw-trade-show-tools__controls input {
+	width: 100%;
+	padding: 8px 10px;
+	border: 1px solid #cbd5e1;
+	border-radius: 6px;
+	font-size: 14px;
+}
+
+.slw-trade-show-tools__link-box {
+	margin: 12px 0;
+}
+
+.slw-trade-show-tools__link-box code {
+	display: block;
+	padding: 8px 12px;
+	background: #f1f5f9;
+	border-radius: 6px;
+	font-size: 13px;
+	word-break: break-all;
+	margin-top: 4px;
+}
+
+.slw-trade-show-tools__buttons {
+	display: flex;
+	gap: 8px;
+	margin: 12px 0;
+}
+
+.slw-trade-show-tools__booth-link {
+	margin-top: 12px;
+	font-size: 13px;
+	color: #64748b;
+}
+
+.slw-trade-show-tools__booth-link a {
+	color: #386174;
+}
+
+@media (max-width: 782px) {
+	.slw-trade-show-tools__grid {
+		flex-direction: column;
+		align-items: center;
+	}
+	.slw-trade-show-tools__buttons {
+		flex-direction: column;
+	}
+}

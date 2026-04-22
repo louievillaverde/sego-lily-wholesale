@@ -13,11 +13,13 @@ class SLW_Lead_Capture {
 
     public static function init() {
         add_shortcode( 'wholesale_lead_capture', array( __CLASS__, 'render_shortcode' ) );
+        add_shortcode( 'wholesale_lead_capture_quick', array( __CLASS__, 'render_quick_shortcode' ) );
         add_action( 'wp_ajax_slw_capture_lead', array( __CLASS__, 'ajax_capture_lead' ) );
         add_action( 'wp_ajax_nopriv_slw_capture_lead', array( __CLASS__, 'ajax_capture_lead' ) );
         add_action( 'wp_ajax_slw_update_lead', array( __CLASS__, 'ajax_update_lead' ) );
         add_action( 'wp_ajax_slw_export_leads_csv', array( __CLASS__, 'ajax_export_csv' ) );
         add_action( 'wp_ajax_slw_bulk_leads_action', array( __CLASS__, 'ajax_bulk_action' ) );
+        add_action( 'admin_post_slw_manual_add_lead', array( __CLASS__, 'handle_manual_add_lead' ) );
     }
 
     // ------------------------------------------------------------------
@@ -72,6 +74,13 @@ class SLW_Lead_Capture {
     // ------------------------------------------------------------------
 
     public static function render_shortcode( $atts ) {
+        $atts = shortcode_atts( array( 'mode' => '' ), $atts, 'wholesale_lead_capture' );
+
+        // mode=quick delegates to the quick capture renderer
+        if ( $atts['mode'] === 'quick' ) {
+            return self::render_quick_shortcode( $atts );
+        }
+
         // Enqueue plugin CSS
         wp_enqueue_style(
             'sego-lily-wholesale',
@@ -79,6 +88,11 @@ class SLW_Lead_Capture {
             array(),
             SLW_VERSION
         );
+
+        // Read source + event from URL params (for QR code tracking)
+        $url_source = sanitize_text_field( $_GET['source'] ?? '' );
+        $url_event  = sanitize_text_field( $_GET['event'] ?? '' );
+        $source_val = $url_source ? $url_source : 'website';
 
         ob_start();
         ?>
@@ -89,6 +103,8 @@ class SLW_Lead_Capture {
 
                 <form id="slw-lead-form" class="slw-lead-capture__form">
                     <?php wp_nonce_field( 'slw_capture_lead', 'slw_lead_nonce' ); ?>
+                    <input type="hidden" name="source" value="<?php echo esc_attr( $source_val ); ?>" />
+                    <input type="hidden" name="event" value="<?php echo esc_attr( $url_event ); ?>" />
 
                     <div class="slw-lead-capture__field">
                         <label for="slw-lead-name">Name <span class="slw-required">*</span></label>
@@ -173,20 +189,136 @@ class SLW_Lead_Capture {
     }
 
     // ------------------------------------------------------------------
+    // Quick Capture Shortcode (Trade Show Mode)
+    // ------------------------------------------------------------------
+
+    public static function render_quick_shortcode( $atts = array() ) {
+        wp_enqueue_style(
+            'sego-lily-wholesale',
+            SLW_PLUGIN_URL . 'assets/sego-lily-wholesale.css',
+            array(),
+            SLW_VERSION
+        );
+
+        $url_source = sanitize_text_field( $_GET['source'] ?? 'trade_show' );
+        $url_event  = sanitize_text_field( $_GET['event'] ?? '' );
+
+        ob_start();
+        ?>
+        <div class="slw-quick-capture">
+            <form id="slw-quick-form" class="slw-quick-capture__form">
+                <?php wp_nonce_field( 'slw_capture_lead', 'slw_lead_nonce' ); ?>
+                <input type="hidden" name="source" value="<?php echo esc_attr( $url_source ); ?>" />
+                <input type="hidden" name="event" value="<?php echo esc_attr( $url_event ); ?>" />
+
+                <h2 class="slw-quick-capture__heading">Interested in wholesale?</h2>
+
+                <div class="slw-quick-capture__field">
+                    <input type="text" name="name" placeholder="Your Name" required class="slw-quick-capture__input" />
+                </div>
+
+                <div class="slw-quick-capture__field">
+                    <input type="email" name="email" placeholder="Email Address" required class="slw-quick-capture__input" />
+                </div>
+
+                <div class="slw-quick-capture__field">
+                    <input type="tel" name="phone" placeholder="Phone Number" class="slw-quick-capture__input" />
+                </div>
+
+                <button type="submit" class="slw-quick-capture__submit">Get Started</button>
+
+                <div class="slw-quick-capture__message" style="display:none;"></div>
+            </form>
+        </div>
+
+        <script>
+        (function(){
+            var form = document.getElementById('slw-quick-form');
+            if (!form) return;
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                var btn = form.querySelector('.slw-quick-capture__submit');
+                var msg = form.querySelector('.slw-quick-capture__message');
+                btn.disabled = true;
+                btn.textContent = 'Saving...';
+
+                var data = new FormData(form);
+                data.append('action', 'slw_capture_lead');
+                data.append('quick_mode', '1');
+
+                fetch('<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>', {
+                    method: 'POST',
+                    body: data,
+                    credentials: 'same-origin'
+                })
+                .then(function(r){ return r.json(); })
+                .then(function(res){
+                    if (res.success) {
+                        msg.style.display = 'block';
+                        msg.className = 'slw-quick-capture__message slw-quick-capture__message--success';
+                        msg.textContent = 'Thanks! We\'ll be in touch soon.';
+                        form.reset();
+                        // Re-set hidden fields after reset
+                        form.querySelector('[name="source"]').value = '<?php echo esc_js( $url_source ); ?>';
+                        form.querySelector('[name="event"]').value = '<?php echo esc_js( $url_event ); ?>';
+                        setTimeout(function(){
+                            msg.style.display = 'none';
+                            btn.disabled = false;
+                            btn.textContent = 'Get Started';
+                        }, 3000);
+                    } else {
+                        msg.style.display = 'block';
+                        msg.className = 'slw-quick-capture__message slw-quick-capture__message--error';
+                        msg.textContent = res.data || 'Something went wrong.';
+                        btn.disabled = false;
+                        btn.textContent = 'Add Lead';
+                    }
+                })
+                .catch(function(){
+                    msg.style.display = 'block';
+                    msg.className = 'slw-quick-capture__message slw-quick-capture__message--error';
+                    msg.textContent = 'Network error.';
+                    btn.disabled = false;
+                    btn.textContent = 'Add Lead';
+                });
+            });
+        })();
+        </script>
+        <?php
+        return ob_get_clean();
+    }
+
+    // ------------------------------------------------------------------
     // AJAX: Capture Lead
     // ------------------------------------------------------------------
 
     public static function ajax_capture_lead() {
         check_ajax_referer( 'slw_capture_lead', 'slw_lead_nonce' );
 
+        $quick_mode    = ! empty( $_POST['quick_mode'] );
         $name          = sanitize_text_field( wp_unslash( $_POST['name'] ?? '' ) );
         $email         = sanitize_email( wp_unslash( $_POST['email'] ?? '' ) );
         $business_name = sanitize_text_field( wp_unslash( $_POST['business_name'] ?? '' ) );
         $phone         = sanitize_text_field( wp_unslash( $_POST['phone'] ?? '' ) );
         $how_heard     = sanitize_text_field( wp_unslash( $_POST['how_heard'] ?? '' ) );
+        $source        = sanitize_text_field( wp_unslash( $_POST['source'] ?? 'website' ) );
+        $event         = sanitize_text_field( wp_unslash( $_POST['event'] ?? '' ) );
 
-        if ( empty( $name ) || empty( $email ) || empty( $business_name ) ) {
-            wp_send_json_error( 'Please fill in all required fields.' );
+        // Validate allowed sources
+        $allowed_sources = array( 'website', 'trade_show', 'referral', 'social_media', 'phone_call', 'other', 'shortcode', 'manual' );
+        if ( ! in_array( $source, $allowed_sources, true ) ) {
+            $source = 'website';
+        }
+
+        // Quick mode only requires name + email
+        if ( $quick_mode ) {
+            if ( empty( $name ) || empty( $email ) ) {
+                wp_send_json_error( 'Please fill in name and email.' );
+            }
+        } else {
+            if ( empty( $name ) || empty( $email ) || empty( $business_name ) ) {
+                wp_send_json_error( 'Please fill in all required fields.' );
+            }
         }
 
         if ( ! is_email( $email ) ) {
@@ -205,13 +337,20 @@ class SLW_Lead_Capture {
             wp_send_json_error( 'This email has already been submitted.' );
         }
 
+        // If event is provided, append it to how_heard for tracking
+        if ( $event && empty( $how_heard ) ) {
+            $how_heard = 'Event: ' . $event;
+        } elseif ( $event ) {
+            $how_heard .= ' | Event: ' . $event;
+        }
+
         $wpdb->insert( $table, array(
             'name'          => $name,
             'email'         => $email,
             'business_name' => $business_name,
             'phone'         => $phone,
             'how_heard'     => $how_heard,
-            'source'        => 'shortcode',
+            'source'        => $source,
             'status'        => 'new',
             'captured_at'   => current_time( 'mysql' ),
         ), array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s' ) );
@@ -222,6 +361,8 @@ class SLW_Lead_Capture {
                 'email'         => $email,
                 'name'          => $name,
                 'business_name' => $business_name,
+                'source'        => $source,
+                'event'         => $event,
             ) );
         }
 
@@ -350,6 +491,109 @@ class SLW_Lead_Capture {
     }
 
     // ------------------------------------------------------------------
+    // Admin Post: Manual Add Lead
+    // ------------------------------------------------------------------
+
+    public static function handle_manual_add_lead() {
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_die( 'Unauthorized' );
+        }
+
+        check_admin_referer( 'slw_manual_add_lead' );
+
+        $name          = sanitize_text_field( wp_unslash( $_POST['name'] ?? '' ) );
+        $email         = sanitize_email( wp_unslash( $_POST['email'] ?? '' ) );
+        $business_name = sanitize_text_field( wp_unslash( $_POST['business_name'] ?? '' ) );
+        $phone         = sanitize_text_field( wp_unslash( $_POST['phone'] ?? '' ) );
+        $source        = sanitize_text_field( wp_unslash( $_POST['source'] ?? 'manual' ) );
+        $event_name    = sanitize_text_field( wp_unslash( $_POST['event_name'] ?? '' ) );
+        $notes         = sanitize_textarea_field( wp_unslash( $_POST['notes'] ?? '' ) );
+
+        if ( empty( $name ) || empty( $email ) ) {
+            wp_redirect( admin_url( 'admin.php?page=slw-leads&slw_notice=error&slw_msg=name_email_required' ) );
+            exit;
+        }
+
+        if ( ! is_email( $email ) ) {
+            wp_redirect( admin_url( 'admin.php?page=slw-leads&slw_notice=error&slw_msg=invalid_email' ) );
+            exit;
+        }
+
+        $allowed_sources = array( 'website', 'trade_show', 'referral', 'social_media', 'phone_call', 'other', 'manual' );
+        if ( ! in_array( $source, $allowed_sources, true ) ) {
+            $source = 'manual';
+        }
+
+        $how_heard = '';
+        if ( $event_name ) {
+            $how_heard = 'Event: ' . $event_name;
+        }
+
+        global $wpdb;
+        $table = $wpdb->prefix . 'slw_leads';
+
+        // Check for duplicate email
+        $exists = $wpdb->get_var( $wpdb->prepare(
+            "SELECT COUNT(*) FROM {$table} WHERE email = %s",
+            $email
+        ) );
+        if ( $exists ) {
+            wp_redirect( admin_url( 'admin.php?page=slw-leads&slw_notice=error&slw_msg=duplicate_email' ) );
+            exit;
+        }
+
+        $wpdb->insert( $table, array(
+            'name'          => $name,
+            'email'         => $email,
+            'business_name' => $business_name,
+            'phone'         => $phone,
+            'how_heard'     => $how_heard,
+            'source'        => $source,
+            'status'        => 'new',
+            'captured_at'   => current_time( 'mysql' ),
+            'notes'         => $notes,
+        ), array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s' ) );
+
+        // Fire webhook
+        if ( class_exists( 'SLW_Webhooks' ) ) {
+            SLW_Webhooks::fire( 'lead-captured', array(
+                'email'         => $email,
+                'name'          => $name,
+                'business_name' => $business_name,
+                'source'        => $source,
+            ) );
+        }
+
+        wp_redirect( admin_url( 'admin.php?page=slw-leads&slw_notice=success&slw_msg=lead_added' ) );
+        exit;
+    }
+
+    // ------------------------------------------------------------------
+    // Helper: Source badge HTML
+    // ------------------------------------------------------------------
+
+    private static function get_source_badge( $source ) {
+        $badge_map = array(
+            'trade_show'   => array( 'label' => 'Trade Show',   'class' => 'slw-source-badge--gold' ),
+            'referral'     => array( 'label' => 'Referral',     'class' => 'slw-source-badge--green' ),
+            'website'      => array( 'label' => 'Website',      'class' => 'slw-source-badge--teal' ),
+            'social_media' => array( 'label' => 'Social Media', 'class' => 'slw-source-badge--purple' ),
+            'phone_call'   => array( 'label' => 'Phone Call',   'class' => 'slw-source-badge--gray' ),
+            'shortcode'    => array( 'label' => 'Website',      'class' => 'slw-source-badge--teal' ),
+            'manual'       => array( 'label' => 'Manual',       'class' => 'slw-source-badge--gray' ),
+            'other'        => array( 'label' => 'Other',        'class' => 'slw-source-badge--gray' ),
+        );
+
+        $info = $badge_map[ $source ] ?? array( 'label' => ucfirst( $source ), 'class' => 'slw-source-badge--gray' );
+
+        return sprintf(
+            '<span class="slw-source-badge %s">%s</span>',
+            esc_attr( $info['class'] ),
+            esc_html( $info['label'] )
+        );
+    }
+
+    // ------------------------------------------------------------------
     // Admin Page
     // ------------------------------------------------------------------
 
@@ -365,6 +609,10 @@ class SLW_Lead_Capture {
         }
 
         $current_status = sanitize_text_field( $_GET['status'] ?? 'all' );
+
+        // Admin notices
+        $notice_type = sanitize_text_field( $_GET['slw_notice'] ?? '' );
+        $notice_msg  = sanitize_text_field( $_GET['slw_msg'] ?? '' );
 
         // Get counts per status
         $counts = array( 'all' => 0, 'new' => 0, 'contacted' => 0, 'converted' => 0, 'archived' => 0 );
@@ -385,6 +633,79 @@ class SLW_Lead_Capture {
         <div class="wrap slw-admin-dashboard">
             <h1 class="slw-admin-dashboard__title">Lead Capture</h1>
             <p class="slw-admin-dashboard__subtitle">Manage wholesale prospect leads</p>
+
+            <?php if ( $notice_type === 'success' && $notice_msg === 'lead_added' ) : ?>
+                <div class="notice notice-success is-dismissible"><p>Lead added successfully.</p></div>
+            <?php elseif ( $notice_type === 'error' ) : ?>
+                <div class="notice notice-error is-dismissible"><p>
+                    <?php
+                    $error_messages = array(
+                        'name_email_required' => 'Name and email are required.',
+                        'invalid_email'       => 'Please enter a valid email address.',
+                        'duplicate_email'     => 'A lead with this email already exists.',
+                    );
+                    echo esc_html( $error_messages[ $notice_msg ] ?? 'An error occurred.' );
+                    ?>
+                </p></div>
+            <?php endif; ?>
+
+            <!-- Quick Add Lead (Collapsible) -->
+            <div class="slw-admin-card slw-quick-add-card">
+                <div class="slw-quick-add-card__header" onclick="document.getElementById('slw-quick-add-body').classList.toggle('slw-quick-add-card__body--hidden');">
+                    <h2 class="slw-admin-card__heading" style="margin:0;cursor:pointer;">
+                        <span class="dashicons dashicons-plus-alt2" style="margin-right:6px;color:#386174;"></span>
+                        Quick Add Lead
+                        <span class="slw-quick-add-card__toggle dashicons dashicons-arrow-down-alt2"></span>
+                    </h2>
+                </div>
+                <div id="slw-quick-add-body" class="slw-quick-add-card__body slw-quick-add-card__body--hidden">
+                    <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="slw-quick-add-form">
+                        <?php wp_nonce_field( 'slw_manual_add_lead' ); ?>
+                        <input type="hidden" name="action" value="slw_manual_add_lead" />
+
+                        <div class="slw-quick-add-form__grid">
+                            <div class="slw-quick-add-form__field">
+                                <label>Name <span class="slw-required">*</span></label>
+                                <input type="text" name="name" required />
+                            </div>
+                            <div class="slw-quick-add-form__field">
+                                <label>Email <span class="slw-required">*</span></label>
+                                <input type="email" name="email" required />
+                            </div>
+                            <div class="slw-quick-add-form__field">
+                                <label>Business Name</label>
+                                <input type="text" name="business_name" />
+                            </div>
+                            <div class="slw-quick-add-form__field">
+                                <label>Phone</label>
+                                <input type="tel" name="phone" />
+                            </div>
+                            <div class="slw-quick-add-form__field">
+                                <label>Source</label>
+                                <select name="source" id="slw-manual-source">
+                                    <option value="manual">Manual</option>
+                                    <option value="website">Website</option>
+                                    <option value="trade_show">Trade Show</option>
+                                    <option value="referral">Referral</option>
+                                    <option value="social_media">Social Media</option>
+                                    <option value="phone_call">Phone Call</option>
+                                    <option value="other">Other</option>
+                                </select>
+                            </div>
+                            <div class="slw-quick-add-form__field slw-quick-add-form__event-field" id="slw-event-field" style="display:none;">
+                                <label>Event Name</label>
+                                <input type="text" name="event_name" placeholder="e.g. Montana Craft Fair" />
+                            </div>
+                            <div class="slw-quick-add-form__field slw-quick-add-form__field--full">
+                                <label>Notes</label>
+                                <textarea name="notes" rows="2" placeholder="Optional notes about this lead..."></textarea>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="button button-primary" style="margin-top:12px;">Add Lead</button>
+                    </form>
+                </div>
+            </div>
 
             <!-- Status Tabs -->
             <div class="slw-lead-tabs">
@@ -430,6 +751,7 @@ class SLW_Lead_Capture {
                             <th>Email</th>
                             <th>Business</th>
                             <th>Phone</th>
+                            <th>Source</th>
                             <th>Status</th>
                             <th>Captured</th>
                             <th></th>
@@ -437,7 +759,7 @@ class SLW_Lead_Capture {
                     </thead>
                     <tbody>
                         <?php if ( empty( $leads ) ) : ?>
-                            <tr><td colspan="8" class="slw-lead-table__empty">No leads found.</td></tr>
+                            <tr><td colspan="9" class="slw-lead-table__empty">No leads found.</td></tr>
                         <?php else : ?>
                             <?php foreach ( $leads as $lead ) : ?>
                                 <tr>
@@ -446,6 +768,7 @@ class SLW_Lead_Capture {
                                     <td><a href="mailto:<?php echo esc_attr( $lead->email ); ?>"><?php echo esc_html( $lead->email ); ?></a></td>
                                     <td><?php echo esc_html( $lead->business_name ); ?></td>
                                     <td><?php echo esc_html( $lead->phone ); ?></td>
+                                    <td><?php echo self::get_source_badge( $lead->source ); ?></td>
                                     <td><span class="slw-lead-status slw-lead-status--<?php echo esc_attr( $lead->status ); ?>"><?php echo esc_html( ucfirst( $lead->status ) ); ?></span></td>
                                     <td><?php echo esc_html( human_time_diff( strtotime( $lead->captured_at ) ) . ' ago' ); ?></td>
                                     <td>
@@ -457,6 +780,9 @@ class SLW_Lead_Capture {
                     </tbody>
                 </table>
             </div>
+
+            <!-- Trade Show Tools -->
+            <?php self::render_trade_show_tools(); ?>
         </div>
 
         <script>
@@ -478,7 +804,97 @@ class SLW_Lead_Capture {
             .then(function(r){ return r.json(); })
             .then(function(){ location.reload(); });
         }
+
+        // Toggle event name field based on source selection
+        document.getElementById('slw-manual-source').addEventListener('change', function() {
+            var eventField = document.getElementById('slw-event-field');
+            eventField.style.display = this.value === 'trade_show' ? '' : 'none';
+        });
+
+        // QR code tools: update QR on event name change
+        (function(){
+            var eventInput = document.getElementById('slw-qr-event-name');
+            if (!eventInput) return;
+            var qrImg = document.getElementById('slw-qr-image');
+            var copyBtn = document.getElementById('slw-copy-link-btn');
+            var downloadLink = document.getElementById('slw-qr-download');
+            var linkDisplay = document.getElementById('slw-qr-link-display');
+            var baseUrl = '<?php echo esc_url( home_url( '/wholesale-leads' ) ); ?>';
+
+            function updateQR() {
+                var event = eventInput.value.trim();
+                var url = baseUrl + '?source=trade_show';
+                if (event) url += '&event=' + encodeURIComponent(event);
+                var qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(url);
+                qrImg.src = qrUrl;
+                downloadLink.href = qrUrl;
+                linkDisplay.textContent = url;
+                copyBtn.setAttribute('data-url', url);
+            }
+
+            eventInput.addEventListener('input', updateQR);
+
+            copyBtn.addEventListener('click', function() {
+                var url = this.getAttribute('data-url');
+                navigator.clipboard.writeText(url).then(function(){
+                    copyBtn.textContent = 'Copied!';
+                    setTimeout(function(){ copyBtn.textContent = 'Copy Link'; }, 2000);
+                });
+            });
+        })();
         </script>
+        <?php
+    }
+
+    // ------------------------------------------------------------------
+    // Trade Show Tools Section
+    // ------------------------------------------------------------------
+
+    private static function render_trade_show_tools() {
+        $lead_page_url = home_url( '/wholesale-leads' );
+        $default_url   = $lead_page_url . '?source=trade_show';
+        $qr_api_url    = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' . rawurlencode( $default_url );
+        ?>
+        <div class="slw-admin-card slw-trade-show-tools">
+            <h2 class="slw-admin-card__heading">
+                <span class="dashicons dashicons-megaphone" style="margin-right:6px;color:#D4AF37;"></span>
+                Trade Show Tools
+            </h2>
+            <p class="slw-trade-show-tools__desc">Print this QR code and place it at your trade show booth. Visitors scan it on their phone, fill in their info, and become a lead automatically.</p>
+
+            <div class="slw-trade-show-tools__grid">
+                <div class="slw-trade-show-tools__qr">
+                    <img id="slw-qr-image" src="<?php echo esc_url( $qr_api_url ); ?>" alt="Lead Capture QR Code" width="200" height="200" />
+                </div>
+                <div class="slw-trade-show-tools__controls">
+                    <div class="slw-quick-add-form__field">
+                        <label for="slw-qr-event-name"><strong>Event Name</strong> <span class="slw-optional">(optional)</span></label>
+                        <input type="text" id="slw-qr-event-name" placeholder="e.g. Montana Craft Fair" />
+                    </div>
+
+                    <div class="slw-trade-show-tools__link-box">
+                        <label><strong>Lead Capture URL</strong></label>
+                        <code id="slw-qr-link-display"><?php echo esc_html( $default_url ); ?></code>
+                    </div>
+
+                    <div class="slw-trade-show-tools__buttons">
+                        <a id="slw-qr-download" href="<?php echo esc_url( $qr_api_url ); ?>" class="button" download="wholesale-qr-code.png" target="_blank">
+                            <span class="dashicons dashicons-download" style="margin-top:4px;"></span> Download QR Code
+                        </a>
+                        <button type="button" id="slw-copy-link-btn" class="button" data-url="<?php echo esc_attr( $default_url ); ?>">
+                            <span class="dashicons dashicons-admin-page" style="margin-top:4px;"></span> Copy Link
+                        </button>
+                    </div>
+
+                    <p class="slw-trade-show-tools__booth-link">
+                        <strong>Booth Tablet URL:</strong>
+                        <a href="<?php echo esc_url( home_url( '/wholesale-booth?source=trade_show' ) ); ?>" target="_blank">
+                            <?php echo esc_html( home_url( '/wholesale-booth?source=trade_show' ) ); ?>
+                        </a>
+                    </p>
+                </div>
+            </div>
+        </div>
         <?php
     }
 
