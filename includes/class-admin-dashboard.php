@@ -257,7 +257,11 @@ class SLW_Admin_Dashboard {
                                 <?php foreach ( $checklist as $item ) : ?>
                                     <li class="slw-admin-checklist__item <?php echo $item['done'] ? 'slw-admin-checklist__item--done' : ''; ?>">
                                         <span class="slw-admin-checklist__check"><?php echo $item['done'] ? '&#10003;' : '&#9675;'; ?></span>
-                                        <span class="slw-admin-checklist__text"><?php echo esc_html( $item['label'] ); ?></span>
+                                        <?php if ( ! $item['done'] && ! empty( $item['link'] ) ) : ?>
+                                            <a href="<?php echo esc_url( $item['link'] ); ?>" class="slw-admin-checklist__text" style="color:#386174;text-decoration:none;"><?php echo esc_html( $item['label'] ); ?></a>
+                                        <?php else : ?>
+                                            <span class="slw-admin-checklist__text"><?php echo esc_html( $item['label'] ); ?></span>
+                                        <?php endif; ?>
                                     </li>
                                 <?php endforeach; ?>
                             </ul>
@@ -353,14 +357,47 @@ class SLW_Admin_Dashboard {
      * Build the getting-started checklist with completion state.
      */
     private static function get_checklist() {
-        $product_count = (int) wp_count_posts( 'product' )->publish;
+        $product_count  = (int) wp_count_posts( 'product' )->publish;
+        $has_mautic     = (bool) get_option( 'slw_mautic_url' );
+        $has_email_from = (bool) get_option( 'slw_email_from_address' );
+        $has_logo       = (bool) get_option( 'slw_invoice_logo_id' );
+
         return array(
-            array( 'label' => 'Configure wholesale discount',      'done' => get_option( 'slw_discount_percent' ) !== false ),
-            array( 'label' => 'Set first order minimum',           'done' => get_option( 'slw_first_order_minimum' ) !== false ),
-            array( 'label' => 'Add products to your store',        'done' => $product_count > 0 ),
-            array( 'label' => 'Customize your application form',   'done' => (bool) get_page_by_path( 'wholesale-partners' ) ),
-            array( 'label' => 'Configure invoice branding',        'done' => (bool) get_option( 'slw_invoice_logo_id' ) ),
-            array( 'label' => 'Test the wholesale flow',           'done' => false ), // manual step
+            array(
+                'label' => 'Set wholesale discount and order minimums',
+                'done'  => get_option( 'slw_discount_percent' ) !== false && get_option( 'slw_first_order_minimum' ) !== false,
+                'link'  => admin_url( 'admin.php?page=slw-settings' ),
+            ),
+            array(
+                'label' => 'Configure email sender (From name, address, signature)',
+                'done'  => $has_email_from,
+                'link'  => admin_url( 'admin.php?page=slw-invoice-settings' ),
+            ),
+            array(
+                'label' => 'Upload logo and set invoice branding',
+                'done'  => $has_logo,
+                'link'  => admin_url( 'admin.php?page=slw-invoice-settings' ),
+            ),
+            array(
+                'label' => 'Connect email provider (Mautic)',
+                'done'  => $has_mautic,
+                'link'  => admin_url( 'admin.php?page=slw-sequences' ),
+            ),
+            array(
+                'label' => 'Add products to your store',
+                'done'  => $product_count > 0,
+                'link'  => admin_url( 'edit.php?post_type=product' ),
+            ),
+            array(
+                'label' => 'Set case pack sizes on products (optional)',
+                'done'  => (bool) get_posts( array( 'post_type' => 'product', 'meta_key' => '_slw_case_pack_size', 'meta_compare' => '>', 'meta_value' => '0', 'numberposts' => 1 ) ),
+                'link'  => admin_url( 'edit.php?post_type=product' ),
+            ),
+            array(
+                'label' => 'Test the full wholesale flow (apply, approve, order)',
+                'done'  => false, // manual step
+                'link'  => home_url( '/wholesale-partners' ),
+            ),
         );
     }
 
