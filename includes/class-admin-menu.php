@@ -66,6 +66,18 @@ class SLW_Admin_Menu {
             array( 'SLW_Application_Form', 'render_admin_page' )
         );
 
+        // 2b. Email Sequences
+        if ( class_exists( 'SLW_Email_Sequences' ) ) {
+            add_submenu_page(
+                'slw-dashboard',
+                'Email Sequences',
+                'Sequences',
+                'manage_woocommerce',
+                'slw-sequences',
+                array( 'SLW_Email_Sequences', 'render_page' )
+            );
+        }
+
         // 3. Orders
         if ( class_exists( 'SLW_Wholesale_Orders' ) ) {
             add_submenu_page(

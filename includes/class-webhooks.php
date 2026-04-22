@@ -41,16 +41,53 @@ class SLW_Webhooks {
 
         $response = wp_remote_post( $url, array(
             'timeout'  => 5,
-            'blocking' => false,
+            'blocking' => true, // Must be true to capture response for logging
             'headers'  => array(
                 'Content-Type' => 'application/json',
             ),
             'body'     => wp_json_encode( $data ),
         ));
 
+        // Determine success/failure
+        $success       = ! is_wp_error( $response );
+        $response_code = $success ? wp_remote_retrieve_response_code( $response ) : 0;
+        if ( $success && ( $response_code < 200 || $response_code >= 300 ) ) {
+            $success = false;
+        }
+
         // Log failures for debugging (visible in WP debug.log)
         if ( is_wp_error( $response ) && defined( 'WP_DEBUG' ) && WP_DEBUG ) {
             error_log( 'SLW Webhook Error [' . $event . ']: ' . $response->get_error_message() );
         }
+
+        // Store in webhook log (circular buffer, last 50 entries)
+        self::log_webhook( $event, $data, $success, $response_code );
+    }
+
+    /**
+     * Log a webhook fire to the circular buffer stored in wp_options.
+     *
+     * @param string $event         Event name.
+     * @param array  $data          Payload that was sent.
+     * @param bool   $success       Whether the request succeeded.
+     * @param int    $response_code HTTP response code (0 if WP_Error).
+     */
+    private static function log_webhook( $event, $data, $success, $response_code ) {
+        $log = get_option( 'slw_webhook_log', array() );
+        if ( ! is_array( $log ) ) {
+            $log = array();
+        }
+
+        array_unshift( $log, array(
+            'event'  => $event,
+            'email'  => isset( $data['email'] ) ? $data['email'] : '',
+            'status' => $success ? 'success' : 'failed',
+            'code'   => $response_code,
+            'time'   => current_time( 'mysql' ),
+        ));
+
+        // Keep last 50 entries
+        $log = array_slice( $log, 0, 50 );
+        update_option( 'slw_webhook_log', $log, false );
     }
 }

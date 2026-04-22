@@ -1477,3 +1477,208 @@ p.description,
 		height: 400px;
 	}
 }
+
+/* ──────────────────────────────────────────────────────────────────────
+   Email Sequences Dashboard
+   ────────────────────────────────────────────────────────────────────── */
+
+/* Connection Status Bar */
+.slw-connection-bar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 14px 20px;
+	border-radius: 8px;
+	margin-bottom: 24px;
+	font-size: 14px;
+}
+
+.slw-connection-bar.slw-connected {
+	background: #e8f5e9;
+	border: 1px solid #c8e6c9;
+}
+
+.slw-connection-bar.slw-disconnected {
+	background: #fbe9e7;
+	border: 1px solid #ffccbc;
+}
+
+.slw-connection-info {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex-wrap: wrap;
+}
+
+.slw-connection-dot {
+	display: inline-block;
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	flex-shrink: 0;
+}
+
+.slw-connected .slw-connection-dot {
+	background: #2e7d32;
+	box-shadow: 0 0 6px rgba(46, 125, 50, 0.4);
+}
+
+.slw-disconnected .slw-connection-dot {
+	background: #c62828;
+	box-shadow: 0 0 6px rgba(198, 40, 40, 0.4);
+}
+
+.slw-connection-sync {
+	color: #628393;
+	font-size: 12px;
+}
+
+.slw-refresh-btn {
+	flex-shrink: 0;
+}
+
+/* Campaign Cards */
+.slw-campaign-card {
+	padding: 0 !important;
+	overflow: hidden;
+}
+
+.slw-campaign-header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 20px 24px;
+	cursor: default;
+}
+
+.slw-campaign-info h3 {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex-wrap: wrap;
+}
+
+.slw-campaign-meta {
+	color: #628393;
+	font-size: 13px;
+	margin-top: 4px;
+}
+
+.slw-campaign-meta .slw-meta-sep {
+	margin: 0 4px;
+}
+
+.slw-campaign-emails {
+	border-top: 1px solid #e0ddd8;
+}
+
+.slw-campaign-emails .wp-list-table {
+	border: none;
+	border-radius: 0;
+	box-shadow: none;
+	margin: 0;
+}
+
+/* Status Badges (campaign-specific) */
+.slw-status-badge {
+	display: inline-block;
+	padding: 2px 10px;
+	border-radius: 12px;
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.3px;
+	text-transform: uppercase;
+	line-height: 1.6;
+	vertical-align: middle;
+}
+
+.slw-badge-published {
+	color: #1b5e20;
+	background: #e8f5e9;
+}
+
+.slw-badge-unpublished {
+	color: #8B6914;
+	background: #FFF8E1;
+}
+
+/* Timing Pill */
+.slw-timing-pill {
+	display: inline-block;
+	padding: 2px 10px;
+	border-radius: 10px;
+	font-size: 12px;
+	font-weight: 600;
+	color: #386174;
+	background: #e3f0f5;
+	white-space: nowrap;
+}
+
+/* Rate Indicators */
+.slw-rate {
+	font-weight: 700;
+	font-size: 13px;
+}
+
+.slw-rate-good {
+	color: #1b5e20;
+}
+
+.slw-rate-ok {
+	color: #8B6914;
+}
+
+.slw-rate-low {
+	color: #b71c1c;
+}
+
+/* Toggle Emails Button */
+.slw-toggle-emails {
+	white-space: nowrap;
+	font-size: 12px !important;
+	padding: 5px 12px !important;
+}
+
+/* Email Actions Column */
+.slw-email-actions {
+	white-space: nowrap;
+}
+
+.slw-email-actions .button-small {
+	font-size: 12px;
+	padding: 3px 10px;
+	margin-right: 4px;
+}
+
+/* Provider settings form within card */
+.slw-admin-card .form-table {
+	margin-top: 0;
+}
+
+.slw-admin-card .form-table th {
+	width: 180px;
+}
+
+/* Responsive adjustments */
+@media screen and (max-width: 782px) {
+	.slw-connection-bar {
+		flex-direction: column;
+		gap: 12px;
+		align-items: flex-start;
+	}
+
+	.slw-campaign-header {
+		flex-direction: column;
+		gap: 12px;
+		align-items: flex-start;
+	}
+
+	.slw-campaign-emails .wp-list-table {
+		font-size: 12px;
+	}
+
+	.slw-email-actions .button-small {
+		display: block;
+		margin-bottom: 4px;
+	}
+}
