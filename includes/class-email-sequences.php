@@ -24,6 +24,30 @@ class SLW_Email_Sequences {
         add_action( 'wp_ajax_slw_save_sequence_order',   array( __CLASS__, 'ajax_save_sequence_order' ) );
         add_action( 'wp_ajax_slw_save_nl_template',      array( __CLASS__, 'ajax_save_nl_template' ) );
         add_action( 'wp_ajax_slw_delete_nl_template',    array( __CLASS__, 'ajax_delete_nl_template' ) );
+
+        // Scheduled newsletter cron handler
+        add_action( 'slw_send_scheduled_newsletter', array( __CLASS__, 'execute_scheduled_newsletter' ) );
+    }
+
+    /**
+     * Execute a scheduled newsletter send (fired by WP-Cron).
+     */
+    public static function execute_scheduled_newsletter( $job_id ) {
+        $data = get_transient( $job_id );
+        if ( ! $data || empty( $data['email_list'] ) ) {
+            return;
+        }
+
+        $html_email = self::build_branded_email( $data['subject'], $data['body'] );
+        $provider   = get_option( 'slw_email_provider', 'none' );
+
+        if ( $provider === 'mautic' ) {
+            self::send_via_mautic( $data['subject'], $html_email, $data['email_list'] );
+        } else {
+            self::send_via_wp_mail( $data['subject'], $html_email, $data['email_list'] );
+        }
+
+        delete_transient( $job_id );
     }
 
     /**
@@ -804,6 +828,7 @@ class SLW_Email_Sequences {
                                     </select>
                                     <button type="button" class="button" id="slw-nl-load-tpl">Load</button>
                                     <button type="button" class="button" id="slw-nl-save-tpl">Save Current as Template</button>
+                                    <button type="button" class="button" id="slw-nl-undo-tpl" style="display:none;" title="Undo last save">&#8630; Undo</button>
                                     <button type="button" class="button" id="slw-nl-delete-tpl" style="color:#c62828;">Delete Template</button>
                                 </div>
                                 <p class="description" style="margin-top:6px;">Load a template to pre-fill the subject and body, or save your current draft as a new reusable template.</p>
@@ -863,6 +888,12 @@ class SLW_Email_Sequences {
                             </td>
                         </tr>
                     </table>
+                    <div style="margin-bottom:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                        <label style="font-size:13px;color:#628393;">
+                            <input type="checkbox" id="slw-nl-schedule-toggle" /> Schedule for later
+                        </label>
+                        <input type="datetime-local" id="slw-nl-schedule-time" style="display:none;" min="<?php echo esc_attr( date( 'Y-m-d\TH:i', strtotime( '+1 hour' ) ) ); ?>" />
+                    </div>
                     <div class="slw-newsletter-actions">
                         <button type="button" class="button button-primary" id="slw-send-newsletter-btn" data-nonce="<?php echo esc_attr( $nonce ); ?>">Send Newsletter</button>
                         <button type="button" class="button" id="slw-cancel-newsletter-btn">Cancel</button>
@@ -1193,17 +1224,65 @@ class SLW_Email_Sequences {
                     if (res.success) {
                         var d = res.data;
                         var exists = $('#slw-nl-template option[value="'+d.slug+'"]');
+                        // Track for undo
+                        lastSavedTemplate = { slug: d.slug, wasNew: !exists.length };
                         if (exists.length) {
+                            lastSavedTemplate.prevName = exists.text();
+                            lastSavedTemplate.prevSubject = exists.data('subject');
+                            lastSavedTemplate.prevBody = exists.data('body');
                             exists.text(d.name).data('subject', d.subject).data('body', d.body);
                         } else {
                             $('#slw-nl-template').append('<option value="'+d.slug+'" data-subject="'+d.subject.replace(/"/g,'&quot;')+'" data-body="'+d.body.replace(/"/g,'&quot;')+'">'+d.name+'</option>');
                         }
                         $('#slw-nl-template').val(d.slug);
+                        $('#slw-nl-undo-tpl').show();
                         alert('Template saved!');
                     } else {
                         alert(res.data || 'Could not save template.');
                     }
                 });
+            });
+
+            // Undo last template save
+            var lastSavedTemplate = null;
+            $('#slw-nl-undo-tpl').on('click', function() {
+                if (!lastSavedTemplate) return;
+                var slug = lastSavedTemplate.slug;
+                if (lastSavedTemplate.wasNew) {
+                    // Delete the newly created template
+                    $.post(ajaxurl, {
+                        action: 'slw_delete_nl_template',
+                        nonce: '<?php echo esc_js( wp_create_nonce( "slw_sequences_nonce" ) ); ?>',
+                        slug: slug
+                    }, function() {
+                        $('#slw-nl-template option[value="'+slug+'"]').remove();
+                        $('#slw-nl-template').val('');
+                    });
+                } else {
+                    // Restore the previous version
+                    $.post(ajaxurl, {
+                        action: 'slw_save_nl_template',
+                        nonce: '<?php echo esc_js( wp_create_nonce( "slw_sequences_nonce" ) ); ?>',
+                        template_name: lastSavedTemplate.prevName,
+                        subject: lastSavedTemplate.prevSubject,
+                        body: lastSavedTemplate.prevBody
+                    }, function(res) {
+                        if (res.success) {
+                            var d = res.data;
+                            var opt = $('#slw-nl-template option[value="'+d.slug+'"]');
+                            opt.text(d.name).data('subject', d.subject).data('body', d.body);
+                        }
+                    });
+                }
+                lastSavedTemplate = null;
+                $(this).hide();
+            });
+
+            // Schedule toggle
+            $('#slw-nl-schedule-toggle').on('change', function() {
+                $('#slw-nl-schedule-time').toggle(this.checked);
+                var $sendBtn = $('#slw-send-newsletter-btn');
+                $sendBtn.text(this.checked ? 'Schedule Newsletter' : 'Send Newsletter');
             });
 
             // Template delete
@@ -1280,7 +1359,8 @@ class SLW_Email_Sequences {
                     body: body,
                     audience: audience,
                     recipients: recipients,
-                    custom_email: customEmail
+                    custom_email: customEmail,
+                    scheduled: $('#slw-nl-schedule-toggle').is(':checked') ? $('#slw-nl-schedule-time').val() : ''
                 }, function(response) {
                     $btn.prop('disabled', false).text('Send Newsletter');
                     if (response.success) {
@@ -1348,6 +1428,7 @@ class SLW_Email_Sequences {
         $audience     = sanitize_text_field( $_POST['audience'] ?? 'all' );
         $recipients   = isset( $_POST['recipients'] ) ? array_map( 'absint', (array) $_POST['recipients'] ) : array();
         $custom_email = sanitize_email( $_POST['custom_email'] ?? '' );
+        $scheduled    = sanitize_text_field( $_POST['scheduled'] ?? '' );
 
         if ( empty( $subject ) || empty( $body ) ) {
             wp_send_json_error( 'Subject and body are required.' );
@@ -1358,6 +1439,32 @@ class SLW_Email_Sequences {
             $email_list = array( $custom_email );
         } else {
             $email_list = self::resolve_newsletter_recipients( $audience, $recipients );
+        }
+
+        // If scheduled for later, save to a cron event and return
+        if ( ! empty( $scheduled ) ) {
+            $send_time = strtotime( $scheduled );
+            if ( ! $send_time || $send_time < time() ) {
+                wp_send_json_error( 'Scheduled time must be in the future.' );
+            }
+
+            $scheduled_data = array(
+                'subject'    => $subject,
+                'body'       => $body,
+                'email_list' => $email_list,
+                'sent_by'    => wp_get_current_user()->display_name,
+            );
+
+            // Store in a transient and schedule a one-time cron
+            $job_id = 'slw_nl_' . md5( $subject . $send_time );
+            set_transient( $job_id, $scheduled_data, DAY_IN_SECONDS * 7 );
+            wp_schedule_single_event( $send_time, 'slw_send_scheduled_newsletter', array( $job_id ) );
+
+            // Log it
+            self::log_newsletter( $subject, count( $email_list ), wp_get_current_user()->display_name );
+
+            $formatted = date_i18n( 'M j, Y \a\t g:i A', $send_time );
+            wp_send_json_success( "Newsletter scheduled for {$formatted} to " . count( $email_list ) . ' recipient(s).' );
         }
 
         if ( empty( $email_list ) ) {
