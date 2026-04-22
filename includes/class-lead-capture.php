@@ -200,86 +200,283 @@ class SLW_Lead_Capture {
             SLW_VERSION
         );
 
-        $url_source = sanitize_text_field( $_GET['source'] ?? 'trade_show' );
+        $url_source = sanitize_text_field( $_GET['source'] ?? '' );
         $url_event  = sanitize_text_field( $_GET['event'] ?? '' );
+
+        // Pull booth settings
+        $retail_code    = esc_attr( get_option( 'slw_booth_retail_code', 'SEGO15' ) );
+        $retail_offer   = esc_html( get_option( 'slw_booth_retail_offer', '15% off your first order' ) );
+        $retail_url     = esc_url( get_option( 'slw_booth_retail_url', home_url( '/shop-all' ) ) );
+        $wholesale_head = esc_html( get_option( 'slw_booth_wholesale_heading', "Welcome! Here's our wholesale price list" ) );
+        $linesheet_url  = esc_url( home_url( '/wholesale-portal' ) );
+        $apply_url      = esc_url( home_url( '/wholesale-partners' ) );
 
         ob_start();
         ?>
-        <div class="slw-quick-capture">
-            <form id="slw-quick-form" class="slw-quick-capture__form">
-                <?php wp_nonce_field( 'slw_capture_lead', 'slw_lead_nonce' ); ?>
-                <input type="hidden" name="source" value="<?php echo esc_attr( $url_source ); ?>" />
-                <input type="hidden" name="event" value="<?php echo esc_attr( $url_event ); ?>" />
+        <div class="slw-booth" id="slw-booth">
+            <?php wp_nonce_field( 'slw_capture_lead', 'slw_lead_nonce' ); ?>
+            <input type="hidden" id="slw-booth-source" value="<?php echo esc_attr( $url_source ); ?>" />
+            <input type="hidden" id="slw-booth-event" value="<?php echo esc_attr( $url_event ); ?>" />
 
-                <h2 class="slw-quick-capture__heading">Interested in wholesale?</h2>
-
-                <div class="slw-quick-capture__field">
-                    <input type="text" name="name" placeholder="Your Name" required class="slw-quick-capture__input" />
+            <!-- ============ STEP 1: Interest Selector ============ -->
+            <div class="slw-booth__step slw-booth__step--active" data-step="1">
+                <h2 class="slw-booth__title">Welcome to Sego Lily</h2>
+                <p class="slw-booth__subtitle">How can we help you today?</p>
+                <div class="slw-booth__cards">
+                    <button type="button" class="slw-booth__card" data-path="retail" aria-label="I'm a Customer">
+                        <span class="slw-booth__card-icon">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#386174" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+                        </span>
+                        <span class="slw-booth__card-label">I'm a Customer</span>
+                        <span class="slw-booth__card-desc">Shopping for myself</span>
+                    </button>
+                    <button type="button" class="slw-booth__card" data-path="wholesale" aria-label="I'm a Business">
+                        <span class="slw-booth__card-icon">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#386174" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                        </span>
+                        <span class="slw-booth__card-label">I'm a Business</span>
+                        <span class="slw-booth__card-desc">Interested in wholesale</span>
+                    </button>
                 </div>
+            </div>
 
-                <div class="slw-quick-capture__field">
-                    <input type="email" name="email" placeholder="Email Address" required class="slw-quick-capture__input" />
+            <!-- ============ STEP 2a: Retail Path ============ -->
+            <div class="slw-booth__step" data-step="2a">
+                <div class="slw-booth__question slw-booth__question--active" data-q="r1">
+                    <h2 class="slw-booth__title">What's your name?</h2>
+                    <input type="text" class="slw-booth__input" id="slw-booth-r-name" placeholder="First name" autocomplete="given-name" />
                 </div>
-
-                <div class="slw-quick-capture__field">
-                    <input type="tel" name="phone" placeholder="Phone Number" class="slw-quick-capture__input" />
+                <div class="slw-booth__question" data-q="r2">
+                    <h2 class="slw-booth__title">What's your email?</h2>
+                    <input type="email" class="slw-booth__input" id="slw-booth-r-email" placeholder="you@email.com" autocomplete="email" />
                 </div>
+                <div class="slw-booth__question" data-q="r3">
+                    <h2 class="slw-booth__title">What's your biggest skin concern?</h2>
+                    <div class="slw-booth__pills">
+                        <button type="button" class="slw-booth__pill" data-value="Aging">Aging</button>
+                        <button type="button" class="slw-booth__pill" data-value="Dryness">Dryness</button>
+                        <button type="button" class="slw-booth__pill" data-value="Sensitivity">Sensitivity</button>
+                        <button type="button" class="slw-booth__pill" data-value="Just browsing">Just browsing</button>
+                    </div>
+                </div>
+            </div>
 
-                <button type="submit" class="slw-quick-capture__submit">Get Started</button>
+            <!-- ============ STEP 2b: Wholesale Path ============ -->
+            <div class="slw-booth__step" data-step="2b">
+                <div class="slw-booth__question slw-booth__question--active" data-q="w1">
+                    <h2 class="slw-booth__title">What's your name?</h2>
+                    <input type="text" class="slw-booth__input" id="slw-booth-w-name" placeholder="First name" autocomplete="given-name" />
+                </div>
+                <div class="slw-booth__question" data-q="w2">
+                    <h2 class="slw-booth__title">What's your email?</h2>
+                    <input type="email" class="slw-booth__input" id="slw-booth-w-email" placeholder="you@email.com" autocomplete="email" />
+                </div>
+                <div class="slw-booth__question" data-q="w3">
+                    <h2 class="slw-booth__title">What type of business?</h2>
+                    <div class="slw-booth__pills">
+                        <button type="button" class="slw-booth__pill" data-value="Boutique">Boutique</button>
+                        <button type="button" class="slw-booth__pill" data-value="Salon / Spa">Salon / Spa</button>
+                        <button type="button" class="slw-booth__pill" data-value="Health Store">Health Store</button>
+                        <button type="button" class="slw-booth__pill" data-value="Other">Other</button>
+                    </div>
+                </div>
+            </div>
 
-                <div class="slw-quick-capture__message" style="display:none;"></div>
-            </form>
+            <!-- ============ STEP 3a: Retail Incentive (in-person) ============ -->
+            <div class="slw-booth__step" data-step="3a">
+                <p class="slw-booth__thanks">Thanks, <span id="slw-booth-r-thanksname"></span>!</p>
+                <h2 class="slw-booth__incentive-heading"><?php echo $retail_offer; ?></h2>
+                <div class="slw-booth__code-badge" style="font-size:22px;padding:16px 24px;">Show this screen to Holly</div>
+                <p style="text-align:center;color:#628393;font-size:14px;margin:12px 0 0;">Code <strong><?php echo $retail_code; ?></strong> also saved for online use</p>
+            </div>
+
+            <!-- ============ STEP 3b: Wholesale Incentive ============ -->
+            <div class="slw-booth__step" data-step="3b">
+                <p class="slw-booth__thanks">Thanks, <span id="slw-booth-w-thanksname"></span>!</p>
+                <h2 class="slw-booth__incentive-heading"><?php echo $wholesale_head; ?></h2>
+                <p class="slw-booth__incentive-sub">50% off retail on every product</p>
+                <div class="slw-booth__cta-group">
+                    <a href="<?php echo $linesheet_url; ?>" class="slw-booth__cta slw-booth__cta--primary">View Price List</a>
+                    <a href="<?php echo $apply_url; ?>" class="slw-booth__cta slw-booth__cta--secondary">Apply for Wholesale</a>
+                </div>
+            </div>
+
+            <!-- Loading overlay -->
+            <div class="slw-booth__loading" id="slw-booth-loading" style="display:none;">
+                <div class="slw-booth__spinner"></div>
+            </div>
         </div>
 
         <script>
         (function(){
-            var form = document.getElementById('slw-quick-form');
-            if (!form) return;
-            form.addEventListener('submit', function(e) {
-                e.preventDefault();
-                var btn = form.querySelector('.slw-quick-capture__submit');
-                var msg = form.querySelector('.slw-quick-capture__message');
-                btn.disabled = true;
-                btn.textContent = 'Saving...';
+            var booth = document.getElementById('slw-booth');
+            if (!booth) return;
 
-                var data = new FormData(form);
-                data.append('action', 'slw_capture_lead');
-                data.append('quick_mode', '1');
+            var ajaxUrl  = '<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>';
+            var nonce    = booth.querySelector('[name="slw_lead_nonce"]').value;
+            var urlSrc   = document.getElementById('slw-booth-source').value;
+            var urlEvt   = document.getElementById('slw-booth-event').value;
 
-                fetch('<?php echo esc_url( admin_url( 'admin-ajax.php' ) ); ?>', {
-                    method: 'POST',
-                    body: data,
-                    credentials: 'same-origin'
-                })
-                .then(function(r){ return r.json(); })
-                .then(function(res){
-                    if (res.success) {
-                        msg.style.display = 'block';
-                        msg.className = 'slw-quick-capture__message slw-quick-capture__message--success';
-                        msg.textContent = 'Thanks! We\'ll be in touch soon.';
-                        form.reset();
-                        // Re-set hidden fields after reset
-                        form.querySelector('[name="source"]').value = '<?php echo esc_js( $url_source ); ?>';
-                        form.querySelector('[name="event"]').value = '<?php echo esc_js( $url_event ); ?>';
-                        setTimeout(function(){
-                            msg.style.display = 'none';
-                            btn.disabled = false;
-                            btn.textContent = 'Get Started';
-                        }, 3000);
-                    } else {
-                        msg.style.display = 'block';
-                        msg.className = 'slw-quick-capture__message slw-quick-capture__message--error';
-                        msg.textContent = res.data || 'Something went wrong.';
-                        btn.disabled = false;
-                        btn.textContent = 'Add Lead';
+            var currentPath = ''; // 'retail' or 'wholesale'
+            var resetTimer  = null;
+
+            // ---- Helpers ----
+            function showStep(stepId) {
+                booth.querySelectorAll('.slw-booth__step').forEach(function(s){
+                    s.classList.remove('slw-booth__step--active');
+                });
+                var target = booth.querySelector('[data-step="' + stepId + '"]');
+                if (target) {
+                    target.classList.add('slw-booth__step--active');
+                }
+            }
+
+            function showQuestion(qId) {
+                var step = booth.querySelector('.slw-booth__step--active');
+                if (!step) return;
+                step.querySelectorAll('.slw-booth__question').forEach(function(q){
+                    q.classList.remove('slw-booth__question--active');
+                });
+                var target = step.querySelector('[data-q="' + qId + '"]');
+                if (target) {
+                    target.classList.add('slw-booth__question--active');
+                    var inp = target.querySelector('.slw-booth__input');
+                    if (inp) setTimeout(function(){ inp.focus(); }, 350);
+                }
+            }
+
+            function resetBooth() {
+                clearTimeout(resetTimer);
+                currentPath = '';
+                showStep('1');
+                // Clear inputs
+                booth.querySelectorAll('.slw-booth__input').forEach(function(i){ i.value = ''; });
+                booth.querySelectorAll('.slw-booth__pill').forEach(function(p){ p.classList.remove('slw-booth__pill--selected'); });
+                // Reset questions to first
+                booth.querySelectorAll('.slw-booth__step').forEach(function(s){
+                    var first = s.querySelector('.slw-booth__question');
+                    if (first) {
+                        s.querySelectorAll('.slw-booth__question').forEach(function(q){ q.classList.remove('slw-booth__question--active'); });
+                        first.classList.add('slw-booth__question--active');
                     }
-                })
-                .catch(function(){
-                    msg.style.display = 'block';
-                    msg.className = 'slw-quick-capture__message slw-quick-capture__message--error';
-                    msg.textContent = 'Network error.';
-                    btn.disabled = false;
-                    btn.textContent = 'Add Lead';
+                });
+            }
+
+            function startResetTimer() {
+                clearTimeout(resetTimer);
+                resetTimer = setTimeout(resetBooth, 30000);
+            }
+
+            // ---- Step 1: Card selection ----
+            booth.querySelectorAll('.slw-booth__card').forEach(function(card){
+                card.addEventListener('click', function(){
+                    currentPath = this.getAttribute('data-path');
+                    if (currentPath === 'retail') {
+                        showStep('2a');
+                        var inp = booth.querySelector('#slw-booth-r-name');
+                        if (inp) setTimeout(function(){ inp.focus(); }, 350);
+                    } else {
+                        showStep('2b');
+                        var inp = booth.querySelector('#slw-booth-w-name');
+                        if (inp) setTimeout(function(){ inp.focus(); }, 350);
+                    }
+                });
+            });
+
+            // ---- Text input: advance on Enter ----
+            booth.querySelectorAll('.slw-booth__input').forEach(function(inp){
+                inp.addEventListener('keydown', function(e){
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        var val = this.value.trim();
+                        if (!val) return;
+
+                        var q = this.closest('.slw-booth__question');
+                        var qId = q.getAttribute('data-q');
+
+                        // Validate email
+                        if (this.type === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) {
+                            this.classList.add('slw-booth__input--error');
+                            setTimeout(function(){ inp.classList.remove('slw-booth__input--error'); }, 1500);
+                            return;
+                        }
+
+                        // Advance to next question
+                        var prefix = qId.charAt(0);
+                        var num = parseInt(qId.charAt(1), 10);
+                        showQuestion(prefix + (num + 1));
+                    }
+                });
+            });
+
+            // ---- Pill selection: captures lead then shows incentive ----
+            booth.querySelectorAll('.slw-booth__pill').forEach(function(pill){
+                pill.addEventListener('click', function(){
+                    // Mark selected
+                    this.closest('.slw-booth__pills').querySelectorAll('.slw-booth__pill').forEach(function(p){
+                        p.classList.remove('slw-booth__pill--selected');
+                    });
+                    this.classList.add('slw-booth__pill--selected');
+
+                    var selectedValue = this.getAttribute('data-value');
+                    var isRetail = currentPath === 'retail';
+                    var nameVal, emailVal;
+
+                    if (isRetail) {
+                        nameVal  = document.getElementById('slw-booth-r-name').value.trim();
+                        emailVal = document.getElementById('slw-booth-r-email').value.trim();
+                    } else {
+                        nameVal  = document.getElementById('slw-booth-w-name').value.trim();
+                        emailVal = document.getElementById('slw-booth-w-email').value.trim();
+                    }
+
+                    if (!nameVal || !emailVal) return;
+
+                    // Show loading
+                    document.getElementById('slw-booth-loading').style.display = 'flex';
+
+                    // Build form data
+                    var fd = new FormData();
+                    fd.append('action', 'slw_capture_lead');
+                    fd.append('slw_lead_nonce', nonce);
+                    fd.append('quick_mode', '1');
+                    fd.append('booth_mode', '1');
+                    fd.append('name', nameVal);
+                    fd.append('email', emailVal);
+                    fd.append('source', urlSrc || (isRetail ? 'retail_booth' : 'wholesale_booth'));
+                    fd.append('event', urlEvt);
+                    fd.append('how_heard', selectedValue);
+
+                    if (!isRetail) {
+                        fd.append('business_type', selectedValue);
+                    }
+
+                    fetch(ajaxUrl, { method: 'POST', body: fd, credentials: 'same-origin' })
+                    .then(function(r){ return r.json(); })
+                    .then(function(res){
+                        document.getElementById('slw-booth-loading').style.display = 'none';
+                        // Show incentive regardless of duplicate error
+                        if (isRetail) {
+                            document.getElementById('slw-booth-r-thanksname').textContent = nameVal.split(' ')[0];
+                            showStep('3a');
+                        } else {
+                            document.getElementById('slw-booth-w-thanksname').textContent = nameVal.split(' ')[0];
+                            showStep('3b');
+                        }
+                        startResetTimer();
+                    })
+                    .catch(function(){
+                        document.getElementById('slw-booth-loading').style.display = 'none';
+                        // Show incentive even on network error
+                        if (isRetail) {
+                            document.getElementById('slw-booth-r-thanksname').textContent = nameVal.split(' ')[0];
+                            showStep('3a');
+                        } else {
+                            document.getElementById('slw-booth-w-thanksname').textContent = nameVal.split(' ')[0];
+                            showStep('3b');
+                        }
+                        startResetTimer();
+                    });
                 });
             });
         })();
@@ -296,16 +493,18 @@ class SLW_Lead_Capture {
         check_ajax_referer( 'slw_capture_lead', 'slw_lead_nonce' );
 
         $quick_mode    = ! empty( $_POST['quick_mode'] );
+        $booth_mode    = ! empty( $_POST['booth_mode'] );
         $name          = sanitize_text_field( wp_unslash( $_POST['name'] ?? '' ) );
         $email         = sanitize_email( wp_unslash( $_POST['email'] ?? '' ) );
         $business_name = sanitize_text_field( wp_unslash( $_POST['business_name'] ?? '' ) );
+        $business_type = sanitize_text_field( wp_unslash( $_POST['business_type'] ?? '' ) );
         $phone         = sanitize_text_field( wp_unslash( $_POST['phone'] ?? '' ) );
         $how_heard     = sanitize_text_field( wp_unslash( $_POST['how_heard'] ?? '' ) );
         $source        = sanitize_text_field( wp_unslash( $_POST['source'] ?? 'website' ) );
         $event         = sanitize_text_field( wp_unslash( $_POST['event'] ?? '' ) );
 
         // Validate allowed sources
-        $allowed_sources = array( 'website', 'trade_show', 'referral', 'social_media', 'phone_call', 'other', 'shortcode', 'manual' );
+        $allowed_sources = array( 'website', 'trade_show', 'referral', 'social_media', 'phone_call', 'other', 'shortcode', 'manual', 'retail_booth', 'wholesale_booth' );
         if ( ! in_array( $source, $allowed_sources, true ) ) {
             $source = 'website';
         }
@@ -344,6 +543,51 @@ class SLW_Lead_Capture {
             $how_heard .= ' | Event: ' . $event;
         }
 
+        // Booth mode: store business type in notes for wholesale leads
+        $notes = '';
+        if ( $booth_mode && $business_type ) {
+            $notes = 'Business Type: ' . $business_type;
+        }
+
+        // ── Retail booth leads go to WooCommerce, not the wholesale leads table ──
+        if ( $source === 'retail_booth' ) {
+            // Create or find WooCommerce customer
+            $existing_user = get_user_by( 'email', $email );
+            if ( ! $existing_user ) {
+                $name_parts = explode( ' ', $name, 2 );
+                $first = $name_parts[0];
+                $last  = $name_parts[1] ?? '';
+                $user_id = wc_create_new_customer( $email, '', wp_generate_password() );
+                if ( ! is_wp_error( $user_id ) ) {
+                    update_user_meta( $user_id, 'first_name', $first );
+                    update_user_meta( $user_id, 'last_name', $last );
+                    update_user_meta( $user_id, 'billing_phone', $phone );
+                    update_user_meta( $user_id, 'slw_booth_source', $source );
+                    update_user_meta( $user_id, 'slw_booth_event', $event );
+                    update_user_meta( $user_id, 'slw_skin_concern', $how_heard ); // skin concern stored here
+                }
+            }
+
+            // Fire webhook with retail tag for Mautic segmentation
+            if ( class_exists( 'SLW_Webhooks' ) ) {
+                SLW_Webhooks::fire( 'retail-lead-captured', array(
+                    'email'        => $email,
+                    'first_name'   => $name_parts[0] ?? $name,
+                    'source'       => $source,
+                    'event'        => $event,
+                    'skin_concern' => $how_heard,
+                ) );
+            }
+
+            // Also store a count in options for the dashboard display
+            $retail_count = (int) get_option( 'slw_retail_booth_leads', 0 );
+            update_option( 'slw_retail_booth_leads', $retail_count + 1 );
+
+            wp_send_json_success();
+            return;
+        }
+
+        // ── Wholesale leads go to the leads table as before ──
         $wpdb->insert( $table, array(
             'name'          => $name,
             'email'         => $email,
@@ -353,7 +597,8 @@ class SLW_Lead_Capture {
             'source'        => $source,
             'status'        => 'new',
             'captured_at'   => current_time( 'mysql' ),
-        ), array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s' ) );
+            'notes'         => $notes,
+        ), array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s' ) );
 
         // Fire webhook
         if ( class_exists( 'SLW_Webhooks' ) ) {
@@ -580,8 +825,10 @@ class SLW_Lead_Capture {
             'social_media' => array( 'label' => 'Social Media', 'class' => 'slw-source-badge--purple' ),
             'phone_call'   => array( 'label' => 'Phone Call',   'class' => 'slw-source-badge--gray' ),
             'shortcode'    => array( 'label' => 'Website',      'class' => 'slw-source-badge--teal' ),
-            'manual'       => array( 'label' => 'Manual',       'class' => 'slw-source-badge--gray' ),
-            'other'        => array( 'label' => 'Other',        'class' => 'slw-source-badge--gray' ),
+            'manual'          => array( 'label' => 'Manual',          'class' => 'slw-source-badge--gray' ),
+            'retail_booth'    => array( 'label' => 'Retail Booth',    'class' => 'slw-source-badge--gold' ),
+            'wholesale_booth' => array( 'label' => 'Wholesale Booth', 'class' => 'slw-source-badge--gold' ),
+            'other'           => array( 'label' => 'Other',           'class' => 'slw-source-badge--gray' ),
         );
 
         $info = $badge_map[ $source ] ?? array( 'label' => ucfirst( $source ), 'class' => 'slw-source-badge--gray' );
@@ -783,6 +1030,9 @@ class SLW_Lead_Capture {
 
             <!-- Trade Show Tools -->
             <?php self::render_trade_show_tools(); ?>
+
+            <!-- Email Templates -->
+            <?php self::render_email_templates(); ?>
         </div>
 
         <script>
@@ -895,6 +1145,109 @@ class SLW_Lead_Capture {
                 </div>
             </div>
         </div>
+        <?php
+    }
+
+    // ------------------------------------------------------------------
+    // Email Templates Section
+    // ------------------------------------------------------------------
+
+    private static function render_email_templates() {
+        $wholesale_url = esc_url( home_url( '/wholesale-partners' ) );
+        $portal_url    = esc_url( home_url( '/wholesale-portal' ) );
+
+        $template_1_subject = 'Carry Sego Lily in your shop?';
+        $template_1_body = "Hi {owner_name},
+
+I came across {shop_name} and love what you're doing. I think our products would be a great fit for your customers.
+
+I'm Holly — I run Sego Lily Naturals out of Montana. We make small-batch, plant-based skincare that's been really popular with boutiques and spas. Everything is made with clean ingredients and our wholesale partners get 50% off retail pricing.
+
+If you're open to it, I'd love to send you our price list or set up a quick call. You can learn more and apply here:
+
+{$wholesale_url}
+
+No pressure at all — just thought it could be a good match.
+
+Talk soon,
+Holly";
+
+        $template_2_subject = "What's new this quarter at Sego Lily";
+        $template_2_body = "Hi there,
+
+Hope business is going well! Here's a quick update from our end.
+
+NEW PRODUCTS
+[Describe any new products launched this quarter]
+
+WHAT'S SELLING BEST
+[Share your top 2-3 bestsellers and why customers love them]
+
+SEASONAL RECOMMENDATION
+[Suggest a product or bundle that fits the upcoming season]
+
+REORDER
+Ready to restock? You can place your next order here:
+{$portal_url}
+
+As always, reach out anytime if you need samples, marketing materials, or just want to chat.
+
+Thanks for being a partner,
+Holly";
+
+        ?>
+        <div class="slw-admin-card slw-email-templates">
+            <h2 class="slw-admin-card__heading">
+                <span class="dashicons dashicons-email-alt" style="margin-right:6px;color:#386174;"></span>
+                Email Templates
+            </h2>
+            <p style="color:#628393;margin-top:0;">Copy these templates and customize them before sending. Merge fields like {owner_name} and {shop_name} need to be replaced manually.</p>
+
+            <!-- Template 1: Wholesale Outreach -->
+            <div class="slw-email-template-card">
+                <div class="slw-email-template-card__header">
+                    <h3 class="slw-email-template-card__title">Wholesale Outreach</h3>
+                    <span class="slw-email-template-card__tag">For retail customers</span>
+                </div>
+                <div class="slw-email-template-card__subject">
+                    <strong>Subject:</strong> <?php echo esc_html( $template_1_subject ); ?>
+                </div>
+                <pre class="slw-email-template-card__body" id="slw-email-tpl-1"><?php echo esc_html( $template_1_body ); ?></pre>
+                <button type="button" class="button slw-email-template-card__copy" data-target="slw-email-tpl-1">
+                    <span class="dashicons dashicons-admin-page" style="margin-top:4px;"></span> Copy to Clipboard
+                </button>
+            </div>
+
+            <!-- Template 2: Quarterly Newsletter -->
+            <div class="slw-email-template-card">
+                <div class="slw-email-template-card__header">
+                    <h3 class="slw-email-template-card__title">Quarterly Newsletter</h3>
+                    <span class="slw-email-template-card__tag">For wholesale partners</span>
+                </div>
+                <div class="slw-email-template-card__subject">
+                    <strong>Subject:</strong> <?php echo esc_html( $template_2_subject ); ?>
+                </div>
+                <pre class="slw-email-template-card__body" id="slw-email-tpl-2"><?php echo esc_html( $template_2_body ); ?></pre>
+                <button type="button" class="button slw-email-template-card__copy" data-target="slw-email-tpl-2">
+                    <span class="dashicons dashicons-admin-page" style="margin-top:4px;"></span> Copy to Clipboard
+                </button>
+            </div>
+        </div>
+
+        <script>
+        document.querySelectorAll('.slw-email-template-card__copy').forEach(function(btn){
+            btn.addEventListener('click', function(){
+                var targetId = this.getAttribute('data-target');
+                var pre = document.getElementById(targetId);
+                if (!pre) return;
+                navigator.clipboard.writeText(pre.textContent).then(function(){
+                    var orig = btn.innerHTML;
+                    btn.innerHTML = '<span class="dashicons dashicons-yes" style="margin-top:4px;"></span> Copied!';
+                    setTimeout(function(){ btn.innerHTML = orig; }, 2000);
+                });
+            });
+        });
+        </script>
         <?php
     }
 

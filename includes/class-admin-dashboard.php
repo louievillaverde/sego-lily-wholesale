@@ -115,6 +115,15 @@ class SLW_Admin_Dashboard {
                         </div>
                     </div>
 
+                    <?php
+                    $retail_booth_count = (int) get_option( 'slw_retail_booth_leads', 0 );
+                    if ( $retail_booth_count > 0 ) : ?>
+                    <div class="slw-admin-card" style="padding:14px 24px;display:flex;align-items:center;justify-content:space-between;">
+                        <span style="color:#628393;font-size:13px;">Retail leads captured at trade shows: <strong style="color:#1E2A30;"><?php echo esc_html( $retail_booth_count ); ?></strong> (stored in WooCommerce Customers)</span>
+                        <a href="<?php echo esc_url( admin_url( 'users.php?role=customer' ) ); ?>" style="font-size:12px;color:#386174;">View Customers</a>
+                    </div>
+                    <?php endif; ?>
+
                     <!-- Recent Activity -->
                     <div class="slw-admin-card">
                         <h2 class="slw-admin-card__heading">Recent Activity</h2>

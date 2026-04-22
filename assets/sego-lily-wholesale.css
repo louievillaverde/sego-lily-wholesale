@@ -2916,3 +2916,391 @@ button.slw-reorder-btn:hover {
         padding: 28px 20px;
     }
 }
+
+/* -------------------------------------------------------
+   Smart Booth Form (Trade Show Multi-Step)
+   ------------------------------------------------------- */
+.slw-booth {
+    background: #F7F6F3;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 24px;
+    position: relative;
+    font-family: Georgia, 'Times New Roman', serif;
+    color: #2C2C2C;
+    -webkit-text-size-adjust: 100%;
+}
+
+/* Steps: only active is visible */
+.slw-booth__step {
+    display: none;
+    max-width: 600px;
+    width: 100%;
+    text-align: center;
+    animation: slw-booth-fade-in 0.3s ease both;
+}
+
+.slw-booth__step--active {
+    display: block;
+}
+
+@keyframes slw-booth-fade-in {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Title & subtitle */
+.slw-booth__title {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 32px;
+    font-weight: 700;
+    color: #1E2A30;
+    margin: 0 0 8px 0;
+    line-height: 1.2;
+}
+
+.slw-booth__subtitle {
+    font-size: 18px;
+    color: #628393;
+    margin: 0 0 36px 0;
+    font-style: italic;
+}
+
+/* ---- Step 1: Interest Cards ---- */
+.slw-booth__cards {
+    display: flex;
+    gap: 24px;
+    justify-content: center;
+}
+
+.slw-booth__card {
+    background: #fff;
+    border: 2px solid #e0ddd8;
+    border-radius: 16px;
+    padding: 40px 32px;
+    cursor: pointer;
+    text-align: center;
+    width: 240px;
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.15s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    -webkit-appearance: none;
+    appearance: none;
+    font-family: inherit;
+}
+
+.slw-booth__card:hover,
+.slw-booth__card:focus {
+    border-color: #386174;
+    box-shadow: 0 4px 20px rgba(56, 97, 116, 0.15);
+    transform: translateY(-2px);
+    outline: none;
+}
+
+.slw-booth__card:active {
+    transform: translateY(0);
+}
+
+.slw-booth__card-icon {
+    display: block;
+    margin-bottom: 4px;
+}
+
+.slw-booth__card-label {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: #1E2A30;
+}
+
+.slw-booth__card-desc {
+    font-size: 15px;
+    color: #628393;
+}
+
+/* ---- Step 2: Questions (Typeform-style) ---- */
+.slw-booth__question {
+    display: none;
+    animation: slw-booth-fade-in 0.3s ease both;
+}
+
+.slw-booth__question--active {
+    display: block;
+}
+
+.slw-booth__input {
+    display: block;
+    width: 100%;
+    max-width: 420px;
+    margin: 24px auto 0;
+    padding: 14px 20px;
+    height: 52px;
+    font-size: 20px;
+    font-family: Georgia, 'Times New Roman', serif;
+    border: 2px solid #e0ddd8;
+    border-radius: 12px;
+    background: #fff;
+    color: #1E2A30;
+    text-align: center;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    -webkit-appearance: none;
+    appearance: none;
+    box-sizing: border-box;
+}
+
+.slw-booth__input:focus {
+    border-color: #386174;
+    box-shadow: 0 0 0 3px rgba(56, 97, 116, 0.12);
+    outline: none;
+}
+
+.slw-booth__input--error {
+    border-color: #dc3545;
+    box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.15);
+}
+
+/* ---- Pill Buttons ---- */
+.slw-booth__pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    justify-content: center;
+    margin-top: 28px;
+}
+
+.slw-booth__pill {
+    background: #fff;
+    border: 2px solid #e0ddd8;
+    border-radius: 28px;
+    padding: 12px 28px;
+    font-size: 18px;
+    font-family: Georgia, 'Times New Roman', serif;
+    color: #1E2A30;
+    cursor: pointer;
+    min-height: 48px;
+    min-width: 44px;
+    transition: background-color 0.2s, border-color 0.2s, color 0.2s, transform 0.15s;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.slw-booth__pill:hover,
+.slw-booth__pill:focus {
+    border-color: #386174;
+    outline: none;
+}
+
+.slw-booth__pill--selected {
+    background: #386174;
+    border-color: #386174;
+    color: #F7F6F3;
+}
+
+/* ---- Step 3: Incentive Page ---- */
+.slw-booth__thanks {
+    font-size: 16px;
+    color: #628393;
+    margin: 0 0 12px 0;
+    font-style: italic;
+}
+
+.slw-booth__incentive-heading {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 36px;
+    font-weight: 700;
+    color: #1E2A30;
+    margin: 0 0 16px 0;
+    line-height: 1.2;
+}
+
+.slw-booth__incentive-sub {
+    font-size: 20px;
+    color: #628393;
+    margin: 0 0 28px 0;
+}
+
+.slw-booth__code-badge {
+    display: inline-block;
+    background: rgba(212, 175, 55, 0.12);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    border-radius: 10px;
+    padding: 12px 24px;
+    font-size: 20px;
+    color: #1E2A30;
+    margin-bottom: 32px;
+}
+
+.slw-booth__code-badge strong {
+    color: #D4AF37;
+    font-size: 24px;
+    letter-spacing: 1px;
+}
+
+.slw-booth__cta-group {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.slw-booth__cta {
+    display: inline-block;
+    padding: 16px 36px;
+    font-size: 18px;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-weight: 700;
+    border-radius: 12px;
+    text-decoration: none;
+    min-height: 52px;
+    min-width: 44px;
+    text-align: center;
+    transition: transform 0.15s, box-shadow 0.2s;
+    box-sizing: border-box;
+}
+
+.slw-booth__cta:hover {
+    transform: translateY(-1px);
+}
+
+.slw-booth__cta--primary {
+    background: #386174;
+    color: #F7F6F3;
+    box-shadow: 0 2px 12px rgba(56, 97, 116, 0.25);
+}
+
+.slw-booth__cta--primary:hover {
+    box-shadow: 0 4px 20px rgba(56, 97, 116, 0.35);
+    color: #F7F6F3;
+}
+
+.slw-booth__cta--secondary {
+    background: #fff;
+    color: #386174;
+    border: 2px solid #386174;
+}
+
+.slw-booth__cta--secondary:hover {
+    background: rgba(56, 97, 116, 0.04);
+    color: #386174;
+}
+
+/* ---- Loading Overlay ---- */
+.slw-booth__loading {
+    position: absolute;
+    inset: 0;
+    background: rgba(247, 246, 243, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+}
+
+.slw-booth__spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid #e0ddd8;
+    border-top-color: #386174;
+    border-radius: 50%;
+    animation: slw-booth-spin 0.7s linear infinite;
+}
+
+@keyframes slw-booth-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 520px) {
+    .slw-booth {
+        padding: 24px 16px;
+    }
+    .slw-booth__cards {
+        flex-direction: column;
+        align-items: center;
+    }
+    .slw-booth__card {
+        width: 100%;
+        max-width: 320px;
+    }
+    .slw-booth__title {
+        font-size: 26px;
+    }
+    .slw-booth__incentive-heading {
+        font-size: 28px;
+    }
+    .slw-booth__input {
+        font-size: 18px;
+    }
+}
+
+/* -------------------------------------------------------
+   Email Template Cards (Admin)
+   ------------------------------------------------------- */
+.slw-email-templates {
+    margin-top: 24px;
+}
+
+.slw-email-template-card {
+    background: #f9f9f9;
+    border: 1px solid #e0ddd8;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 16px;
+}
+
+.slw-email-template-card__header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.slw-email-template-card__title {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0;
+    color: #1E2A30;
+}
+
+.slw-email-template-card__tag {
+    display: inline-block;
+    background: rgba(56, 97, 116, 0.1);
+    color: #386174;
+    font-size: 12px;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-weight: 500;
+}
+
+.slw-email-template-card__subject {
+    font-size: 14px;
+    color: #2C2C2C;
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e0ddd8;
+}
+
+.slw-email-template-card__body {
+    background: #fff;
+    border: 1px solid #e0ddd8;
+    border-radius: 6px;
+    padding: 16px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #2C2C2C;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    max-height: 300px;
+    overflow-y: auto;
+    margin: 0 0 12px 0;
+}
+
+.slw-email-template-card__copy {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}

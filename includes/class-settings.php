@@ -23,6 +23,11 @@ class SLW_Settings {
         'slw_wholesale_tax_exempt_default'  => array( 'sanitize' => 'rest_sanitize_boolean','default' => false ),
         'slw_wholesale_shipping_methods'    => array( 'sanitize' => 'array',               'default' => array() ),
         'slw_retail_shipping_methods'       => array( 'sanitize' => 'array',               'default' => array() ),
+        // Booth & Lead Capture
+        'slw_booth_retail_code'             => array( 'sanitize' => 'sanitize_text_field',  'default' => 'SEGO15' ),
+        'slw_booth_retail_offer'            => array( 'sanitize' => 'sanitize_text_field',  'default' => '15% off your first order' ),
+        'slw_booth_retail_url'              => array( 'sanitize' => 'esc_url_raw',          'default' => '' ),
+        'slw_booth_wholesale_heading'       => array( 'sanitize' => 'sanitize_text_field',  'default' => "Welcome! Here's our wholesale price list" ),
         // Store Notice
         'slw_store_notice_enabled'          => array( 'sanitize' => 'rest_sanitize_boolean','default' => false ),
         'slw_store_notice_text'             => array( 'sanitize' => 'wp_kses_post',        'default' => '' ),
@@ -144,6 +149,47 @@ class SLW_Settings {
                                 Make every wholesale user tax exempt by default
                             </label>
                             <p class="description">When enabled, all wholesale customers are exempt from sales tax at checkout regardless of the per-user "Resale Cert Verified" toggle. Leave unchecked to require per-user verification.</p>
+                        </td>
+                    </tr>
+                </table>
+
+                <h2 class="title">Booth &amp; Lead Capture</h2>
+                <p>Settings for the smart booth form used at trade shows. These control what visitors see after submitting their info.</p>
+                <table class="form-table">
+                    <tr>
+                        <th scope="row"><label for="slw_booth_retail_code">Retail Discount Code</label></th>
+                        <td>
+                            <input type="text" id="slw_booth_retail_code" name="slw_booth_retail_code"
+                                   value="<?php echo esc_attr( get_option( 'slw_booth_retail_code', 'SEGO15' ) ); ?>"
+                                   class="regular-text" />
+                            <p class="description">Discount code shown to retail booth visitors. Default: SEGO15</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="slw_booth_retail_offer">Retail Discount Text</label></th>
+                        <td>
+                            <input type="text" id="slw_booth_retail_offer" name="slw_booth_retail_offer"
+                                   value="<?php echo esc_attr( get_option( 'slw_booth_retail_offer', '15% off your first order' ) ); ?>"
+                                   class="regular-text" />
+                            <p class="description">Shown as the incentive heading for retail visitors. E.g. "15% off your first order"</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="slw_booth_retail_url">Retail Shop Link</label></th>
+                        <td>
+                            <input type="url" id="slw_booth_retail_url" name="slw_booth_retail_url"
+                                   value="<?php echo esc_attr( get_option( 'slw_booth_retail_url', home_url( '/shop-all' ) ) ); ?>"
+                                   class="regular-text" placeholder="<?php echo esc_attr( home_url( '/shop-all' ) ); ?>" />
+                            <p class="description">URL the "Shop Now" and "Browse Products" buttons link to.</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="slw_booth_wholesale_heading">Wholesale Incentive Heading</label></th>
+                        <td>
+                            <input type="text" id="slw_booth_wholesale_heading" name="slw_booth_wholesale_heading"
+                                   value="<?php echo esc_attr( get_option( 'slw_booth_wholesale_heading', "Welcome! Here's our wholesale price list" ) ); ?>"
+                                   class="regular-text" />
+                            <p class="description">Heading shown to wholesale booth visitors after they submit.</p>
                         </td>
                     </tr>
                 </table>
