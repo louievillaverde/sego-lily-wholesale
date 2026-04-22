@@ -305,31 +305,46 @@ class SLW_Application_Form {
                 <a href="<?php echo wp_nonce_url( admin_url( 'admin.php?page=slw-applications&action=export_csv' ), 'slw_admin_action' ); ?>" class="page-title-action">Export CSV</a>
             </h1>
 
-            <!-- Summary Stats -->
-            <div class="slw-admin-stats" style="margin-bottom:16px;">
-                <div class="slw-admin-stats__card slw-admin-stats__card--gold" style="flex:1;min-width:120px;">
-                    <div style="padding:16px 20px;text-align:center;">
-                        <span style="display:block;font-size:28px;font-weight:700;color:#1E2A30;"><?php echo esc_html( $counts['pending']->count ?? 0 ); ?></span>
-                        <span style="font-size:12px;color:#628393;text-transform:uppercase;letter-spacing:0.5px;">Pending</span>
+            <!-- Summary Stats + Quick Info -->
+            <?php
+            $pending_count  = $counts['pending']->count ?? 0;
+            $approved_count = $counts['approved']->count ?? 0;
+            $declined_count = $counts['declined']->count ?? 0;
+            $approval_rate  = $total > 0 ? round( ( $approved_count / $total ) * 100 ) : 0;
+            // Average time to review (approved applications only)
+            $avg_review = '';
+            if ( $approved_count > 0 ) {
+                $avg_days = $wpdb->get_var( "SELECT AVG(TIMESTAMPDIFF(HOUR, submitted_at, reviewed_at)) FROM {$table} WHERE status = 'approved' AND reviewed_at IS NOT NULL" );
+                if ( $avg_days !== null ) {
+                    $hrs = round( (float) $avg_days );
+                    $avg_review = $hrs < 24 ? $hrs . 'hr' : round( $hrs / 24, 1 ) . ' days';
+                }
+            }
+            ?>
+            <div class="slw-page-summary">
+                <div class="slw-page-summary__stats">
+                    <div class="slw-page-summary__stat">
+                        <span class="slw-page-summary__number" style="color:#D4AF37;"><?php echo esc_html( $pending_count ); ?></span>
+                        <span class="slw-page-summary__label">Awaiting Review</span>
                     </div>
-                </div>
-                <div class="slw-admin-stats__card slw-admin-stats__card--green" style="flex:1;min-width:120px;">
-                    <div style="padding:16px 20px;text-align:center;">
-                        <span style="display:block;font-size:28px;font-weight:700;color:#1E2A30;"><?php echo esc_html( $counts['approved']->count ?? 0 ); ?></span>
-                        <span style="font-size:12px;color:#628393;text-transform:uppercase;letter-spacing:0.5px;">Approved</span>
+                    <div class="slw-page-summary__stat">
+                        <span class="slw-page-summary__number" style="color:#2e7d32;"><?php echo esc_html( $approved_count ); ?></span>
+                        <span class="slw-page-summary__label">Approved</span>
                     </div>
-                </div>
-                <div class="slw-admin-stats__card" style="flex:1;min-width:120px;">
-                    <div style="padding:16px 20px;text-align:center;">
-                        <span style="display:block;font-size:28px;font-weight:700;color:#1E2A30;"><?php echo esc_html( $counts['declined']->count ?? 0 ); ?></span>
-                        <span style="font-size:12px;color:#628393;text-transform:uppercase;letter-spacing:0.5px;">Declined</span>
+                    <div class="slw-page-summary__stat">
+                        <span class="slw-page-summary__number" style="color:#c62828;"><?php echo esc_html( $declined_count ); ?></span>
+                        <span class="slw-page-summary__label">Declined</span>
                     </div>
-                </div>
-                <div class="slw-admin-stats__card slw-admin-stats__card--teal" style="flex:1;min-width:120px;">
-                    <div style="padding:16px 20px;text-align:center;">
-                        <span style="display:block;font-size:28px;font-weight:700;color:#1E2A30;"><?php echo esc_html( $total ); ?></span>
-                        <span style="font-size:12px;color:#628393;text-transform:uppercase;letter-spacing:0.5px;">Total</span>
+                    <div class="slw-page-summary__stat">
+                        <span class="slw-page-summary__number" style="color:#386174;"><?php echo esc_html( $approval_rate ); ?>%</span>
+                        <span class="slw-page-summary__label">Approval Rate</span>
                     </div>
+                    <?php if ( $avg_review ) : ?>
+                    <div class="slw-page-summary__stat">
+                        <span class="slw-page-summary__number" style="color:#628393;"><?php echo esc_html( $avg_review ); ?></span>
+                        <span class="slw-page-summary__label">Avg Response Time</span>
+                    </div>
+                    <?php endif; ?>
                 </div>
             </div>
 

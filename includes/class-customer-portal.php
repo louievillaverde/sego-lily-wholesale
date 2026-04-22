@@ -43,8 +43,13 @@ class SLW_Customer_Portal {
             return '<div class="slw-notice slw-notice-warning">Please <a href="' . esc_url( wp_login_url( home_url( '/wholesale-portal' ) ) ) . '">log in</a> with your wholesale account.</div>';
         }
 
-        // Determine active tab
-        $active_tab = isset( $_GET['tab'] ) ? sanitize_key( $_GET['tab'] ) : 'dashboard';
+        // Determine active tab (check both 'tab' for frontend and 'portal_tab' for admin)
+        $active_tab = 'dashboard';
+        if ( isset( $_GET['portal_tab'] ) ) {
+            $active_tab = sanitize_key( $_GET['portal_tab'] );
+        } elseif ( isset( $_GET['tab'] ) ) {
+            $active_tab = sanitize_key( $_GET['tab'] );
+        }
         if ( ! array_key_exists( $active_tab, self::$tabs ) ) {
             $active_tab = 'dashboard';
         }
@@ -56,7 +61,13 @@ class SLW_Customer_Portal {
             SLW_Dashboard::render_preview_banner( 'Customer Portal — ' . esc_html( self::$tabs[ $active_tab ] ) );
         }
 
-        $portal_url = home_url( '/wholesale-portal' );
+        // When rendered inside the admin Preview page, tab URLs must stay in admin
+        $is_admin_context = is_admin();
+        if ( $is_admin_context ) {
+            $portal_url = admin_url( 'admin.php?page=slw-preview' );
+        } else {
+            $portal_url = home_url( '/wholesale-portal' );
+        }
         // Preserve preview params when building tab URLs
         $extra_params = array();
         if ( $is_admin_preview ) {
@@ -72,10 +83,11 @@ class SLW_Customer_Portal {
             <nav class="slw-portal-tabs" role="tablist">
                 <div class="slw-portal-tabs-inner">
                     <?php foreach ( self::$tabs as $slug => $label ) :
-                        $params = array_merge( $extra_params, array( 'tab' => $slug ) );
+                        $tab_key = $is_admin_context ? 'portal_tab' : 'tab';
+                        $params = array_merge( $extra_params, array( $tab_key => $slug ) );
                         // Dashboard is default — no tab param needed
                         if ( $slug === 'dashboard' ) {
-                            unset( $params['tab'] );
+                            unset( $params[ $tab_key ] );
                         }
                         $url = add_query_arg( $params, $portal_url );
                         $is_active = ( $slug === $active_tab );
@@ -94,7 +106,8 @@ class SLW_Customer_Portal {
                 <div class="slw-portal-tabs-mobile">
                     <select class="slw-portal-tab-select" onchange="if(this.value) window.location.href=this.value;">
                         <?php foreach ( self::$tabs as $slug => $label ) :
-                            $params = array_merge( $extra_params, array( 'tab' => $slug ) );
+                            $mobile_tab_key = $is_admin_context ? 'portal_tab' : 'tab';
+                            $params = array_merge( $extra_params, array( $mobile_tab_key => $slug ) );
                             if ( $slug === 'dashboard' ) {
                                 unset( $params['tab'] );
                             }

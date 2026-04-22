@@ -2793,3 +2793,67 @@ p.description,
 		flex-direction: column;
 	}
 }
+
+/* -------------------------------------------------------
+   Page Summary Stats (Applications, Quotes, Orders)
+   ------------------------------------------------------- */
+.slw-page-summary {
+	background: #fff;
+	border-radius: 8px;
+	box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+	padding: 20px 28px;
+	margin-bottom: 20px;
+}
+
+.slw-page-summary__stats {
+	display: flex;
+	gap: 0;
+	align-items: stretch;
+}
+
+.slw-page-summary__stat {
+	flex: 1;
+	text-align: center;
+	padding: 8px 16px;
+	border-right: 1px solid #f0ece7;
+}
+
+.slw-page-summary__stat:last-child {
+	border-right: none;
+}
+
+.slw-page-summary__number {
+	display: block;
+	font-family: Georgia, 'Times New Roman', serif;
+	font-size: 32px;
+	font-weight: 700;
+	line-height: 1.2;
+	margin-bottom: 6px;
+}
+
+.slw-page-summary__label {
+	display: block;
+	font-size: 11px;
+	color: #628393;
+	text-transform: uppercase;
+	letter-spacing: 0.6px;
+	font-weight: 600;
+}
+
+@media (max-width: 782px) {
+	.slw-page-summary__stats {
+		flex-wrap: wrap;
+	}
+	.slw-page-summary__stat {
+		flex: 0 0 50%;
+		border-right: none;
+		border-bottom: 1px solid #f0ece7;
+		padding: 12px 8px;
+	}
+	.slw-page-summary__stat:nth-last-child(-n+2) {
+		border-bottom: none;
+	}
+	.slw-page-summary__number {
+		font-size: 26px;
+	}
+}

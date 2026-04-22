@@ -352,29 +352,30 @@ class SLW_RFQ {
 			<h1>Quote Requests</h1>
 
 			<!-- Summary Stats -->
-			<div class="slw-admin-stats" style="margin-bottom:16px;">
-				<div class="slw-admin-stats__card slw-admin-stats__card--gold" style="flex:1;min-width:120px;">
-					<div style="padding:16px 20px;text-align:center;">
-						<span style="display:block;font-size:28px;font-weight:700;color:#1E2A30;"><?php echo esc_html( $counts['pending']->count ?? 0 ); ?></span>
-						<span style="font-size:12px;color:#628393;text-transform:uppercase;letter-spacing:0.5px;">Pending</span>
+			<?php
+			$q_pending  = $counts['pending']->count ?? 0;
+			$q_quoted   = $counts['quoted']->count ?? 0;
+			$q_accepted = $counts['accepted']->count ?? 0;
+			$q_declined = $counts['declined']->count ?? 0;
+			$q_conv_rate = $total > 0 ? round( ( $q_accepted / $total ) * 100 ) : 0;
+			?>
+			<div class="slw-page-summary">
+				<div class="slw-page-summary__stats">
+					<div class="slw-page-summary__stat">
+						<span class="slw-page-summary__number" style="color:#D4AF37;"><?php echo esc_html( $q_pending ); ?></span>
+						<span class="slw-page-summary__label">Awaiting Quote</span>
 					</div>
-				</div>
-				<div class="slw-admin-stats__card slw-admin-stats__card--teal" style="flex:1;min-width:120px;">
-					<div style="padding:16px 20px;text-align:center;">
-						<span style="display:block;font-size:28px;font-weight:700;color:#1E2A30;"><?php echo esc_html( $counts['quoted']->count ?? 0 ); ?></span>
-						<span style="font-size:12px;color:#628393;text-transform:uppercase;letter-spacing:0.5px;">Quoted</span>
+					<div class="slw-page-summary__stat">
+						<span class="slw-page-summary__number" style="color:#386174;"><?php echo esc_html( $q_quoted ); ?></span>
+						<span class="slw-page-summary__label">Quoted</span>
 					</div>
-				</div>
-				<div class="slw-admin-stats__card slw-admin-stats__card--green" style="flex:1;min-width:120px;">
-					<div style="padding:16px 20px;text-align:center;">
-						<span style="display:block;font-size:28px;font-weight:700;color:#1E2A30;"><?php echo esc_html( $counts['accepted']->count ?? 0 ); ?></span>
-						<span style="font-size:12px;color:#628393;text-transform:uppercase;letter-spacing:0.5px;">Accepted</span>
+					<div class="slw-page-summary__stat">
+						<span class="slw-page-summary__number" style="color:#2e7d32;"><?php echo esc_html( $q_accepted ); ?></span>
+						<span class="slw-page-summary__label">Accepted</span>
 					</div>
-				</div>
-				<div class="slw-admin-stats__card" style="flex:1;min-width:120px;">
-					<div style="padding:16px 20px;text-align:center;">
-						<span style="display:block;font-size:28px;font-weight:700;color:#1E2A30;"><?php echo esc_html( $total ); ?></span>
-						<span style="font-size:12px;color:#628393;text-transform:uppercase;letter-spacing:0.5px;">Total</span>
+					<div class="slw-page-summary__stat">
+						<span class="slw-page-summary__number" style="color:#386174;"><?php echo esc_html( $q_conv_rate ); ?>%</span>
+						<span class="slw-page-summary__label">Conversion Rate</span>
 					</div>
 				</div>
 			</div>
