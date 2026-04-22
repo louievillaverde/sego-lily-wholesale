@@ -41,10 +41,12 @@ class SLW_Updater {
         add_action( 'load-update-core.php', array( __CLASS__, 'flush_cache_on_manual_check' ) );
 
         // One-time flush: clear stale icon data from pre-3.0.1 transients
-        if ( get_option( 'slw_icon_cache_version' ) !== '3.0.1' ) {
+        if ( get_option( 'slw_icon_cache_version' ) !== '3.0.4' ) {
             delete_transient( self::$cache_key );
             delete_site_transient( 'update_plugins' );
-            update_option( 'slw_icon_cache_version', '3.0.1' );
+            delete_transient( 'slw_mautic_campaigns' );
+            delete_transient( 'slw_mautic_email_stats' );
+            update_option( 'slw_icon_cache_version', '3.0.4' );
         }
 
         // Flush stale icon/transient data after plugin updates so the new

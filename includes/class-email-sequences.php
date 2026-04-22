@@ -185,7 +185,19 @@ class SLW_Email_Sequences {
             return $result;
         }
 
-        $campaigns = isset( $result['campaigns'] ) ? $result['campaigns'] : array();
+        $all_campaigns = isset( $result['campaigns'] ) ? $result['campaigns'] : array();
+
+        // Filter to wholesale-related campaigns only. Excludes retail sequences
+        // (quiz results, retail cart abandonment, etc.) that aren't relevant.
+        $campaigns = array();
+        foreach ( $all_campaigns as $id => $camp ) {
+            $name = strtolower( $camp['name'] ?? '' );
+            $desc = strtolower( $camp['description'] ?? '' );
+            if ( strpos( $name, 'wholesale' ) !== false || strpos( $desc, 'wholesale' ) !== false ) {
+                $campaigns[ $id ] = $camp;
+            }
+        }
+
         set_transient( 'slw_mautic_campaigns', $campaigns, 15 * MINUTE_IN_SECONDS );
 
         return $campaigns;
@@ -735,7 +747,6 @@ class SLW_Email_Sequences {
                             <span style="margin-left:12px;font-size:12px;font-weight:400;color:#628393;">
                                 <?php echo esc_html( wp_parse_url( $mautic_url, PHP_URL_HOST ) ); ?> &middot; <?php echo esc_html( $last_sync ); ?>
                             </span>
-                            <a href="<?php echo esc_url( $refresh_url ); ?>" class="button" style="margin-left:12px;padding:2px 10px;font-size:11px;line-height:1.6;" onclick="event.stopPropagation();">&#8635; Refresh</a>
                         <?php elseif ( $has_config && $api_error ) : ?>
                             <span class="slw-pill--red" style="margin-left:8px;">Error: <?php echo esc_html( $api_error ); ?></span>
                         <?php elseif ( $provider === 'none' ) : ?>
@@ -859,11 +870,14 @@ class SLW_Email_Sequences {
                         <span style="color:#2C2C2C;">Full campaign stats and deep links for this provider are in development. Save your credentials now — webhook integration works immediately. Campaign stats will be available in a future update.</span>
                     </div>
 
-                    <div class="slw-mautic-fields" style="margin-bottom: 16px;">
+                    <div class="slw-mautic-fields" style="margin-bottom: 16px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
                         <button type="button" id="slw-test-connection" class="button" data-nonce="<?php echo esc_attr( $nonce ); ?>">
                             Test Connection
                         </button>
-                        <span id="slw-test-result" style="margin-left: 12px;"></span>
+                        <?php if ( $connected ) : ?>
+                            <a href="<?php echo esc_url( $refresh_url ); ?>" class="button">&#8635; Refresh Data</a>
+                        <?php endif; ?>
+                        <span id="slw-test-result" style="margin-left: 4px;"></span>
                     </div>
 
                     <?php submit_button( 'Save Provider Settings' ); ?>
