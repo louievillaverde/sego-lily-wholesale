@@ -1,38 +1,54 @@
 <?php
 /**
- * AIOS Webhook Integration
+ * Webhook + Mautic Tag Integration
  *
- * Fires HTTP POST requests to the Lead Piranha AIOS when key events happen:
- * - wholesale-approved: Application approved, triggers Mautic onboarding sequence
- * - first-order-placed: First wholesale order, triggers Mautic Email 5 tag
+ * When key events happen (approval, cart abandon, etc.), this class:
+ *   1. Fires an HTTP POST to the configured webhook URL (for AIOS or any external system)
+ *   2. Directly adds the corresponding tag to the contact in Mautic via API
  *
- * The webhook URL is configured in plugin settings. If no URL is set, webhooks
- * are silently skipped (the plugin works fine standalone without AIOS).
+ * Step 2 is what makes the Mautic segments → campaigns flow work. Without it,
+ * contacts never get tagged and never enter the campaign segments.
+ *
+ * Mautic credentials come from the Sequences settings (slw_mautic_url,
+ * slw_mautic_client_id, slw_mautic_client_secret). If Mautic is not
+ * configured, only the webhook fires (step 1).
  */
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 class SLW_Webhooks {
 
+    const USER_AGENT = 'Mozilla/5.0 (compatible; AIOS-Mautic/1.0; +https://leadpiranha.com)';
+
     public static function init() {
-        // Nothing to hook here. The fire() method is called directly by other modules.
+        // Nothing to hook. fire() is called directly by other modules.
     }
 
     /**
-     * Fire a webhook to the AIOS endpoint. Non-blocking (uses wp_remote_post
-     * with a short timeout so it doesn't slow down the admin action).
+     * Fire a webhook AND tag the contact in Mautic.
      *
-     * @param string $event  Event name (appended to the webhook URL path).
-     * @param array  $data   Payload to send as JSON.
+     * @param string $event  Event name — also used as the Mautic tag name.
+     * @param array  $data   Payload. Must include 'email' for Mautic tagging.
      */
     public static function fire( $event, $data = array() ) {
+        // Step 1: Fire webhook to external URL (AIOS or any configured endpoint)
+        self::fire_webhook( $event, $data );
+
+        // Step 2: Tag the contact in Mautic directly
+        if ( ! empty( $data['email'] ) ) {
+            self::tag_mautic_contact( $data['email'], $event, $data );
+        }
+    }
+
+    /**
+     * Step 1: Send HTTP POST to the configured webhook URL.
+     */
+    private static function fire_webhook( $event, $data ) {
         $base_url = get_option( 'slw_webhook_url', '' );
         if ( empty( $base_url ) ) {
             return;
         }
 
-        // Build the full URL: base + event slug
-        // If the base URL already ends with a path segment, append the event
         $url = trailingslashit( $base_url ) . $event;
 
         $data['event']     = $event;
@@ -41,36 +57,188 @@ class SLW_Webhooks {
 
         $response = wp_remote_post( $url, array(
             'timeout'  => 5,
-            'blocking' => true, // Must be true to capture response for logging
-            'headers'  => array(
-                'Content-Type' => 'application/json',
-            ),
+            'blocking' => true,
+            'headers'  => array( 'Content-Type' => 'application/json' ),
             'body'     => wp_json_encode( $data ),
         ));
 
-        // Determine success/failure
         $success       = ! is_wp_error( $response );
         $response_code = $success ? wp_remote_retrieve_response_code( $response ) : 0;
         if ( $success && ( $response_code < 200 || $response_code >= 300 ) ) {
             $success = false;
         }
 
-        // Log failures for debugging (visible in WP debug.log)
         if ( is_wp_error( $response ) && defined( 'WP_DEBUG' ) && WP_DEBUG ) {
             error_log( 'SLW Webhook Error [' . $event . ']: ' . $response->get_error_message() );
         }
 
-        // Store in webhook log (circular buffer, last 50 entries)
         self::log_webhook( $event, $data, $success, $response_code );
     }
 
     /**
-     * Log a webhook fire to the circular buffer stored in wp_options.
+     * Step 2: Find or create the contact in Mautic and add the event tag.
      *
-     * @param string $event         Event name.
-     * @param array  $data          Payload that was sent.
-     * @param bool   $success       Whether the request succeeded.
-     * @param int    $response_code HTTP response code (0 if WP_Error).
+     * This is what makes segments → campaigns work. The tag name matches
+     * the event name (e.g., 'wholesale-cart-abandoned' event adds the
+     * 'wholesale-cart-abandoned' tag).
+     *
+     * @param string $email Contact email.
+     * @param string $tag   Tag to add (same as event name).
+     * @param array  $data  Additional contact data (first_name, business_name, etc.).
+     */
+    private static function tag_mautic_contact( $email, $tag, $data = array() ) {
+        $base_url      = rtrim( get_option( 'slw_mautic_url', '' ), '/' );
+        $client_id     = get_option( 'slw_mautic_client_id', '' );
+        $client_secret = get_option( 'slw_mautic_client_secret', '' );
+
+        if ( empty( $base_url ) || empty( $client_id ) || empty( $client_secret ) ) {
+            return; // Mautic not configured — skip silently
+        }
+
+        // Get OAuth2 token (use cached if available)
+        $token = get_transient( 'slw_mautic_access_token' );
+        if ( ! $token ) {
+            $token_response = wp_remote_post( $base_url . '/oauth/v2/token', array(
+                'timeout' => 10,
+                'headers' => array(
+                    'Content-Type' => 'application/x-www-form-urlencoded',
+                    'User-Agent'   => self::USER_AGENT,
+                ),
+                'body' => array(
+                    'grant_type'    => 'client_credentials',
+                    'client_id'     => $client_id,
+                    'client_secret' => $client_secret,
+                ),
+            ));
+
+            if ( is_wp_error( $token_response ) ) {
+                if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                    error_log( 'SLW Mautic Token Error: ' . $token_response->get_error_message() );
+                }
+                return;
+            }
+
+            $token_body = json_decode( wp_remote_retrieve_body( $token_response ), true );
+            if ( empty( $token_body['access_token'] ) ) {
+                return;
+            }
+
+            $token = $token_body['access_token'];
+            set_transient( 'slw_mautic_access_token', $token, 50 * MINUTE_IN_SECONDS );
+        }
+
+        $headers = array(
+            'Authorization' => 'Bearer ' . $token,
+            'Content-Type'  => 'application/json',
+            'Accept'        => 'application/json',
+            'User-Agent'    => self::USER_AGENT,
+        );
+
+        // Find existing contact by email
+        $search = wp_remote_get( $base_url . '/api/contacts?search=' . rawurlencode( $email ) . '&limit=1', array(
+            'timeout' => 10,
+            'headers' => $headers,
+        ));
+
+        $contact_id = null;
+        if ( ! is_wp_error( $search ) ) {
+            $search_body = json_decode( wp_remote_retrieve_body( $search ), true );
+            $contacts    = $search_body['contacts'] ?? array();
+            if ( ! empty( $contacts ) ) {
+                // Get the first contact
+                $contact_id = array_key_first( $contacts );
+            }
+        }
+
+        // Build contact data for create/update
+        $contact_data = array(
+            'email' => $email,
+            'tags'  => array( $tag ),
+        );
+        if ( ! empty( $data['first_name'] ) ) {
+            $contact_data['firstname'] = $data['first_name'];
+        }
+        if ( ! empty( $data['business_name'] ) ) {
+            $contact_data['company'] = $data['business_name'];
+        }
+
+        if ( $contact_id ) {
+            // Update existing contact — add the tag
+            wp_remote_request( $base_url . '/api/contacts/' . $contact_id . '/edit', array(
+                'method'  => 'PATCH',
+                'timeout' => 10,
+                'headers' => $headers,
+                'body'    => wp_json_encode( $contact_data ),
+            ));
+        } else {
+            // Create new contact with the tag
+            wp_remote_post( $base_url . '/api/contacts/new', array(
+                'timeout' => 10,
+                'headers' => $headers,
+                'body'    => wp_json_encode( $contact_data ),
+            ));
+        }
+    }
+
+    /**
+     * Remove a tag from a Mautic contact. Used when an event resolves
+     * (e.g., cart-abandoned tag removed when order completes).
+     *
+     * @param string $email Contact email.
+     * @param string $tag   Tag to remove.
+     */
+    public static function remove_mautic_tag( $email, $tag ) {
+        $base_url      = rtrim( get_option( 'slw_mautic_url', '' ), '/' );
+        $client_id     = get_option( 'slw_mautic_client_id', '' );
+        $client_secret = get_option( 'slw_mautic_client_secret', '' );
+
+        if ( empty( $base_url ) || empty( $client_id ) || empty( $client_secret ) ) {
+            return;
+        }
+
+        $token = get_transient( 'slw_mautic_access_token' );
+        if ( ! $token ) {
+            return; // No cached token — skip to avoid slowing down the request
+        }
+
+        $headers = array(
+            'Authorization' => 'Bearer ' . $token,
+            'Content-Type'  => 'application/json',
+            'Accept'        => 'application/json',
+            'User-Agent'    => self::USER_AGENT,
+        );
+
+        // Find contact
+        $search = wp_remote_get( $base_url . '/api/contacts?search=' . rawurlencode( $email ) . '&limit=1', array(
+            'timeout' => 10,
+            'headers' => $headers,
+        ));
+
+        if ( is_wp_error( $search ) ) {
+            return;
+        }
+
+        $search_body = json_decode( wp_remote_retrieve_body( $search ), true );
+        $contacts    = $search_body['contacts'] ?? array();
+        if ( empty( $contacts ) ) {
+            return;
+        }
+
+        $contact_id = array_key_first( $contacts );
+
+        // Remove the tag (prefix with - to remove)
+        wp_remote_request( $base_url . '/api/contacts/' . $contact_id . '/edit', array(
+            'method'  => 'PATCH',
+            'timeout' => 10,
+            'headers' => $headers,
+            'body'    => wp_json_encode( array(
+                'tags' => array( '-' . $tag ),
+            )),
+        ));
+    }
+
+    /**
+     * Log a webhook fire to the circular buffer.
      */
     private static function log_webhook( $event, $data, $success, $response_code ) {
         $log = get_option( 'slw_webhook_log', array() );
@@ -86,7 +254,6 @@ class SLW_Webhooks {
             'time'   => current_time( 'mysql' ),
         ));
 
-        // Keep last 50 entries
         $log = array_slice( $log, 0, 50 );
         update_option( 'slw_webhook_log', $log, false );
     }

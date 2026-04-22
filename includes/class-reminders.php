@@ -233,6 +233,11 @@ class SLW_Reminders {
 
 		// Reset cart abandon tracking (customer placed an order, cart is no longer abandoned)
 		delete_user_meta( $user_id, 'slw_cart_abandon_notified' );
+
+		// Remove Mautic tags so they exit the campaign segments
+		$email = $user->user_email;
+		SLW_Webhooks::remove_mautic_tag( $email, 'wholesale-cart-abandoned' );
+		SLW_Webhooks::remove_mautic_tag( $email, 'wholesale-lapsed' );
 	}
 
 	/**
