@@ -133,9 +133,13 @@ class SLW_Application_Form {
         // From header so deliverability is good (proper SPF/DKIM). The admin
         // recipient can be overridden via the slw_admin_notification_email
         // option; otherwise falls back to the Settings > General admin_email.
-        $admin_email = get_option( 'slw_admin_notification_email', get_option( 'admin_email' ) );
-        if ( ! $admin_email ) {
+        // Send to the wholesale email address first, fall back to WP admin email
+        $admin_email = get_option( 'slw_admin_notification_email' );
+        if ( ! $admin_email && class_exists( 'SLW_Email_Settings' ) ) {
             $admin_email = SLW_Email_Settings::get( 'from_address' );
+        }
+        if ( ! $admin_email ) {
+            $admin_email = get_option( 'admin_email' );
         }
 
         $subject = 'New Wholesale Application: ' . $data['business_name'];

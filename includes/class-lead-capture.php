@@ -470,6 +470,26 @@ class SLW_Lead_Capture {
             margin-top: 10px;
         }
 
+        /* Back button */
+        #slw-booth .slw-booth__back-btn {
+            display: inline-block !important;
+            margin-top: 12px;
+            padding: 10px 24px !important;
+            font-size: 14px !important;
+            font-family: Georgia, 'Times New Roman', serif !important;
+            font-weight: 500 !important;
+            background: transparent !important;
+            color: #8A9499 !important;
+            border: none !important;
+            cursor: pointer;
+            transition: color 0.2s;
+            appearance: none;
+            -webkit-appearance: none;
+        }
+        #slw-booth .slw-booth__back-btn:hover {
+            color: #386174 !important;
+        }
+
         /* Tablet + mobile */
         @media (max-width: 600px) {
             #slw-booth { padding: 40px 16px; }
@@ -525,21 +545,23 @@ class SLW_Lead_Capture {
                     <h2 class="slw-booth__title">What's your name?</h2>
                     <input type="text" class="slw-booth__input" id="slw-booth-r-name" placeholder="First name" autocomplete="given-name" />
                     <button type="button" class="slw-booth__next-btn" data-next="r2">Next &rarr;</button>
+                    <button type="button" class="slw-booth__back-btn" data-back-step="1">&larr; Back</button>
                     <p class="slw-booth__enter-hint">or press Enter &crarr;</p>
                 </div>
                 <div class="slw-booth__question" data-q="r2">
                     <h2 class="slw-booth__title">What's your email?</h2>
                     <input type="email" class="slw-booth__input" id="slw-booth-r-email" placeholder="you@email.com" autocomplete="email" />
                     <button type="button" class="slw-booth__next-btn" data-next="r3">Next &rarr;</button>
+                    <button type="button" class="slw-booth__back-btn" data-back-q="r1">&larr; Back</button>
                     <p class="slw-booth__enter-hint">or press Enter &crarr;</p>
                 </div>
                 <div class="slw-booth__question" data-q="r3">
                     <h2 class="slw-booth__title">What's your biggest skin concern?</h2>
                     <div class="slw-booth__pills">
-                        <button type="button" class="slw-booth__pill" data-value="Aging">Aging</button>
-                        <button type="button" class="slw-booth__pill" data-value="Dryness">Dryness</button>
-                        <button type="button" class="slw-booth__pill" data-value="Sensitivity">Sensitivity</button>
-                        <button type="button" class="slw-booth__pill" data-value="Just browsing">Just browsing</button>
+                        <button type="button" class="slw-booth__pill" data-value="Dryness &amp; tightness">Dryness &amp; tightness</button>
+                        <button type="button" class="slw-booth__pill" data-value="Breakouts">Breakouts</button>
+                        <button type="button" class="slw-booth__pill" data-value="Redness &amp; sensitivity">Redness &amp; sensitivity</button>
+                        <button type="button" class="slw-booth__pill" data-value="Wrinkles &amp; dark spots">Wrinkles &amp; dark spots</button>
                     </div>
                 </div>
             </div>
@@ -550,12 +572,14 @@ class SLW_Lead_Capture {
                     <h2 class="slw-booth__title">What's your name?</h2>
                     <input type="text" class="slw-booth__input" id="slw-booth-w-name" placeholder="First name" autocomplete="given-name" />
                     <button type="button" class="slw-booth__next-btn" data-next="w2">Next &rarr;</button>
+                    <button type="button" class="slw-booth__back-btn" data-back-step="1">&larr; Back</button>
                     <p class="slw-booth__enter-hint">or press Enter &crarr;</p>
                 </div>
                 <div class="slw-booth__question" data-q="w2">
                     <h2 class="slw-booth__title">What's your email?</h2>
                     <input type="email" class="slw-booth__input" id="slw-booth-w-email" placeholder="you@email.com" autocomplete="email" />
                     <button type="button" class="slw-booth__next-btn" data-next="w3">Next &rarr;</button>
+                    <button type="button" class="slw-booth__back-btn" data-back-q="w1">&larr; Back</button>
                     <p class="slw-booth__enter-hint">or press Enter &crarr;</p>
                 </div>
                 <div class="slw-booth__question" data-q="w3">
@@ -575,6 +599,7 @@ class SLW_Lead_Capture {
                 <h2 class="slw-booth__incentive-heading"><?php echo $retail_offer; ?></h2>
                 <div class="slw-booth__code-badge" style="font-size:22px;padding:16px 24px;">Show this screen to Holly</div>
                 <p style="text-align:center;color:#628393;font-size:14px;margin:12px 0 0;">Code <strong><?php echo $retail_code; ?></strong> also saved for online use</p>
+                <a id="slw-booth-r-results-link" href="#" style="display:block;text-align:center;margin-top:16px;color:#386174;font-size:14px;">See your personalized product recommendations &rarr;</a>
             </div>
 
             <!-- ============ STEP 3b: Wholesale Incentive ============ -->
@@ -716,6 +741,19 @@ class SLW_Lead_Capture {
                 });
             });
 
+            // ---- Back button click ----
+            booth.querySelectorAll('.slw-booth__back-btn').forEach(function(btn){
+                btn.addEventListener('click', function(){
+                    var backStep = this.getAttribute('data-back-step');
+                    var backQ    = this.getAttribute('data-back-q');
+                    if (backStep) {
+                        showStep(backStep);
+                    } else if (backQ) {
+                        showQuestion(backQ);
+                    }
+                });
+            });
+
             // ---- Progress bar updates ----
             var progressFill  = document.getElementById('slw-booth-progress-fill');
             var progressLabel = document.getElementById('slw-booth-progress-label');
@@ -799,6 +837,8 @@ class SLW_Lead_Capture {
                         // Show incentive regardless of duplicate error
                         if (isRetail) {
                             document.getElementById('slw-booth-r-thanksname').textContent = nameVal.split(' ')[0];
+                            var rl = document.getElementById('slw-booth-r-results-link');
+                            if (rl) rl.href = '/quiz-results/?skin=' + encodeURIComponent(selectedValue) + '&name=' + encodeURIComponent(nameVal.split(' ')[0]);
                             showStep('3a');
                         } else {
                             document.getElementById('slw-booth-w-thanksname').textContent = nameVal.split(' ')[0];
@@ -811,6 +851,8 @@ class SLW_Lead_Capture {
                         // Show incentive even on network error
                         if (isRetail) {
                             document.getElementById('slw-booth-r-thanksname').textContent = nameVal.split(' ')[0];
+                            var rl2 = document.getElementById('slw-booth-r-results-link');
+                            if (rl2) rl2.href = '/quiz-results/?skin=' + encodeURIComponent(selectedValue) + '&name=' + encodeURIComponent(nameVal.split(' ')[0]);
                             showStep('3a');
                         } else {
                             document.getElementById('slw-booth-w-thanksname').textContent = nameVal.split(' ')[0];

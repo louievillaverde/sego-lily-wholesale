@@ -412,10 +412,12 @@ button.slw-btn-cta:hover {
 }
 
 /* Ghost button for Back links — minimal, secondary weight */
-.slw-btn-ghost {
-    background: transparent;
-    color: #628393;
-    border: 1px solid #e0ddd8;
+.slw-btn-ghost,
+button.slw-btn-ghost,
+a.slw-btn-ghost {
+    background: #F7F6F3 !important;
+    color: #628393 !important;
+    border: 1px solid #e0ddd8 !important;
     font-weight: 500;
     text-transform: none;
     letter-spacing: 0;
@@ -423,10 +425,12 @@ button.slw-btn-cta:hover {
     font-size: 14px;
 }
 
-.slw-btn-ghost:hover {
-    background: #F7F6F3;
-    color: #386174;
-    border-color: #386174;
+.slw-btn-ghost:hover,
+button.slw-btn-ghost:hover,
+a.slw-btn-ghost:hover {
+    background: #e8e5e0 !important;
+    color: #386174 !important;
+    border-color: #386174 !important;
 }
 
 /* -------------------------------------------------------
