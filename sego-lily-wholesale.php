@@ -3,7 +3,7 @@
  * Plugin Name:       Wholesale Portal
  * Plugin URI:        https://github.com/louievillaverde/sego-lily-wholesale
  * Description:       All-in-one B2B wholesale portal for WooCommerce. Customer portal, tiered pricing, application workflow, PDF invoices, email sequences with multi-provider support, NET payment terms, lead capture, trade show tools, and automated order reminders. Built by Lead Piranha.
- * Version:           3.7.8
+ * Version:           3.7.9
  * Author:            Lead Piranha
  * Author URI:        https://leadpiranha.com
  * Requires at least: 6.0
@@ -28,7 +28,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SLW_VERSION', '3.7.8' );
+define( 'SLW_VERSION', '3.7.9' );
 define( 'SLW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SLW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -441,7 +441,12 @@ function slw_is_wholesale_user( $user_id = null ) {
         return false;
     }
     $user = get_userdata( $user_id );
-    return $user && in_array( 'wholesale_customer', (array) $user->roles, true );
+    if ( ! $user ) {
+        return false;
+    }
+    // Wholesale role OR administrator (admins can access all wholesale features)
+    return in_array( 'wholesale_customer', (array) $user->roles, true )
+        || in_array( 'administrator', (array) $user->roles, true );
 }
 
 /**
@@ -458,7 +463,20 @@ function slw_is_wholesale_user( $user_id = null ) {
  * admin columns, etc.).
  */
 function slw_is_wholesale_context( $user_id = null ) {
-    if ( ! slw_is_wholesale_user( $user_id ) ) {
+    if ( ! $user_id ) {
+        $user_id = get_current_user_id();
+    }
+    if ( ! $user_id ) {
+        return false;
+    }
+    $user = get_userdata( $user_id );
+    if ( ! $user ) {
+        return false;
+    }
+    // Only actual wholesale role holders get wholesale pricing — NOT admins
+    // (admins can access wholesale pages but shop at retail pricing unless
+    // they also have the wholesale_customer role)
+    if ( ! in_array( 'wholesale_customer', (array) $user->roles, true ) ) {
         return false;
     }
     // Check WC session context

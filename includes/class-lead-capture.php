@@ -549,20 +549,41 @@ class SLW_Lead_Capture {
                     <p class="slw-booth__enter-hint">or press Enter &crarr;</p>
                 </div>
                 <div class="slw-booth__question" data-q="r2">
-                    <h2 class="slw-booth__title">What's your email?</h2>
-                    <input type="email" class="slw-booth__input" id="slw-booth-r-email" placeholder="you@email.com" autocomplete="email" />
-                    <button type="button" class="slw-booth__next-btn" data-next="r3">Next &rarr;</button>
-                    <button type="button" class="slw-booth__back-btn" data-back-q="r1">&larr; Back</button>
-                    <p class="slw-booth__enter-hint">or press Enter &crarr;</p>
-                </div>
-                <div class="slw-booth__question" data-q="r3">
                     <h2 class="slw-booth__title">What's your biggest skin concern?</h2>
-                    <div class="slw-booth__pills">
+                    <div class="slw-booth__pills slw-booth__pills--advance" data-next-q="r3" data-field="skin_concern">
                         <button type="button" class="slw-booth__pill" data-value="Dryness &amp; tightness">Dryness &amp; tightness</button>
                         <button type="button" class="slw-booth__pill" data-value="Breakouts">Breakouts</button>
                         <button type="button" class="slw-booth__pill" data-value="Redness &amp; sensitivity">Redness &amp; sensitivity</button>
                         <button type="button" class="slw-booth__pill" data-value="Wrinkles &amp; dark spots">Wrinkles &amp; dark spots</button>
                     </div>
+                    <button type="button" class="slw-booth__back-btn" data-back-q="r1">&larr; Back</button>
+                </div>
+                <div class="slw-booth__question" data-q="r3">
+                    <h2 class="slw-booth__title">How many skincare products do you use daily?</h2>
+                    <div class="slw-booth__pills slw-booth__pills--advance" data-next-q="r4" data-field="product_count">
+                        <button type="button" class="slw-booth__pill" data-value="1-3">1-3 products</button>
+                        <button type="button" class="slw-booth__pill" data-value="4-6">4-6 products</button>
+                        <button type="button" class="slw-booth__pill" data-value="7+">7+ products</button>
+                    </div>
+                    <button type="button" class="slw-booth__back-btn" data-back-q="r2">&larr; Back</button>
+                </div>
+                <div class="slw-booth__question" data-q="r4">
+                    <h2 class="slw-booth__title">What frustrates you most about skincare?</h2>
+                    <div class="slw-booth__pills slw-booth__pills--advance" data-next-q="r5" data-field="frustration">
+                        <button type="button" class="slw-booth__pill" data-value="Nothing works long enough">Nothing works long enough</button>
+                        <button type="button" class="slw-booth__pill" data-value="Too many products">Too many products</button>
+                        <button type="button" class="slw-booth__pill" data-value="Don't trust ingredients">Don't trust ingredients</button>
+                        <button type="button" class="slw-booth__pill" data-value="Just want something simple">Just want something simple</button>
+                    </div>
+                    <button type="button" class="slw-booth__back-btn" data-back-q="r3">&larr; Back</button>
+                </div>
+                <div class="slw-booth__question" data-q="r5">
+                    <h2 class="slw-booth__title">Where should we send your personalized routine?</h2>
+                    <p style="color:#628393;font-size:14px;margin:0 0 16px;text-align:center;">We'll match you with the right products based on your answers.</p>
+                    <input type="email" class="slw-booth__input" id="slw-booth-r-email" placeholder="you@email.com" autocomplete="email" />
+                    <button type="button" class="slw-booth__next-btn slw-booth__submit-btn" data-path="retail">Get My Results &rarr;</button>
+                    <button type="button" class="slw-booth__back-btn" data-back-q="r4">&larr; Back</button>
+                    <p class="slw-booth__enter-hint">or press Enter &crarr;</p>
                 </div>
             </div>
 
@@ -576,20 +597,41 @@ class SLW_Lead_Capture {
                     <p class="slw-booth__enter-hint">or press Enter &crarr;</p>
                 </div>
                 <div class="slw-booth__question" data-q="w2">
-                    <h2 class="slw-booth__title">What's your email?</h2>
-                    <input type="email" class="slw-booth__input" id="slw-booth-w-email" placeholder="you@email.com" autocomplete="email" />
-                    <button type="button" class="slw-booth__next-btn" data-next="w3">Next &rarr;</button>
-                    <button type="button" class="slw-booth__back-btn" data-back-q="w1">&larr; Back</button>
-                    <p class="slw-booth__enter-hint">or press Enter &crarr;</p>
-                </div>
-                <div class="slw-booth__question" data-q="w3">
                     <h2 class="slw-booth__title">What type of business?</h2>
-                    <div class="slw-booth__pills">
+                    <div class="slw-booth__pills slw-booth__pills--advance" data-next-q="w3" data-field="business_type">
                         <button type="button" class="slw-booth__pill" data-value="Boutique">Boutique</button>
                         <button type="button" class="slw-booth__pill" data-value="Salon / Spa">Salon / Spa</button>
                         <button type="button" class="slw-booth__pill" data-value="Health Store">Health Store</button>
                         <button type="button" class="slw-booth__pill" data-value="Other">Other</button>
                     </div>
+                    <button type="button" class="slw-booth__back-btn" data-back-q="w1">&larr; Back</button>
+                </div>
+                <div class="slw-booth__question" data-q="w3">
+                    <h2 class="slw-booth__title">Do you currently carry skincare?</h2>
+                    <div class="slw-booth__pills slw-booth__pills--advance" data-next-q="w4" data-field="skincare_experience">
+                        <button type="button" class="slw-booth__pill" data-value="Yes, looking to add">Yes, looking to add</button>
+                        <button type="button" class="slw-booth__pill" data-value="Yes, looking to switch">Yes, looking to switch</button>
+                        <button type="button" class="slw-booth__pill" data-value="No, first time">No, first time</button>
+                    </div>
+                    <button type="button" class="slw-booth__back-btn" data-back-q="w2">&larr; Back</button>
+                </div>
+                <div class="slw-booth__question" data-q="w4">
+                    <h2 class="slw-booth__title">What draws you to tallow skincare?</h2>
+                    <div class="slw-booth__pills slw-booth__pills--advance" data-next-q="w5" data-field="tallow_interest">
+                        <button type="button" class="slw-booth__pill" data-value="Customers asking for it">Customers asking for it</button>
+                        <button type="button" class="slw-booth__pill" data-value="Clean ingredient trend">Clean ingredient trend</button>
+                        <button type="button" class="slw-booth__pill" data-value="Better margins">Better margins</button>
+                        <button type="button" class="slw-booth__pill" data-value="Personal believer">Personal believer</button>
+                    </div>
+                    <button type="button" class="slw-booth__back-btn" data-back-q="w3">&larr; Back</button>
+                </div>
+                <div class="slw-booth__question" data-q="w5">
+                    <h2 class="slw-booth__title">Where should we send your wholesale catalog + pricing?</h2>
+                    <p style="color:#628393;font-size:14px;margin:0 0 16px;text-align:center;">We'll send you our full product line, pricing tiers, and how to get started.</p>
+                    <input type="email" class="slw-booth__input" id="slw-booth-w-email" placeholder="you@email.com" autocomplete="email" />
+                    <button type="button" class="slw-booth__next-btn slw-booth__submit-btn" data-path="wholesale">Get Wholesale Info &rarr;</button>
+                    <button type="button" class="slw-booth__back-btn" data-back-q="w4">&larr; Back</button>
+                    <p class="slw-booth__enter-hint">or press Enter &crarr;</p>
                 </div>
             </div>
 
@@ -599,17 +641,21 @@ class SLW_Lead_Capture {
                 <h2 class="slw-booth__incentive-heading"><?php echo $retail_offer; ?></h2>
                 <div class="slw-booth__code-badge" style="font-size:22px;padding:16px 24px;">Show this screen to Holly</div>
                 <p style="text-align:center;color:#628393;font-size:14px;margin:12px 0 0;">Code <strong><?php echo $retail_code; ?></strong> also saved for online use</p>
-                <a id="slw-booth-r-results-link" href="#" style="display:block;text-align:center;margin-top:16px;color:#386174;font-size:14px;">See your personalized product recommendations &rarr;</a>
+                <div style="margin-top:24px;padding:20px;background:#F7F6F3;border-radius:8px;text-align:center;">
+                    <p style="color:#386174;font-size:15px;font-weight:600;margin:0 0 6px;">Check your inbox</p>
+                    <p style="color:#628393;font-size:14px;margin:0;">Your personalized skincare routine is on the way.</p>
+                </div>
             </div>
 
             <!-- ============ STEP 3b: Wholesale Incentive ============ -->
             <div class="slw-booth__step" data-step="3b">
                 <p class="slw-booth__thanks">Thanks, <span id="slw-booth-w-thanksname"></span>!</p>
-                <h2 class="slw-booth__incentive-heading"><?php echo $wholesale_head; ?></h2>
-                <p class="slw-booth__incentive-sub">50% off retail on every product</p>
-                <div class="slw-booth__cta-group">
-                    <a href="<?php echo $linesheet_url; ?>" class="slw-booth__cta slw-booth__cta--primary">View Price List</a>
-                    <a href="<?php echo $apply_url; ?>" class="slw-booth__cta slw-booth__cta--secondary">Apply for Wholesale</a>
+                <h2 class="slw-booth__incentive-heading"><?php echo $retail_offer; ?></h2>
+                <div class="slw-booth__code-badge" style="font-size:22px;padding:16px 24px;">Show this screen to Holly</div>
+                <p style="text-align:center;color:#628393;font-size:14px;margin:12px 0 0;">Code <strong><?php echo $retail_code; ?></strong> — try it for yourself first</p>
+                <div style="margin-top:24px;padding:20px;background:#F7F6F3;border-radius:8px;text-align:center;">
+                    <p style="color:#386174;font-size:15px;font-weight:600;margin:0 0 6px;">Check your inbox</p>
+                    <p style="color:#628393;font-size:14px;margin:0;">Your wholesale catalog + pricing is on the way. Holly will review your info and follow up personally.</p>
                 </div>
             </div>
 
@@ -713,6 +759,13 @@ class SLW_Lead_Capture {
                             return;
                         }
 
+                        // If this question has a submit button, click it instead of advancing
+                        var submitBtn = q.querySelector('.slw-booth__submit-btn');
+                        if (submitBtn) {
+                            submitBtn.click();
+                            return;
+                        }
+
                         // Advance to next question
                         var prefix = qId.charAt(0);
                         var num = parseInt(qId.charAt(1), 10);
@@ -721,8 +774,8 @@ class SLW_Lead_Capture {
                 });
             });
 
-            // ---- Next button click: same logic as Enter ----
-            booth.querySelectorAll('.slw-booth__next-btn').forEach(function(btn){
+            // ---- Next button click (non-submit): advance to next question ----
+            booth.querySelectorAll('.slw-booth__next-btn:not(.slw-booth__submit-btn)').forEach(function(btn){
                 btn.addEventListener('click', function(){
                     var nextQ = this.getAttribute('data-next');
                     var q = this.closest('.slw-booth__question');
@@ -781,24 +834,39 @@ class SLW_Lead_Capture {
             showQuestion = function(qId) {
                 origShowQ(qId);
                 var num = parseInt(qId.charAt(1), 10);
-                // sub-step progress: 2a has 3 questions, show as 2.0, 2.3, 2.6 visually
                 if (num && progressFill) {
-                    var subPct = 33 + (num / 3) * 33;
+                    // Both paths now have 5 questions
+                    var subPct = 33 + (num / 5) * 33;
                     progressFill.style.width = Math.min(subPct, 66) + '%';
                 }
             };
 
-            // ---- Pill selection: captures lead then shows incentive ----
+            // ---- Track quiz answers across pill steps ----
+            var quizData = {};
+
+            // ---- Pill selection: store value + advance to next question ----
             booth.querySelectorAll('.slw-booth__pill').forEach(function(pill){
                 pill.addEventListener('click', function(){
-                    // Mark selected
-                    this.closest('.slw-booth__pills').querySelectorAll('.slw-booth__pill').forEach(function(p){
+                    var pillGroup = this.closest('.slw-booth__pills');
+                    pillGroup.querySelectorAll('.slw-booth__pill').forEach(function(p){
                         p.classList.remove('slw-booth__pill--selected');
                     });
                     this.classList.add('slw-booth__pill--selected');
 
-                    var selectedValue = this.getAttribute('data-value');
-                    var isRetail = currentPath === 'retail';
+                    var fieldName = pillGroup.getAttribute('data-field');
+                    if (fieldName) {
+                        quizData[fieldName] = this.getAttribute('data-value');
+                    }
+
+                    var nextQ = pillGroup.getAttribute('data-next-q');
+                    if (nextQ) showQuestion(nextQ);
+                });
+            });
+
+            // ---- Submit button (on the email question) ----
+            booth.querySelectorAll('.slw-booth__submit-btn').forEach(function(btn){
+                btn.addEventListener('click', function(){
+                    var isRetail = this.getAttribute('data-path') === 'retail';
                     var nameVal, emailVal;
 
                     if (isRetail) {
@@ -824,10 +892,16 @@ class SLW_Lead_Capture {
                     fd.append('email', emailVal);
                     fd.append('source', urlSrc || (isRetail ? 'retail_booth' : 'wholesale_booth'));
                     fd.append('event', urlEvt);
-                    fd.append('how_heard', selectedValue);
 
-                    if (!isRetail) {
-                        fd.append('business_type', selectedValue);
+                    if (isRetail) {
+                        fd.append('how_heard', quizData.skin_concern || '');
+                        fd.append('product_count', quizData.product_count || '');
+                        fd.append('frustration', quizData.frustration || '');
+                    } else {
+                        fd.append('how_heard', quizData.business_type || '');
+                        fd.append('business_type', quizData.business_type || '');
+                        fd.append('skincare_experience', quizData.skincare_experience || '');
+                        fd.append('tallow_interest', quizData.tallow_interest || '');
                     }
 
                     fetch(ajaxUrl, { method: 'POST', body: fd, credentials: 'same-origin' })
@@ -837,8 +911,6 @@ class SLW_Lead_Capture {
                         // Show incentive regardless of duplicate error
                         if (isRetail) {
                             document.getElementById('slw-booth-r-thanksname').textContent = nameVal.split(' ')[0];
-                            var rl = document.getElementById('slw-booth-r-results-link');
-                            if (rl) rl.href = '/quiz-results/?skin=' + encodeURIComponent(selectedValue) + '&name=' + encodeURIComponent(nameVal.split(' ')[0]);
                             showStep('3a');
                         } else {
                             document.getElementById('slw-booth-w-thanksname').textContent = nameVal.split(' ')[0];
@@ -851,8 +923,6 @@ class SLW_Lead_Capture {
                         // Show incentive even on network error
                         if (isRetail) {
                             document.getElementById('slw-booth-r-thanksname').textContent = nameVal.split(' ')[0];
-                            var rl2 = document.getElementById('slw-booth-r-results-link');
-                            if (rl2) rl2.href = '/quiz-results/?skin=' + encodeURIComponent(selectedValue) + '&name=' + encodeURIComponent(nameVal.split(' ')[0]);
                             showStep('3a');
                         } else {
                             document.getElementById('slw-booth-w-thanksname').textContent = nameVal.split(' ')[0];
@@ -883,7 +953,11 @@ class SLW_Lead_Capture {
         $business_type = sanitize_text_field( wp_unslash( $_POST['business_type'] ?? '' ) );
         $phone         = sanitize_text_field( wp_unslash( $_POST['phone'] ?? '' ) );
         $how_heard     = sanitize_text_field( wp_unslash( $_POST['how_heard'] ?? '' ) );
-        $source        = sanitize_text_field( wp_unslash( $_POST['source'] ?? 'website' ) );
+        $product_count       = sanitize_text_field( wp_unslash( $_POST['product_count'] ?? '' ) );
+        $frustration         = sanitize_text_field( wp_unslash( $_POST['frustration'] ?? '' ) );
+        $skincare_experience = sanitize_text_field( wp_unslash( $_POST['skincare_experience'] ?? '' ) );
+        $tallow_interest     = sanitize_text_field( wp_unslash( $_POST['tallow_interest'] ?? '' ) );
+        $source              = sanitize_text_field( wp_unslash( $_POST['source'] ?? 'website' ) );
         $event         = sanitize_text_field( wp_unslash( $_POST['event'] ?? '' ) );
 
         // Validate allowed sources
@@ -926,10 +1000,13 @@ class SLW_Lead_Capture {
             $how_heard .= ' | Event: ' . $event;
         }
 
-        // Booth mode: store business type in notes for wholesale leads
+        // Booth mode: store quiz data in notes for wholesale leads
         $notes = '';
         if ( $booth_mode && $business_type ) {
-            $notes = 'Business Type: ' . $business_type;
+            $note_parts = array( 'Business Type: ' . $business_type );
+            if ( $skincare_experience ) $note_parts[] = 'Skincare Exp: ' . $skincare_experience;
+            if ( $tallow_interest )     $note_parts[] = 'Tallow Interest: ' . $tallow_interest;
+            $notes = implode( ' | ', $note_parts );
         }
 
         // ── Retail booth leads go to WooCommerce, not the wholesale leads table ──
@@ -947,18 +1024,22 @@ class SLW_Lead_Capture {
                     update_user_meta( $user_id, 'billing_phone', $phone );
                     update_user_meta( $user_id, 'slw_booth_source', $source );
                     update_user_meta( $user_id, 'slw_booth_event', $event );
-                    update_user_meta( $user_id, 'slw_skin_concern', $how_heard ); // skin concern stored here
+                    update_user_meta( $user_id, 'slw_skin_concern', $how_heard );
+                    if ( $product_count ) update_user_meta( $user_id, 'slw_product_count', $product_count );
+                    if ( $frustration )   update_user_meta( $user_id, 'slw_frustration', $frustration );
                 }
             }
 
             // Fire webhook with retail tag for Mautic segmentation
             if ( class_exists( 'SLW_Webhooks' ) ) {
                 SLW_Webhooks::fire( 'retail-lead-captured', array(
-                    'email'        => $email,
-                    'first_name'   => $name_parts[0] ?? $name,
-                    'source'       => $source,
-                    'event'        => $event,
-                    'skin_concern' => $how_heard,
+                    'email'         => $email,
+                    'first_name'    => $name_parts[0] ?? $name,
+                    'source'        => $source,
+                    'event'         => $event,
+                    'skin_concern'  => $how_heard,
+                    'product_count' => $product_count,
+                    'frustration'   => $frustration,
                 ) );
             }
 
@@ -970,7 +1051,7 @@ class SLW_Lead_Capture {
             return;
         }
 
-        // ── Wholesale leads go to the leads table as before ──
+        // ── Wholesale leads go to the leads table ──
         $wpdb->insert( $table, array(
             'name'          => $name,
             'email'         => $email,
@@ -983,14 +1064,68 @@ class SLW_Lead_Capture {
             'notes'         => $notes,
         ), array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s' ) );
 
+        // Also create an application record for booth wholesale leads
+        // so Holly can approve/deny them through the same system
+        if ( $source === 'wholesale_booth' ) {
+            $app_table = $wpdb->prefix . 'slw_applications';
+            $wpdb->insert( $app_table, array(
+                'business_name' => $business_type ? $business_type . ' — ' . $name : $name,
+                'contact_name'  => $name,
+                'email'         => $email,
+                'phone'         => $phone,
+                'address'       => '',
+                'website'       => '',
+                'ein'           => '',
+                'business_type' => $business_type,
+                'how_heard'     => $event ? 'Trade show: ' . $event : 'Trade show booth',
+                'why_carry'     => $tallow_interest,
+                'status'        => 'pending',
+                'ip_address'    => '',
+                'submitted_at'  => current_time( 'mysql' ),
+            ) );
+            $new_app_id = $wpdb->insert_id;
+
+            // Send Holly the approve/deny notification email
+            if ( $new_app_id && class_exists( 'SLW_Email_Approve' ) ) {
+                $app_row = $wpdb->get_row( $wpdb->prepare(
+                    "SELECT * FROM {$app_table} WHERE id = %d", $new_app_id
+                ) );
+                if ( $app_row ) {
+                    $admin_email = get_option( 'slw_admin_notification_email' );
+                    if ( ! $admin_email && class_exists( 'SLW_Email_Settings' ) ) {
+                        $admin_email = SLW_Email_Settings::get( 'from_address' );
+                    }
+                    if ( ! $admin_email ) {
+                        $admin_email = get_option( 'admin_email' );
+                    }
+
+                    $subject = 'Booth Lead — Wholesale Inquiry: ' . $name;
+                    $body    = SLW_Email_Approve::build_notification_html( $app_row, 'booth', array(
+                        'skincare_experience' => $skincare_experience,
+                        'tallow_interest'     => $tallow_interest,
+                        'event'               => $event,
+                    ) );
+
+                    $headers   = class_exists( 'SLW_Email_Settings' ) ? SLW_Email_Settings::get_headers() : array();
+                    $headers[] = 'Content-Type: text/html; charset=UTF-8';
+                    $headers[] = 'Reply-To: ' . $email;
+                    wp_mail( $admin_email, $subject, $body, $headers );
+                }
+            }
+        }
+
         // Fire webhook
         if ( class_exists( 'SLW_Webhooks' ) ) {
             SLW_Webhooks::fire( 'lead-captured', array(
-                'email'         => $email,
-                'name'          => $name,
-                'business_name' => $business_name,
-                'source'        => $source,
-                'event'         => $event,
+                'email'               => $email,
+                'first_name'          => explode( ' ', $name, 2 )[0],
+                'name'                => $name,
+                'business_name'       => $business_name,
+                'business_type'       => $business_type,
+                'skincare_experience' => $skincare_experience,
+                'tallow_interest'     => $tallow_interest,
+                'source'              => $source,
+                'event'               => $event,
             ) );
         }
 

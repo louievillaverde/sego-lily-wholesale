@@ -513,8 +513,12 @@ class SLW_Application_Form {
             $existing_user->add_role( 'wholesale_customer' );
             $user_id = $existing_user->ID;
 
+            // Safety: ensure administrator role is never accidentally removed
+            if ( in_array( 'administrator', (array) $existing_user->roles, true ) ) {
+                $existing_user->add_role( 'administrator' );
+            }
+
             // If the approver just modified their own account, refresh capabilities
-            // so WordPress doesn't block the redirect with "not allowed to access"
             if ( $user_id === get_current_user_id() ) {
                 wp_set_current_user( $user_id );
             }

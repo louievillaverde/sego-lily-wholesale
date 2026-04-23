@@ -151,15 +151,61 @@ class SLW_Webhooks {
         }
 
         // Build contact data for create/update
+        $tags = array( $tag );
+
+        // Retail quiz leads also get quiz-completed + routing tags
+        if ( ! empty( $data['skin_concern'] ) ) {
+            $tags[] = 'quiz-completed';
+            $tags[] = 'retail-quiz-lead';
+            $skin_tag_map = array(
+                'Dryness & tightness'  => 'skin-dryness',
+                'Breakouts'            => 'skin-breakouts',
+                'Redness & sensitivity' => 'skin-sensitivity',
+                'Wrinkles & dark spots' => 'skin-aging',
+            );
+            if ( isset( $skin_tag_map[ $data['skin_concern'] ] ) ) {
+                $tags[] = $skin_tag_map[ $data['skin_concern'] ];
+            }
+        }
+        if ( ! empty( $data['frustration'] ) ) {
+            $frustration_tag_map = array(
+                'Nothing works long enough'  => 'frustration-durability',
+                'Too many products'          => 'frustration-simplify',
+                'Don\'t trust ingredients'   => 'frustration-ingredients',
+                'Just want something simple' => 'frustration-simple',
+            );
+            if ( isset( $frustration_tag_map[ $data['frustration'] ] ) ) {
+                $tags[] = $frustration_tag_map[ $data['frustration'] ];
+            }
+        }
+
         $contact_data = array(
             'email' => $email,
-            'tags'  => array( $tag ),
+            'tags'  => $tags,
         );
         if ( ! empty( $data['first_name'] ) ) {
             $contact_data['firstname'] = $data['first_name'];
         }
         if ( ! empty( $data['business_name'] ) ) {
             $contact_data['company'] = $data['business_name'];
+        }
+        if ( ! empty( $data['skin_concern'] ) ) {
+            $contact_data['skin_concern'] = $data['skin_concern'];
+        }
+        if ( ! empty( $data['product_count'] ) ) {
+            $contact_data['product_count'] = $data['product_count'];
+        }
+        if ( ! empty( $data['frustration'] ) ) {
+            $contact_data['frustration'] = $data['frustration'];
+        }
+        if ( ! empty( $data['skincare_experience'] ) ) {
+            $contact_data['skincare_experience'] = $data['skincare_experience'];
+        }
+        if ( ! empty( $data['tallow_interest'] ) ) {
+            $contact_data['tallow_interest'] = $data['tallow_interest'];
+        }
+        if ( ! empty( $data['business_type'] ) ) {
+            $contact_data['company_industry'] = $data['business_type'];
         }
 
         if ( $contact_id ) {
