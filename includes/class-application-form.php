@@ -493,8 +493,9 @@ class SLW_Application_Form {
         // Create or update the WP user
         $existing_user = get_user_by( 'email', $app->email );
         if ( $existing_user ) {
-            // User already exists (maybe a retail customer). Add wholesale role.
-            $existing_user->set_role( 'wholesale_customer' );
+            // User already exists (retail customer). ADD wholesale role (keep existing roles
+            // so the context switcher works — they can shop as retail or wholesale).
+            $existing_user->add_role( 'wholesale_customer' );
             $user_id = $existing_user->ID;
         } else {
             // Generate a password and create the account
