@@ -143,16 +143,31 @@ class SLW_Application_Form {
         }
 
         $subject = 'New Wholesale Application: ' . $data['business_name'];
-        $body = "A new wholesale application has been submitted.\n\n";
-        $body .= "Business: {$data['business_name']}\n";
-        $body .= "Contact: {$data['contact_name']}\n";
-        $body .= "Email: {$data['email']}\n";
-        $body .= "Phone: {$data['phone']}\n\n";
-        $body .= "Review it in your WordPress admin under Wholesale Applications:\n";
-        $body .= admin_url( 'admin.php?page=slw-applications' ) . "\n";
+
+        // Build HTML email with approve/deny buttons
+        $app_row = $wpdb->get_row( $wpdb->prepare(
+            "SELECT * FROM {$table} WHERE email = %s ORDER BY id DESC LIMIT 1",
+            $data['email']
+        ) );
+
+        if ( $app_row && class_exists( 'SLW_Email_Approve' ) ) {
+            $body = SLW_Email_Approve::build_notification_html( $app_row, 'website' );
+        } else {
+            // Fallback plain text if email-approve class not loaded
+            $body = "A new wholesale application has been submitted.\n\n";
+            $body .= "Business: {$data['business_name']}\n";
+            $body .= "Contact: {$data['contact_name']}\n";
+            $body .= "Email: {$data['email']}\n";
+            $body .= "Phone: {$data['phone']}\n\n";
+            $body .= "Review it in your WordPress admin under Wholesale Applications:\n";
+            $body .= admin_url( 'admin.php?page=slw-applications' ) . "\n";
+        }
 
         $email_headers = SLW_Email_Settings::get_headers();
-        $email_headers[] = 'Reply-To: ' . $data['email']; // Override reply-to with applicant's email
+        $email_headers[] = 'Reply-To: ' . $data['email'];
+        if ( $app_row && class_exists( 'SLW_Email_Approve' ) ) {
+            $email_headers[] = 'Content-Type: text/html; charset=UTF-8';
+        }
 
         $sent = wp_mail( $admin_email, $subject, $body, $email_headers );
         if ( ! $sent ) {
@@ -493,10 +508,16 @@ class SLW_Application_Form {
         // Create or update the WP user
         $existing_user = get_user_by( 'email', $app->email );
         if ( $existing_user ) {
-            // User already exists (retail customer). ADD wholesale role (keep existing roles
+            // User already exists. ADD wholesale role (keep existing roles
             // so the context switcher works — they can shop as retail or wholesale).
             $existing_user->add_role( 'wholesale_customer' );
             $user_id = $existing_user->ID;
+
+            // If the approver just modified their own account, refresh capabilities
+            // so WordPress doesn't block the redirect with "not allowed to access"
+            if ( $user_id === get_current_user_id() ) {
+                wp_set_current_user( $user_id );
+            }
         } else {
             // Generate a password and create the account
             $password = wp_generate_password( 12, true );

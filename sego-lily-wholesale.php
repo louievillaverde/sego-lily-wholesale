@@ -3,7 +3,7 @@
  * Plugin Name:       Wholesale Portal
  * Plugin URI:        https://github.com/louievillaverde/sego-lily-wholesale
  * Description:       All-in-one B2B wholesale portal for WooCommerce. Customer portal, tiered pricing, application workflow, PDF invoices, email sequences with multi-provider support, NET payment terms, lead capture, trade show tools, and automated order reminders. Built by Lead Piranha.
- * Version:           3.7.6
+ * Version:           3.7.7
  * Author:            Lead Piranha
  * Author URI:        https://leadpiranha.com
  * Requires at least: 6.0
@@ -28,7 +28,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SLW_VERSION', '3.7.6' );
+define( 'SLW_VERSION', '3.7.7' );
 define( 'SLW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SLW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -104,6 +104,8 @@ add_action( 'plugins_loaded', function() {
     require_once SLW_PLUGIN_DIR . 'includes/class-rfq.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-customer-portal.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-quiz-results.php';
+    require_once SLW_PLUGIN_DIR . 'includes/class-email-approve.php';
+    require_once SLW_PLUGIN_DIR . 'includes/class-wholesale-activate.php';
 
     // Initialize — core
     SLW_Wholesale_Role::init();
@@ -143,6 +145,8 @@ add_action( 'plugins_loaded', function() {
     SLW_RFQ::init();
     SLW_Customer_Portal::init();
     SLW_Quiz_Results::init();
+    SLW_Email_Approve::init();
+    SLW_Wholesale_Activate::init();
 
     // Enqueue frontend styles on pages that use our shortcodes
     add_action( 'wp_enqueue_scripts', function() {
@@ -208,6 +212,10 @@ register_activation_hook( __FILE__, function() {
         'quiz-results' => array(
             'title'   => 'Your Skincare Results',
             'content' => '[slw_quiz_results]',
+        ),
+        'wholesale-activate' => array(
+            'title'   => 'Activate Your Wholesale Account',
+            'content' => '[slw_wholesale_activate]',
         ),
     );
 

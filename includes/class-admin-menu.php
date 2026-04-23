@@ -16,6 +16,18 @@ class SLW_Admin_Menu {
     }
 
     /**
+     * Get the count of pending wholesale applications for the menu badge.
+     */
+    private static function get_pending_application_count() {
+        global $wpdb;
+        $table = $wpdb->prefix . 'slw_applications';
+        if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) !== $table ) {
+            return 0;
+        }
+        return (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$table} WHERE status = 'pending'" );
+    }
+
+    /**
      * Render the admin preview page. Renders the portal directly (no iframe)
      * to avoid dependency on the /wholesale-portal page existing.
      */
@@ -78,8 +90,13 @@ class SLW_Admin_Menu {
         // 1. Dashboard (landing page, replaces auto-generated first item)
         add_submenu_page( 'slw-dashboard', 'Wholesale Dashboard', 'Dashboard', 'manage_woocommerce', 'slw-dashboard', array( 'SLW_Admin_Dashboard', 'render_page' ) );
 
-        // 2. Applications (most frequent daily action)
-        add_submenu_page( 'slw-dashboard', 'Wholesale Applications', 'Applications', 'manage_woocommerce', 'slw-applications', array( 'SLW_Application_Form', 'render_admin_page' ) );
+        // 2. Applications (most frequent daily action) — with pending count badge
+        $pending_count = self::get_pending_application_count();
+        $app_label = 'Applications';
+        if ( $pending_count > 0 ) {
+            $app_label .= ' <span class="awaiting-mod update-plugins count-' . $pending_count . '"><span class="pending-count">' . $pending_count . '</span></span>';
+        }
+        add_submenu_page( 'slw-dashboard', 'Wholesale Applications', $app_label, 'manage_woocommerce', 'slw-applications', array( 'SLW_Application_Form', 'render_admin_page' ) );
 
         // 3. Orders (reviewing wholesale orders)
         if ( class_exists( 'SLW_Wholesale_Orders' ) ) {
