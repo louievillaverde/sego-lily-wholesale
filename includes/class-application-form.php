@@ -578,7 +578,7 @@ class SLW_Application_Form {
         $minimum = number_format( (float) get_option( 'slw_first_order_minimum', 300 ), 0 );
         $body .= "Your first order has a \${$minimum} minimum. After that, you can reorder any amount.\n\n";
         $body .= "Once you're logged in, head to {$site_url}/wholesale-order to browse products and place your order.\n\n";
-        $body .= "You'll receive a follow-up email shortly with more details about our wholesale program, product highlights, and tips for getting started.\n\n";
+        $body .= "In about 15 minutes, you'll get another email with product recommendations, bestsellers, and tips for setting up your shelf. Keep an eye out.\n\n";
         $body .= "Questions? Reply to this email or reach out at {$reply_email}.\n\n";
         $body .= "Welcome to the family,\n" . SLW_Email_Settings::get_signature();
 
