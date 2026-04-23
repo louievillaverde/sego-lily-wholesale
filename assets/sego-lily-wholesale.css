@@ -519,8 +519,8 @@ a.slw-btn-ghost:hover {
 
 .slw-col-price {
     white-space: nowrap;
-    font-weight: bold;
-    color: #386174;
+    font-weight: 700;
+    color: #1E2A30;
 }
 
 .slw-col-qty {
@@ -565,8 +565,8 @@ a.slw-btn-ghost:hover {
    Wholesale Price Label
    ------------------------------------------------------- */
 .slw-wholesale-label {
-    color: #386174;
-    font-weight: bold;
+    color: #1E2A30;
+    font-weight: 700;
     font-size: 0.95em;
 }
 
@@ -1112,11 +1112,12 @@ button.slw-reorder-btn:hover {
    New Arrivals Section (Order Form)
    ------------------------------------------------------- */
 .slw-new-arrivals {
+    margin-top: 24px;
     margin-bottom: 28px;
 }
 
 .slw-new-arrivals-header {
-    background: linear-gradient(135deg, #386174 0%, #1E2A30 100%);
+    background: #1E2A30;
     padding: 18px 24px;
     border-radius: 8px 8px 0 0;
     display: flex;
@@ -1126,10 +1127,21 @@ button.slw-reorder-btn:hover {
 
 .slw-new-arrivals-header h3 {
     font-family: Georgia, 'Times New Roman', serif;
-    color: #D4AF37;
-    font-size: 22px;
+    color: #F7F6F3;
+    font-size: 20px;
     margin: 0;
     letter-spacing: 0.3px;
+}
+
+.slw-new-arrivals-header h3::before {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background: #D4AF37;
+    border-radius: 50%;
+    margin-right: 8px;
+    vertical-align: middle;
 }
 
 .slw-new-arrivals-grid {
@@ -1200,9 +1212,9 @@ button.slw-reorder-btn:hover {
 }
 
 .slw-new-arrival-price {
-    font-weight: bold;
-    color: #386174;
-    font-size: 15px;
+    font-weight: 700;
+    color: #1E2A30;
+    font-size: 16px;
     margin-bottom: 12px;
 }
 
