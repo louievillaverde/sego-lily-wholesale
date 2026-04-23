@@ -38,7 +38,7 @@ class SLW_Order_Rules {
      * customers must meet the reorder_minimum ($0 default).
      */
     public static function enforce_minimum() {
-        if ( ! slw_is_wholesale_user() ) {
+        if ( ! slw_is_wholesale_context() ) {
             return;
         }
 
@@ -77,7 +77,7 @@ class SLW_Order_Rules {
      * about the minimum before they try to check out.
      */
     public static function cart_minimum_notice() {
-        if ( ! slw_is_wholesale_user() ) {
+        if ( ! slw_is_wholesale_context() ) {
             return;
         }
 

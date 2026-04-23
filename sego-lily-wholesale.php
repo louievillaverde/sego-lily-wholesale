@@ -3,7 +3,7 @@
  * Plugin Name:       Wholesale Portal
  * Plugin URI:        https://github.com/louievillaverde/sego-lily-wholesale
  * Description:       All-in-one B2B wholesale portal for WooCommerce. Customer portal, tiered pricing, application workflow, PDF invoices, email sequences with multi-provider support, NET payment terms, lead capture, trade show tools, and automated order reminders. Built by Lead Piranha.
- * Version:           3.7.1
+ * Version:           3.7.2
  * Author:            Lead Piranha
  * Author URI:        https://leadpiranha.com
  * Requires at least: 6.0
@@ -28,7 +28,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SLW_VERSION', '3.7.1' );
+define( 'SLW_VERSION', '3.7.2' );
 define( 'SLW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SLW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -89,6 +89,7 @@ add_action( 'plugins_loaded', function() {
     require_once SLW_PLUGIN_DIR . 'includes/class-shipping-calculator.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-product-recommendations.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-nav-menu.php';
+    require_once SLW_PLUGIN_DIR . 'includes/class-context-switcher.php';
 
     // Load v2.0 modules — tiers, invoices, reminders, RFQ
     require_once SLW_PLUGIN_DIR . 'includes/class-tiers.php';
@@ -126,6 +127,7 @@ add_action( 'plugins_loaded', function() {
     SLW_Audit_Log::init();
     SLW_Shipping_Calculator::init();
     SLW_Nav_Menu::init();
+    SLW_Context_Switcher::init();
     SLW_Product_Recommendations::init();
 
     // Initialize — v2.0 modules (order matters: tiers before groups)
@@ -432,6 +434,31 @@ function slw_is_wholesale_user( $user_id = null ) {
     }
     $user = get_userdata( $user_id );
     return $user && in_array( 'wholesale_customer', (array) $user->roles, true );
+}
+
+/**
+ * Helper: check if the current session is in wholesale shopping context.
+ *
+ * Returns true ONLY when the user has the wholesale_customer role AND the
+ * WooCommerce session context is set to 'wholesale' (the default). When a
+ * wholesale user switches to "For Myself" mode via the context switcher,
+ * this returns false so they see retail pricing and no wholesale minimums.
+ *
+ * Use this instead of slw_is_wholesale_user() in pricing hooks, order
+ * rules, and anywhere the shopping context matters. Keep using
+ * slw_is_wholesale_user() for role-level checks (portal access, nav menu,
+ * admin columns, etc.).
+ */
+function slw_is_wholesale_context( $user_id = null ) {
+    if ( ! slw_is_wholesale_user( $user_id ) ) {
+        return false;
+    }
+    // Check WC session context
+    if ( function_exists( 'WC' ) && WC()->session ) {
+        $context = WC()->session->get( 'slw_shopping_context', 'wholesale' );
+        return $context === 'wholesale';
+    }
+    return true; // Default to wholesale if no session available
 }
 
 /**

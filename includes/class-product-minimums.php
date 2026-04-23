@@ -68,7 +68,7 @@ class SLW_Product_Minimums {
 	 * uses for the order-total minimum, so both checks run together.
 	 */
 	public static function enforce_minimums() {
-		if ( ! slw_is_wholesale_user() ) {
+		if ( ! slw_is_wholesale_context() ) {
 			return;
 		}
 
@@ -151,7 +151,7 @@ class SLW_Product_Minimums {
 	 * Validate that cart quantities are multiples of the case pack size.
 	 */
 	public static function enforce_case_packs() {
-		if ( ! slw_is_wholesale_user() ) {
+		if ( ! slw_is_wholesale_context() ) {
 			return;
 		}
 
@@ -190,7 +190,7 @@ class SLW_Product_Minimums {
 	 * Override quantity_input_args to also set the step attribute for case packs.
 	 */
 	public static function quantity_input_args( $args, $product ) {
-		if ( ! slw_is_wholesale_user() ) {
+		if ( ! slw_is_wholesale_context() ) {
 			return $args;
 		}
 
@@ -231,7 +231,7 @@ class SLW_Product_Minimums {
 	 * for logged-in wholesale customers.
 	 */
 	public static function display_case_pack_on_product_page() {
-		if ( ! slw_is_wholesale_user() ) {
+		if ( ! slw_is_wholesale_context() ) {
 			return;
 		}
 

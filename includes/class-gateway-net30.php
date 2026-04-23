@@ -59,7 +59,7 @@ class SLW_Gateway_Net30 extends WC_Payment_Gateway {
      * Also dynamically update the title/description based on the user's term.
      */
     public function is_available() {
-        if ( ! slw_is_wholesale_user() ) {
+        if ( ! slw_is_wholesale_context() ) {
             return false;
         }
 

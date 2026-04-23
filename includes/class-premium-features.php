@@ -138,7 +138,7 @@ class SLW_Premium_Features {
         if ( ! $valid ) return $valid;
         $is_wholesale_only = get_post_meta( $coupon->get_id(), 'slw_wholesale_only_coupon', true ) === 'yes';
         if ( ! $is_wholesale_only ) return $valid;
-        if ( ! slw_is_wholesale_user() ) {
+        if ( ! slw_is_wholesale_context() ) {
             throw new Exception( 'This coupon is for wholesale partners only.' );
         }
         return $valid;
@@ -149,7 +149,7 @@ class SLW_Premium_Features {
      * (WooCommerce sometimes exposes coupon metadata on the cart page).
      */
     public static function hide_retail_coupon_hints( $data, $coupon_code ) {
-        if ( slw_is_wholesale_user() ) return $data;
+        if ( slw_is_wholesale_context() ) return $data;
         $coupon = new WC_Coupon( $coupon_code );
         if ( get_post_meta( $coupon->get_id(), 'slw_wholesale_only_coupon', true ) === 'yes' ) {
             return false;  // pretend coupon doesn't exist for retail users
@@ -167,7 +167,7 @@ class SLW_Premium_Features {
      */
     public static function filter_shipping_methods( $rates, $package ) {
         if ( is_admin() && ! defined( 'DOING_AJAX' ) ) return $rates;
-        $is_wholesale = slw_is_wholesale_user();
+        $is_wholesale = slw_is_wholesale_context();
 
         // Allowed methods per role, stored as arrays of method IDs in options
         $wholesale_allowed = (array) get_option( 'slw_wholesale_shipping_methods', array() );

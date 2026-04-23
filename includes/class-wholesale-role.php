@@ -66,7 +66,7 @@ class SLW_Wholesale_Role {
         if ( ! $customer ) return $is_exempt;
         $user_id = $customer->get_id();
         if ( ! $user_id ) return $is_exempt;
-        if ( ! slw_is_wholesale_user( $user_id ) ) return $is_exempt;
+        if ( ! slw_is_wholesale_context( $user_id ) ) return $is_exempt;
         // Tax exempt if admin has verified the resale cert OR if global default is on
         $verified = get_user_meta( $user_id, 'slw_resale_cert_verified', true );
         $global_default = get_option( 'slw_wholesale_tax_exempt_default', '0' );
@@ -78,7 +78,7 @@ class SLW_Wholesale_Role {
      * (some WC themes recalculate after the customer object is built).
      */
     public static function maybe_zero_tax( $total ) {
-        if ( ! is_admin() && slw_is_wholesale_user() ) {
+        if ( ! is_admin() && slw_is_wholesale_context() ) {
             $verified = get_user_meta( get_current_user_id(), 'slw_resale_cert_verified', true );
             $global = get_option( 'slw_wholesale_tax_exempt_default', '0' );
             if ( $verified === '1' || $global === '1' ) {
@@ -95,7 +95,7 @@ class SLW_Wholesale_Role {
      */
     public static function filter_wholesale_only_products( $query ) {
         if ( is_admin() || ! $query->is_main_query() ) return;
-        if ( slw_is_wholesale_user() ) return;  // wholesale users see everything
+        if ( slw_is_wholesale_context() ) return;  // wholesale context sees everything
         $meta_query = $query->get( 'meta_query' ) ?: array();
         $meta_query[] = array(
             'relation' => 'OR',
@@ -117,7 +117,7 @@ class SLW_Wholesale_Role {
      * (catches the shop page, search results, related products).
      */
     public static function filter_wholesale_only_meta( $meta_query, $query ) {
-        if ( is_admin() || slw_is_wholesale_user() ) return $meta_query;
+        if ( is_admin() || slw_is_wholesale_context() ) return $meta_query;
         $meta_query[] = array(
             'relation' => 'OR',
             array( 'key' => '_slw_wholesale_only', 'value' => '1', 'compare' => '!=' ),
@@ -176,7 +176,7 @@ class SLW_Wholesale_Role {
      */
     public static function apply_tiered_pricing( $cart ) {
         if ( is_admin() && ! defined( 'DOING_AJAX' ) ) return;
-        if ( ! slw_is_wholesale_user() ) return;
+        if ( ! slw_is_wholesale_context() ) return;
 
         foreach ( $cart->get_cart() as $cart_item ) {
             if ( empty( $cart_item['data'] ) ) continue;
@@ -345,7 +345,7 @@ class SLW_Wholesale_Role {
      * without us modifying this function every time.
      */
     public static function apply_wholesale_price( $price, $product ) {
-        if ( ! slw_is_wholesale_user() || is_admin() ) {
+        if ( ! slw_is_wholesale_context() ) {
             return $price;
         }
 
@@ -386,7 +386,7 @@ class SLW_Wholesale_Role {
      * doesn't serve cached retail prices to wholesale users.
      */
     public static function variation_price_hash( $hash ) {
-        $hash[] = slw_is_wholesale_user() ? 'wholesale' : 'retail';
+        $hash[] = slw_is_wholesale_context() ? 'wholesale' : 'retail';
         return $hash;
     }
 
@@ -395,7 +395,7 @@ class SLW_Wholesale_Role {
      * Wholesale users see: "<del>$40.00</del> Wholesale: $20.00"
      */
     public static function price_html( $price_html, $product ) {
-        if ( ! slw_is_wholesale_user() || is_admin() ) {
+        if ( ! slw_is_wholesale_context() ) {
             return $price_html;
         }
 
@@ -417,7 +417,7 @@ class SLW_Wholesale_Role {
      * Add "Wholesale Price" label in the cart line items.
      */
     public static function cart_item_price_label( $price_html, $cart_item, $cart_item_key ) {
-        if ( slw_is_wholesale_user() ) {
+        if ( slw_is_wholesale_context() ) {
             return '<span class="slw-wholesale-label">Wholesale: </span>' . $price_html;
         }
         return $price_html;
