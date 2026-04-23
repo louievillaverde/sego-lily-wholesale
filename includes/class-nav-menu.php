@@ -2,19 +2,12 @@
 /**
  * Dynamic Wholesale Navigation Menu
  *
- * Automatically replaces the sub-items under any menu item linking to
- * /wholesale-partners (or with "wholesale" as a custom link) based on
- * the visitor's login state and wholesale role.
+ * Automatically replaces the sub-items under any menu item titled
+ * "Wholesale" based on the visitor's login state and wholesale role.
  *
- * Visitors / retail customers see:
- *   Apply for Wholesale → /wholesale-partners
- *   Partner Login       → /my-account
- *
- * Logged-in wholesale partners see:
- *   My Portal       → /wholesale-portal
- *   Order Form      → /wholesale-order
- *   My Dashboard    → /wholesale-dashboard
- *   Request a Quote → /wholesale-rfq
+ * Uses both wp_nav_menu_objects AND wp_get_nav_menu_items to ensure
+ * compatibility with Elementor's nav widget which may bypass the
+ * standard wp_nav_menu_objects filter.
  */
 
 if ( ! defined( 'ABSPATH' ) ) exit;
@@ -22,84 +15,135 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 class SLW_Nav_Menu {
 
     public static function init() {
-        add_filter( 'wp_nav_menu_objects', array( __CLASS__, 'filter_menu_items' ), 10, 2 );
+        // Standard WordPress menu filter
+        add_filter( 'wp_nav_menu_objects', array( __CLASS__, 'filter_menu_items' ), 999, 2 );
+
+        // Earlier filter that Elementor may use
+        add_filter( 'wp_get_nav_menu_items', array( __CLASS__, 'filter_nav_menu_items' ), 999, 3 );
     }
 
     /**
-     * Filter nav menu items. Find the "Wholesale" parent item and replace
-     * its children based on the current user's role.
+     * Get the replacement children based on user state.
      */
-    public static function filter_menu_items( $items, $args ) {
-        // Find the wholesale parent menu item
-        $wholesale_parent_id = null;
-        foreach ( $items as $item ) {
-            $title_lower = strtolower( trim( $item->title ) );
-            if ( $title_lower === 'wholesale' && (int) $item->menu_item_parent === 0 ) {
-                $wholesale_parent_id = $item->ID;
-                break;
-            }
-        }
-
-        if ( ! $wholesale_parent_id ) {
-            return $items;
-        }
-
-        // Remove existing children of the wholesale parent
-        $items = array_filter( $items, function( $item ) use ( $wholesale_parent_id ) {
-            return (int) $item->menu_item_parent !== $wholesale_parent_id;
-        });
-
-        // Build replacement children based on user state
+    private static function get_children() {
         $is_wholesale = is_user_logged_in() && function_exists( 'slw_is_wholesale_user' ) && slw_is_wholesale_user();
 
         if ( $is_wholesale ) {
-            $children = array(
+            return array(
                 array( 'title' => 'My Portal',       'url' => home_url( '/wholesale-portal' ) ),
                 array( 'title' => 'Order Form',      'url' => home_url( '/wholesale-order' ) ),
                 array( 'title' => 'My Dashboard',    'url' => home_url( '/wholesale-dashboard' ) ),
                 array( 'title' => 'Request a Quote', 'url' => home_url( '/wholesale-rfq' ) ),
             );
-        } else {
-            $children = array(
-                array( 'title' => 'Apply for Wholesale', 'url' => home_url( '/wholesale-partners' ) ),
-                array( 'title' => 'Partner Login',       'url' => home_url( '/my-account' ) ),
-            );
         }
 
-        // Create mock menu item objects for the children
-        $menu_order = 1000; // high number to appear after other items
-        foreach ( $children as $child ) {
-            $mock = new stdClass();
-            $mock->ID               = --$menu_order + 99000; // unique fake ID
-            $mock->db_id            = $mock->ID;
-            $mock->title            = $child['title'];
-            $mock->url              = $child['url'];
-            $mock->menu_item_parent = (string) $wholesale_parent_id;
-            $mock->menu_order       = $menu_order;
-            $mock->type             = 'custom';
-            $mock->type_label       = 'Custom Link';
-            $mock->object           = 'custom';
-            $mock->object_id        = $mock->ID;
-            $mock->target           = '';
-            $mock->attr_title       = '';
-            $mock->description      = '';
-            $mock->classes          = array( 'menu-item', 'menu-item-type-custom' );
-            $mock->xfn              = '';
-            $mock->current          = false;
-            $mock->current_item_ancestor = false;
-            $mock->current_item_parent   = false;
+        return array(
+            array( 'title' => 'Apply for Wholesale', 'url' => home_url( '/wholesale-partners' ) ),
+            array( 'title' => 'Partner Login',       'url' => home_url( '/my-account' ) ),
+        );
+    }
 
-            // Mark current page
-            $current_url = home_url( $_SERVER['REQUEST_URI'] ?? '' );
-            if ( rtrim( $child['url'], '/' ) === rtrim( strtok( $current_url, '?' ), '/' ) ) {
-                $mock->current = true;
-                $mock->classes[] = 'current-menu-item';
+    /**
+     * Build a mock menu item object.
+     */
+    private static function make_item( $child, $parent_id, $order ) {
+        $obj = new stdClass();
+        $obj->ID                      = 900000 + $order;
+        $obj->db_id                   = $obj->ID;
+        $obj->title                   = $child['title'];
+        $obj->url                     = $child['url'];
+        $obj->menu_item_parent        = (string) $parent_id;
+        $obj->menu_order              = $order;
+        $obj->type                    = 'custom';
+        $obj->type_label              = 'Custom Link';
+        $obj->object                  = 'custom';
+        $obj->object_id               = (string) $obj->ID;
+        $obj->target                  = '';
+        $obj->attr_title              = '';
+        $obj->description             = '';
+        $obj->classes                 = array( 'menu-item', 'menu-item-type-custom', 'menu-item-object-custom' );
+        $obj->xfn                     = '';
+        $obj->current                 = false;
+        $obj->current_item_ancestor   = false;
+        $obj->current_item_parent     = false;
+        $obj->post_type               = 'nav_menu_item';
+        $obj->post_status             = 'publish';
+        $obj->post_parent             = 0;
+        $obj->post_title              = $child['title'];
+        $obj->post_name               = sanitize_title( $child['title'] );
+
+        // Highlight current page
+        $request_uri = $_SERVER['REQUEST_URI'] ?? '';
+        $current_path = rtrim( strtok( $request_uri, '?' ), '/' );
+        $child_path   = rtrim( wp_parse_url( $child['url'], PHP_URL_PATH ), '/' );
+        if ( $current_path === $child_path ) {
+            $obj->current = true;
+            $obj->classes[] = 'current-menu-item';
+        }
+
+        return $obj;
+    }
+
+    /**
+     * Filter via wp_nav_menu_objects (standard WP menus).
+     */
+    public static function filter_menu_items( $items, $args ) {
+        return self::do_filter( $items );
+    }
+
+    /**
+     * Filter via wp_get_nav_menu_items (Elementor compatibility).
+     */
+    public static function filter_nav_menu_items( $items, $menu, $args ) {
+        return self::do_filter( $items );
+    }
+
+    /**
+     * Core filter logic shared by both hooks.
+     */
+    private static function do_filter( $items ) {
+        if ( empty( $items ) || ! is_array( $items ) ) {
+            return $items;
+        }
+
+        // Don't run in admin
+        if ( is_admin() ) {
+            return $items;
+        }
+
+        // Find the wholesale parent
+        $parent_id  = null;
+        $parent_key = null;
+        foreach ( $items as $key => $item ) {
+            $title = strtolower( trim( $item->title ?? $item->post_title ?? '' ) );
+            $parent = $item->menu_item_parent ?? '0';
+            if ( $title === 'wholesale' && ( $parent === '0' || $parent === 0 || $parent === '' ) ) {
+                $parent_id  = $item->ID ?? $item->db_id;
+                $parent_key = $key;
+                break;
             }
-
-            $items[] = $mock;
-            $menu_order++;
         }
 
-        return $items;
+        if ( ! $parent_id ) {
+            return $items;
+        }
+
+        // Remove existing children
+        $filtered = array();
+        foreach ( $items as $item ) {
+            $item_parent = (string) ( $item->menu_item_parent ?? '0' );
+            if ( $item_parent !== (string) $parent_id ) {
+                $filtered[] = $item;
+            }
+        }
+
+        // Add dynamic children
+        $children = self::get_children();
+        $order = 9000;
+        foreach ( $children as $child ) {
+            $filtered[] = self::make_item( $child, $parent_id, $order++ );
+        }
+
+        return $filtered;
     }
 }
