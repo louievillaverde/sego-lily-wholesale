@@ -782,7 +782,7 @@ class SLW_Email_Sequences {
             <div class="slw-newsletter-section">
                 <div class="slw-newsletter-header">
                     <h2 class="title">Newsletters</h2>
-                    <button type="button" class="button button-primary" id="slw-compose-newsletter-btn">New Newsletter</button>
+                    <button type="button" id="slw-compose-newsletter-btn" style="background:#386174 !important;color:#F7F6F3 !important;border:none !important;padding:10px 24px !important;font-size:14px !important;font-weight:700 !important;border-radius:8px !important;cursor:pointer;font-family:Georgia,'Times New Roman',serif !important;letter-spacing:0.3px;">+ New Newsletter</button>
                 </div>
 
                 <div id="slw-newsletter-compose" class="slw-admin-card slw-newsletter-compose" style="display:none;">
@@ -817,7 +817,8 @@ class SLW_Email_Sequences {
                             <td>
                                 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
                                     <select id="slw-nl-template" style="min-width:200px;">
-                                        <option value="">Blank (start fresh)</option>
+                                        <option value="">— Choose a template (<?php echo count( $saved_templates ); ?> saved) —</option>
+                                        <option value="__blank">Blank (start fresh)</option>
                                         <?php foreach ( $saved_templates as $tpl_slug => $tpl ) : ?>
                                             <option value="<?php echo esc_attr( $tpl_slug ); ?>"
                                                 data-subject="<?php echo esc_attr( $tpl['subject'] ); ?>"
