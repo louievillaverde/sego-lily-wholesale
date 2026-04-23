@@ -3,7 +3,7 @@
  * Plugin Name:       Wholesale Portal
  * Plugin URI:        https://github.com/louievillaverde/sego-lily-wholesale
  * Description:       All-in-one B2B wholesale portal for WooCommerce. Customer portal, tiered pricing, application workflow, PDF invoices, email sequences with multi-provider support, NET payment terms, lead capture, trade show tools, and automated order reminders. Built by Lead Piranha.
- * Version:           3.5.9
+ * Version:           3.6.0
  * Author:            Lead Piranha
  * Author URI:        https://leadpiranha.com
  * Requires at least: 6.0
@@ -28,7 +28,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SLW_VERSION', '3.5.9' );
+define( 'SLW_VERSION', '3.6.0' );
 define( 'SLW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SLW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -88,6 +88,7 @@ add_action( 'plugins_loaded', function() {
     require_once SLW_PLUGIN_DIR . 'includes/class-audit-log.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-shipping-calculator.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-product-recommendations.php';
+    require_once SLW_PLUGIN_DIR . 'includes/class-nav-menu.php';
 
     // Load v2.0 modules — tiers, invoices, reminders, RFQ
     require_once SLW_PLUGIN_DIR . 'includes/class-tiers.php';
@@ -123,6 +124,7 @@ add_action( 'plugins_loaded', function() {
     SLW_Encryption::init();
     SLW_Audit_Log::init();
     SLW_Shipping_Calculator::init();
+    SLW_Nav_Menu::init();
     SLW_Product_Recommendations::init();
 
     // Initialize — v2.0 modules (order matters: tiers before groups)
