@@ -20,6 +20,27 @@ class SLW_Nav_Menu {
 
         // Earlier filter that Elementor may use
         add_filter( 'wp_get_nav_menu_items', array( __CLASS__, 'filter_nav_menu_items' ), 999, 3 );
+
+        // Redirect wholesale users to portal after login
+        add_filter( 'woocommerce_login_redirect', array( __CLASS__, 'login_redirect' ), 10, 2 );
+        add_filter( 'login_redirect', array( __CLASS__, 'login_redirect' ), 10, 3 );
+    }
+
+    /**
+     * After login, send wholesale users to the portal instead of My Account.
+     */
+    public static function login_redirect( $redirect, $user = null ) {
+        // WooCommerce passes $user as 2nd arg, WordPress login_redirect passes it as 3rd
+        if ( ! $user && func_num_args() >= 3 ) {
+            $user = func_get_arg( 2 );
+        }
+        if ( is_string( $user ) ) {
+            $user = get_user_by( 'login', $user );
+        }
+        if ( $user && is_object( $user ) && in_array( 'wholesale_customer', (array) ( $user->roles ?? array() ), true ) ) {
+            return home_url( '/wholesale-portal' );
+        }
+        return $redirect;
     }
 
     /**
@@ -39,7 +60,7 @@ class SLW_Nav_Menu {
 
         return array(
             array( 'title' => 'Apply for Wholesale', 'url' => home_url( '/wholesale-partners' ) ),
-            array( 'title' => 'Partner Login',       'url' => home_url( '/my-account' ) ),
+            array( 'title' => 'Partner Login',       'url' => wp_login_url( home_url( '/wholesale-portal' ) ) ),
         );
     }
 
