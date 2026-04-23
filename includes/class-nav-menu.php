@@ -60,7 +60,7 @@ class SLW_Nav_Menu {
 
         return array(
             array( 'title' => 'Apply for Wholesale', 'url' => home_url( '/wholesale-partners' ) ),
-            array( 'title' => 'Partner Login',       'url' => wp_login_url( home_url( '/wholesale-portal' ) ) ),
+            array( 'title' => 'Partner Login',       'url' => home_url( '/my-account' ) ),
         );
     }
 
