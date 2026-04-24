@@ -7,14 +7,16 @@
  * 1. Customer takes trade show quiz and gets SEGO15 (15% off first order)
  * 2. After their first order completes, plugin generates 3 unique coupon codes
  * 3. Customer shares codes with friends — each code is single-use, 15% off, 90-day expiry
- * 4. When a friend redeems a code, the referrer earns a reward:
+ * 4. First order ($40+) gets a surprise free sample in the box (Ulta-style gift-with-purchase)
+ * 5. When a friend redeems a code, the referrer earns a discount reward:
  *    - 1st friend: 10% off coupon
  *    - 2nd friend: 10% off coupon
- *    - 3rd friend (all used!): 20% off coupon
- * 5. Webhooks fire to Mautic on generation + each redemption
+ *    - 3rd friend (all used!): 15% off coupon
+ * 6. Webhooks fire to Mautic on generation + each redemption
  *
  * Codes are standard WooCommerce coupons with custom meta for tracking.
  * Referrer rewards are also WooCommerce coupons, auto-generated on redemption.
+ * Gift-with-purchase adds a packing note for Holly — no $0 line items.
  */
 
 if ( ! defined( 'ABSPATH' ) ) exit;
@@ -34,15 +36,29 @@ class SLW_Referral_Coupons {
     const REWARD_TIERS = array(
         1 => 10,  // 1st friend redeems → referrer gets 10% off
         2 => 10,  // 2nd friend redeems → referrer gets 10% off
-        3 => 20,  // 3rd friend redeems → referrer gets 20% off (bonus!)
+        3 => 15,  // 3rd friend redeems → referrer gets 15% off (bonus!)
     );
 
     /** Days until reward coupons expire */
     const REWARD_EXPIRY_DAYS = 120;
 
+    /** Gift-with-purchase: minimum order total to qualify */
+    const GIFT_MIN_ORDER = 40;
+
+    /**
+     * Gift-with-purchase: max number of orders that get the free sample.
+     * Once this counter is reached, no more samples are included.
+     * Holly can update this via Wholesale Portal → Settings or the
+     * slw_gift_sample_limit option. Set to 0 for unlimited.
+     */
+    const GIFT_DEFAULT_LIMIT = 100;
+
     public static function init() {
         // Generate referral codes after first retail order completes
         add_action( 'woocommerce_order_status_completed', array( __CLASS__, 'on_order_completed' ), 25 );
+
+        // Gift-with-purchase: flag qualifying first orders for Holly
+        add_action( 'woocommerce_checkout_order_processed', array( __CLASS__, 'maybe_add_gift_note' ), 20 );
 
         // Validate referral coupons at checkout
         add_filter( 'woocommerce_coupon_is_valid', array( __CLASS__, 'validate_referral_coupon' ), 10, 3 );
@@ -53,6 +69,9 @@ class SLW_Referral_Coupons {
         // Admin: show referral info on user profile
         add_action( 'show_user_profile', array( __CLASS__, 'render_admin_referral_section' ) );
         add_action( 'edit_user_profile', array( __CLASS__, 'render_admin_referral_section' ) );
+
+        // Admin: gift sample settings + counter display
+        add_action( 'woocommerce_admin_order_data_after_billing_address', array( __CLASS__, 'render_gift_badge' ) );
     }
 
     // =========================================================================
@@ -163,6 +182,112 @@ class SLW_Referral_Coupons {
                 count( $codes ), $user_id, $email, implode( ', ', $codes )
             ));
         }
+    }
+
+    // =========================================================================
+    // Gift-with-Purchase (Ulta-style surprise sample)
+    // =========================================================================
+
+    /**
+     * Flag qualifying first orders with a packing note for Holly.
+     *
+     * Fires at checkout (not order completion) so Holly sees the note
+     * when she opens the order to pack it. Only fires if:
+     *   - Customer is retail (not wholesale)
+     *   - Order total >= $40 (configurable via GIFT_MIN_ORDER)
+     *   - This is the customer's first order
+     *   - The gift sample counter hasn't hit the limit
+     */
+    public static function maybe_add_gift_note( $order_id ) {
+        $order = wc_get_order( $order_id );
+        if ( ! $order ) return;
+
+        $user_id = $order->get_user_id();
+
+        // Skip wholesale orders
+        if ( $user_id && function_exists( 'slw_is_wholesale_user' ) && slw_is_wholesale_user( $user_id ) ) {
+            return;
+        }
+
+        // Check order total meets threshold
+        $min_total = floatval( get_option( 'slw_gift_min_order', self::GIFT_MIN_ORDER ) );
+        if ( floatval( $order->get_total() ) < $min_total ) {
+            return;
+        }
+
+        // Check if this is the customer's first order (by email for guests, user_id for registered)
+        if ( $user_id ) {
+            $previous = wc_get_orders( array(
+                'customer_id' => $user_id,
+                'limit'       => 1,
+                'exclude'     => array( $order_id ),
+                'return'      => 'ids',
+            ));
+            if ( ! empty( $previous ) ) return;
+        } else {
+            $email = $order->get_billing_email();
+            $previous = wc_get_orders( array(
+                'billing_email' => $email,
+                'limit'         => 1,
+                'exclude'       => array( $order_id ),
+                'return'        => 'ids',
+            ));
+            if ( ! empty( $previous ) ) return;
+        }
+
+        // Check gift sample counter against limit
+        $limit = absint( get_option( 'slw_gift_sample_limit', self::GIFT_DEFAULT_LIMIT ) );
+        $count = absint( get_option( 'slw_gift_sample_count', 0 ) );
+
+        if ( $limit > 0 && $count >= $limit ) {
+            return; // Cap reached — no more samples
+        }
+
+        // All checks passed — flag the order
+        $order->update_meta_data( '_slw_gift_sample', 'yes' );
+        $order->save();
+
+        // Admin-only note (Holly sees this on the packing screen)
+        $order->add_order_note(
+            '🎁 INCLUDE FREE SAMPLE — First-time customer, qualifies for gift-with-purchase.',
+            false // admin-only, not visible to customer
+        );
+
+        // Customer-facing note (shows in order confirmation email + account)
+        $order->add_order_note(
+            'A little surprise is waiting in your box — enjoy! 💛',
+            true // customer-visible
+        );
+
+        // Increment counter
+        update_option( 'slw_gift_sample_count', $count + 1 );
+
+        if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+            error_log( sprintf(
+                'SLW Gift: Sample flagged for order #%d (gift %d of %d)',
+                $order_id, $count + 1, $limit ?: 'unlimited'
+            ));
+        }
+    }
+
+    /**
+     * Show a gift sample badge on the order admin screen so Holly
+     * doesn't miss it when packing.
+     */
+    public static function render_gift_badge( $order ) {
+        $gift = $order->get_meta( '_slw_gift_sample' );
+        if ( $gift !== 'yes' ) return;
+
+        $count = absint( get_option( 'slw_gift_sample_count', 0 ) );
+        $limit = absint( get_option( 'slw_gift_sample_limit', self::GIFT_DEFAULT_LIMIT ) );
+
+        echo '<div style="margin-top:12px;padding:10px 14px;background:#fff8e1;border-left:4px solid #D4AF37;border-radius:4px;">';
+        echo '<strong style="font-size:14px;">🎁 Include Free Sample</strong><br>';
+        echo '<span style="color:#666;font-size:12px;">First-time customer gift-with-purchase</span>';
+        if ( $limit > 0 ) {
+            echo '<br><span style="color:#999;font-size:11px;">Samples sent: ' . $count . ' / ' . $limit . '</span>';
+        }
+        echo '</div>';
     }
 
     // =========================================================================

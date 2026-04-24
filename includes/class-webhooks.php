@@ -208,6 +208,23 @@ class SLW_Webhooks {
             $contact_data['company_industry'] = $data['business_type'];
         }
 
+        // Referral code fields — sync to Mautic for email merge tags
+        if ( ! empty( $data['code_1'] ) ) {
+            $contact_data['referral_code_1'] = $data['code_1'];
+        }
+        if ( ! empty( $data['code_2'] ) ) {
+            $contact_data['referral_code_2'] = $data['code_2'];
+        }
+        if ( ! empty( $data['code_3'] ) ) {
+            $contact_data['referral_code_3'] = $data['code_3'];
+        }
+        if ( ! empty( $data['reward_code'] ) ) {
+            $contact_data['latest_reward_code'] = $data['reward_code'];
+        }
+        if ( isset( $data['conversions'] ) ) {
+            $contact_data['referral_conversions'] = $data['conversions'];
+        }
+
         if ( $contact_id ) {
             // Update existing contact — add the tag
             wp_remote_request( $base_url . '/api/contacts/' . $contact_id . '/edit', array(

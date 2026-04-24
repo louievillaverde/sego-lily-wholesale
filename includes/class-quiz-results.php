@@ -198,12 +198,29 @@ class SLW_Quiz_Results {
         $frustration = sanitize_text_field( wp_unslash( $_GET['frustration'] ?? '' ) );
         $name        = sanitize_text_field( wp_unslash( $_GET['name'] ?? '' ) );
         $type        = sanitize_text_field( wp_unslash( $_GET['type'] ?? '' ) );
+        $ref_code    = sanitize_text_field( wp_unslash( $_GET['ref'] ?? '' ) );
+
+        // Referral attribution — look up the referrer's first name
+        $referrer_name = '';
+        if ( $ref_code ) {
+            $coupon_id = wc_get_coupon_id_by_code( $ref_code );
+            if ( $coupon_id ) {
+                $referrer_id = absint( get_post_meta( $coupon_id, 'slw_referrer_user_id', true ) );
+                if ( $referrer_id ) {
+                    $referrer      = get_userdata( $referrer_id );
+                    $referrer_name = $referrer ? $referrer->first_name : '';
+                }
+            }
+        }
 
         $key  = self::get_variant_key( $skin, $type );
         $v    = self::$variants[ $key ];
         $hook = self::$frustration_hooks[ $frustration ] ?? '';
         $base = self::IMG_BASE;
         $url  = site_url() . $v['url'] . '?utm_source=quiz&utm_medium=landing&utm_campaign=retail_quiz&utm_content=' . $v['slug'];
+        if ( $ref_code ) {
+            $url .= '&coupon_code=' . rawurlencode( $ref_code );
+        }
         $gn   = $name ? esc_html( $name ) . ', ' : '';
 
         // Real review count from WooCommerce
@@ -243,6 +260,14 @@ class SLW_Quiz_Results {
         ?>
 
         <div id="slw-qr">
+
+        <?php if ( $referrer_name ) : ?>
+        <!-- Referral attribution -->
+        <div style="background:#FEF8EC;border-bottom:1px solid #E8D8A0;padding:12px 20px;text-align:center;font-family:'Merriweather Sans',sans-serif;font-size:14px;color:#1C2B2F;">
+            Your friend <strong><?php echo esc_html( $referrer_name ); ?></strong> thought you'd love this &mdash; and sent you <strong>15% off</strong> your first order.
+            <span style="display:inline-block;background:#2C4F5E;color:#fff;padding:3px 10px;border-radius:4px;font-weight:700;font-family:monospace;letter-spacing:1px;margin-left:8px;font-size:13px;"><?php echo esc_html( $ref_code ); ?></span>
+        </div>
+        <?php endif; ?>
 
         <!-- Progress bar -->
         <div id="slw-qr-progress" style="position:fixed;top:0;left:0;height:3px;background:#B8892E;width:0%;z-index:999;transition:width 0.1s linear;"></div>

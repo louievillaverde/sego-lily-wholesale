@@ -645,6 +645,10 @@ class SLW_Lead_Capture {
                     <p style="color:#386174;font-size:15px;font-weight:600;margin:0 0 6px;">Check your inbox</p>
                     <p style="color:#628393;font-size:14px;margin:0;">Your personalized skincare routine is on the way.</p>
                 </div>
+                <div style="margin-top:16px;padding:16px 20px;background:#FEF8EC;border:1px solid #E8D8A0;border-radius:8px;text-align:center;">
+                    <p style="color:#B8892E;font-size:14px;font-weight:600;margin:0 0 4px;">After your first order, you'll get 3 personal codes to share with friends</p>
+                    <p style="color:#628393;font-size:13px;margin:0;">They get 15% off &mdash; you earn a reward every time.</p>
+                </div>
             </div>
 
             <!-- ============ STEP 3b: Wholesale Incentive ============ -->

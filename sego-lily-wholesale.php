@@ -3,7 +3,7 @@
  * Plugin Name:       Wholesale Portal
  * Plugin URI:        https://github.com/louievillaverde/sego-lily-wholesale
  * Description:       All-in-one B2B wholesale portal for WooCommerce. Customer portal, tiered pricing, application workflow, PDF invoices, email sequences with multi-provider support, NET payment terms, lead capture, trade show tools, and automated order reminders. Built by Lead Piranha.
- * Version:           3.8.0
+ * Version:           3.8.1
  * Author:            Lead Piranha
  * Author URI:        https://leadpiranha.com
  * Requires at least: 6.0
@@ -28,7 +28,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SLW_VERSION', '3.8.0' );
+define( 'SLW_VERSION', '3.8.1' );
 define( 'SLW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SLW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -108,6 +108,7 @@ add_action( 'plugins_loaded', function() {
     require_once SLW_PLUGIN_DIR . 'includes/class-wholesale-activate.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-analytics.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-referral-coupons.php';
+    require_once SLW_PLUGIN_DIR . 'includes/class-referral-dashboard.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-xero-compat.php';
 
     // Initialize — core
@@ -152,6 +153,7 @@ add_action( 'plugins_loaded', function() {
     SLW_Wholesale_Activate::init();
     SLW_Analytics::init();
     SLW_Referral_Coupons::init();
+    SLW_Referral_Dashboard::init();
     SLW_Xero_Compat::init();
 
     // Enqueue frontend styles on pages that use our shortcodes
@@ -222,6 +224,10 @@ register_activation_hook( __FILE__, function() {
         'wholesale-activate' => array(
             'title'   => 'Activate Your Wholesale Account',
             'content' => '[slw_wholesale_activate]',
+        ),
+        'my-referrals' => array(
+            'title'   => 'My Referral Codes',
+            'content' => '[slw_my_referrals]',
         ),
     );
 
