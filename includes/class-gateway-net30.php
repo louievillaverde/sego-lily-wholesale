@@ -111,6 +111,11 @@ class SLW_Gateway_Net30 extends WC_Payment_Gateway {
         $order->update_meta_data( '_slw_net_terms_days', $days );
         $order->update_meta_data( '_slw_net30_due_date', $due_date );
 
+        // Xero-compatible standard meta keys
+        $order->update_meta_data( '_payment_terms', sprintf( 'NET %d', $days ) );
+        $order->update_meta_data( '_due_date', $due_date );
+        $order->update_meta_data( '_xero_payment_term', $days );
+
         // Keep legacy meta for backward compat with reports/queries
         if ( $days === 30 ) {
             $order->update_meta_data( '_slw_net30_order', '1' );

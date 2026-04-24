@@ -136,10 +136,15 @@ class SLW_Admin_Menu {
             add_submenu_page( 'slw-dashboard', 'Invoice Settings', 'Invoices', 'manage_woocommerce', 'slw-invoice-settings', array( 'SLW_Invoice_Settings', 'render_page' ) );
         }
 
-        // 11. Settings (discounts, minimums, NET terms — setup task)
+        // 11. Analytics (funnels + page intelligence)
+        if ( class_exists( 'SLW_Analytics' ) ) {
+            add_submenu_page( 'slw-dashboard', 'Analytics', 'Analytics', 'manage_woocommerce', 'slw-analytics', array( 'SLW_Analytics', 'render_page' ) );
+        }
+
+        // 12. Settings (discounts, minimums, NET terms — setup task)
         add_submenu_page( 'slw-dashboard', 'Wholesale Settings', 'Settings', 'manage_woocommerce', 'slw-settings', array( 'SLW_Settings', 'render_page' ) );
 
-        // 12. Help (always last)
+        // 13. Help (always last)
         add_submenu_page( 'slw-dashboard', 'Help & Resources', 'Help', 'manage_woocommerce', 'slw-docs', array( 'SLW_Docs', 'render_page' ) );
     }
 }

@@ -230,7 +230,9 @@ class SLW_Quiz_Results {
         // all selectors scoped under #slw-qr to avoid Elementor collisions.
         ?>
         <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Merriweather+Sans:wght@400;600;800&display=swap" rel="stylesheet">
+        <link rel="preload" as="image" href="<?php echo esc_url( $base . $v['img'] ); ?>">
 
         <?php
         // Include the CSS file
@@ -409,10 +411,21 @@ class SLW_Quiz_Results {
                 <div class="slw-qr-section-label">See for yourself</div>
                 <h2 class="slw-qr-sec-title">What Is Actually in the Products You Use Every Day?</h2>
                 <p style="font-size:15px;color:#6A8FA0;line-height:1.8;margin-bottom:28px;">Holly compares the ingredient list of a popular moisturizer with Sego Lily's. The difference is not subtle.</p>
-                <div class="slw-qr-video-outer">
-                    <!-- Replace VIMEO_ID with actual Vimeo video ID when provided -->
-                    <div style="padding:56.25% 0 0 0;position:relative;"><iframe src="https://player.vimeo.com/video/VIMEO_ID?badge=0&autopause=0&player_id=0&app_id=58479" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media" style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:16px;" title="Holly&rsquo;s Ingredient Comparison"></iframe></div>
+                <div class="slw-qr-video-grid">
+                    <div class="slw-qr-video-card">
+                        <div class="slw-qr-video-label">Holly's ingredient breakdown</div>
+                        <div class="slw-qr-video-outer slw-qr-video-vertical">
+                            <div style="padding:177.78% 0 0 0;position:relative;"><iframe data-src="https://player.vimeo.com/video/1175282891?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" referrerpolicy="strict-origin-when-cross-origin" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="Holly's Ingredient Comparison" class="slw-qr-lazy-iframe"></iframe></div>
+                        </div>
+                    </div>
+                    <div class="slw-qr-video-card">
+                        <div class="slw-qr-video-label">Real customer results</div>
+                        <div class="slw-qr-video-outer slw-qr-video-vertical">
+                            <div style="padding:177.78% 0 0 0;position:relative;"><iframe data-src="https://player.vimeo.com/video/1164515020?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" referrerpolicy="strict-origin-when-cross-origin" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="Sego Lily Customer UGC" class="slw-qr-lazy-iframe"></iframe></div>
+                        </div>
+                    </div>
                 </div>
+                <script src="https://player.vimeo.com/api/player.js"></script>
             </div>
         </div>
 
@@ -501,7 +514,7 @@ class SLW_Quiz_Results {
         <!-- Holly founder section -->
         <div class="slw-qr-holly">
             <div class="slw-qr-holly-inner">
-                <div class="slw-qr-holly-avatar"><img src="<?php echo esc_url( $base . '2026/01/hollystoltz.webp' ); ?>" alt="Holly Stoltz" /></div>
+                <div class="slw-qr-holly-avatar"><img src="<?php echo esc_url( $base . '2026/01/hollystoltz.webp' ); ?>" alt="Holly Stoltz" loading="lazy" /></div>
                 <div>
                     <div class="slw-qr-holly-label">From the founder</div>
                     <p class="slw-qr-holly-quote">"I started making tallow skincare for my family because I couldn't find anything clean enough for my kids. Then our friends wanted it. Then their friends. Now we ship across the country, but every batch is still made on our ranch in Montana."</p>
@@ -516,9 +529,9 @@ class SLW_Quiz_Results {
                 <div class="slw-qr-section-label">As seen at</div>
                 <h2 class="slw-qr-sec-title">Natural Products Expo West 2026</h2>
                 <div class="slw-qr-expo-grid">
-                    <div class="slw-qr-expo-photo"><img src="<?php echo esc_url( $base . '2026/03/segolily_expo_8.webp' ); ?>" alt="Sego Lily at Expo West" /></div>
-                    <div class="slw-qr-expo-photo"><img src="<?php echo esc_url( $base . '2026/03/segolily_expo2.webp' ); ?>" alt="Sego Lily booth" /></div>
-                    <div class="slw-qr-expo-photo"><img src="<?php echo esc_url( $base . '2026/03/segolily_expo6.webp' ); ?>" alt="Sego Lily products" /></div>
+                    <div class="slw-qr-expo-photo"><img src="<?php echo esc_url( $base . '2026/03/segolily_expo_8.webp' ); ?>" alt="Sego Lily at Expo West" loading="lazy" /></div>
+                    <div class="slw-qr-expo-photo"><img src="<?php echo esc_url( $base . '2026/03/segolily_expo2.webp' ); ?>" alt="Sego Lily booth" loading="lazy" /></div>
+                    <div class="slw-qr-expo-photo"><img src="<?php echo esc_url( $base . '2026/03/segolily_expo6.webp' ); ?>" alt="Sego Lily products" loading="lazy" /></div>
                 </div>
             </div>
         </div>
@@ -616,6 +629,16 @@ class SLW_Quiz_Results {
         </div>
 
         </div><!-- #slw-qr -->
+
+        <!-- Microsoft Clarity — heatmaps + session recordings -->
+        <?php
+        $clarity_id = get_option( 'slw_clarity_project_id', 'wggeipzv3y' );
+        if ( $clarity_id ) :
+        ?>
+        <script type="text/javascript">
+        (function(c,l,a,r,i,t,y){c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);})(window,document,"clarity","script","<?php echo esc_js( $clarity_id ); ?>");
+        </script>
+        <?php endif; ?>
 
         <!-- Schema.org Product + AggregateRating -->
         <script type="application/ld+json">
@@ -724,6 +747,23 @@ class SLW_Quiz_Results {
                     }
                 });
             });
+
+            /* Lazy-load Vimeo iframes — only load when scrolled into view */
+            if ('IntersectionObserver' in window) {
+                var iframeObs = new IntersectionObserver(function(entries){
+                    entries.forEach(function(e){
+                        if (e.isIntersecting) {
+                            var iframe = e.target;
+                            iframe.src = iframe.getAttribute('data-src');
+                            iframe.classList.remove('slw-qr-lazy-iframe');
+                            iframeObs.unobserve(iframe);
+                        }
+                    });
+                }, {rootMargin:'200px'});
+                document.querySelectorAll('.slw-qr-lazy-iframe').forEach(function(iframe){ iframeObs.observe(iframe); });
+            } else {
+                document.querySelectorAll('.slw-qr-lazy-iframe').forEach(function(iframe){ iframe.src = iframe.getAttribute('data-src'); });
+            }
 
             /* Scroll reveal */
             if ('IntersectionObserver' in window) {
