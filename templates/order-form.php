@@ -159,12 +159,7 @@ $products = wc_get_products( array(
                 $case_pack = class_exists( 'SLW_Product_Minimums' ) ? SLW_Product_Minimums::get_case_pack_size( $product->get_id() ) : 0;
                 $min_qty   = class_exists( 'SLW_Product_Minimums' ) ? SLW_Product_Minimums::get_product_minimum( $product->get_id() ) : 0;
                 $step      = $case_pack > 0 ? $case_pack : 1;
-                $default_qty = 0;
-                if ( $case_pack > 0 ) {
-                    $default_qty = $case_pack;
-                } elseif ( $min_qty > 0 ) {
-                    $default_qty = $min_qty;
-                }
+                $default_qty = $case_pack > 0 ? $case_pack : 0;
                 $min_input = $case_pack > 0 ? $case_pack : 0;
                 if ( $min_qty > $min_input ) {
                     $min_input = $min_qty;

@@ -464,16 +464,22 @@ class SLW_Wholesale_Role {
      * Inject CSS to hide any remaining subscription UI elements for wholesale users.
      */
     public static function hide_subscription_css() {
-        if ( slw_is_wholesale_context() && ! is_admin() ) {
-            $css = '.wcsatt-options-wrapper,'
-                 . '.wcsatt-options-prompt,'
-                 . '.subscription-details,'
-                 . '.woocommerce-subscription-price,'
-                 . '.subscription-price,'
-                 . '[data-wcsatt]'
-                 . '{display:none!important}';
-            wp_add_inline_style( 'sego-lily-wholesale', $css );
+        if ( ! slw_is_wholesale_context() || is_admin() ) {
+            return;
         }
+        // Output directly via wp_head so it works on ALL pages (product pages,
+        // cart, checkout) — not just pages where our plugin stylesheet is enqueued.
+        add_action( 'wp_head', function() {
+            echo '<style id="slw-hide-subscriptions">'
+                . '.wcsatt-options-wrapper,'
+                . '.wcsatt-options-prompt,'
+                . '.subscription-details,'
+                . '.woocommerce-subscription-price,'
+                . '.subscription-price,'
+                . '[data-wcsatt]'
+                . '{display:none!important}'
+                . '</style>';
+        } );
     }
 
     /**
