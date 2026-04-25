@@ -845,8 +845,17 @@ class SLW_Email_Sequences {
                     <?php endif; ?>
 
                     <div style="padding:16px 24px;border-top:<?php echo $fail_count > 0 ? '1px solid #e0ddd8' : 'none'; ?>;">
+                        <?php if ( $fail_count > 0 ) : ?>
+                            <p style="font-size:12px;color:#628393;margin:0 0 12px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Activity Log</p>
+                        <?php endif; ?>
                         <div style="display:flex;flex-direction:column;gap:6px;">
-                            <?php foreach ( array_slice( $webhook_log, 0, 50 ) as $entry ) :
+                            <?php
+                            // Skip failed entries — already shown in the failures section above
+                            $log_entries = $fail_count > 0
+                                ? array_filter( $webhook_log, function( $e ) { return ( $e['status'] ?? '' ) !== 'failed'; } )
+                                : $webhook_log;
+                            ?>
+                            <?php foreach ( array_slice( array_values( $log_entries ), 0, 50 ) as $entry ) :
                                 $wh_event  = $entry['event'] ?? '';
                                 $wh_status = $entry['status'] ?? 'unknown';
                                 $wh_detail = $entry['code'] ?? '-';
