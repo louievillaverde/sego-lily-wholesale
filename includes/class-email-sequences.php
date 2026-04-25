@@ -677,10 +677,10 @@ class SLW_Email_Sequences {
             <div class="slw-newsletter-section">
                 <div class="slw-newsletter-header">
                     <h2 class="title">Newsletters</h2>
-                    <button type="button" id="slw-compose-newsletter-btn" style="background:#386174 !important;color:#F7F6F3 !important;border:none !important;padding:10px 24px !important;font-size:14px !important;font-weight:700 !important;border-radius:8px !important;cursor:pointer;font-family:Georgia,'Times New Roman',serif !important;letter-spacing:0.3px;">+ New Newsletter</button>
+                    <button type="button" id="slw-compose-newsletter-btn" style="background:#386174 !important;color:#F7F6F3 !important;border:none !important;padding:10px 24px !important;font-size:14px !important;font-weight:700 !important;border-radius:8px !important;cursor:pointer;font-family:Georgia,'Times New Roman',serif !important;letter-spacing:0.3px;">&#9650; Collapse</button>
                 </div>
 
-                <div id="slw-newsletter-compose" class="slw-admin-card slw-newsletter-compose" style="display:none;">
+                <div id="slw-newsletter-compose" class="slw-admin-card slw-newsletter-compose">
                     <h3>Compose Newsletter</h3>
                     <?php
                     $saved_templates = get_option( 'slw_newsletter_templates', array() );
@@ -886,155 +886,7 @@ class SLW_Email_Sequences {
                 </div>
             </div>
 
-            <!-- ─── Provider Settings (Accordion) ─── -->
-            <details id="slw-settings-accordion" class="slw-seq-accordion slw-seq-accordion--settings" <?php echo $settings_open ? 'open' : ''; ?>>
-                <summary class="slw-seq-accordion__bar">
-                    <span class="slw-seq-accordion__title">
-                        Provider: <?php echo esc_html( $provider_label ); ?>
-                        <?php if ( $connected ) : ?>
-                            <span class="slw-pill--green" style="margin-left:8px;">Connected</span>
-                            <span style="margin-left:12px;font-size:12px;font-weight:400;color:#628393;">
-                                <?php echo esc_html( wp_parse_url( $mautic_url, PHP_URL_HOST ) ); ?> &middot; <?php echo esc_html( $last_sync ); ?>
-                            </span>
-                        <?php elseif ( $has_config && $api_error ) : ?>
-                            <span class="slw-pill--red" style="margin-left:8px;">Error: <?php echo esc_html( $api_error ); ?></span>
-                        <?php elseif ( $provider === 'none' ) : ?>
-                            <span style="margin-left:8px;font-size:12px;color:#628393;">Webhook only</span>
-                        <?php endif; ?>
-                    </span>
-                    <span class="slw-seq-accordion__arrow dashicons dashicons-arrow-down-alt2"></span>
-                </summary>
-            <div class="slw-admin-card" style="border-radius:0 0 8px 8px;margin-top:0;">
-                <form method="post">
-                    <?php wp_nonce_field( 'slw_sequences_nonce' ); ?>
-                    <input type="hidden" name="slw_sequences_save" value="1" />
-
-                    <table class="form-table">
-                        <tr>
-                            <th scope="row"><label for="slw_email_provider">Provider</label></th>
-                            <td>
-                                <select id="slw_email_provider" name="slw_email_provider">
-                                    <option value="none" <?php selected( $provider, 'none' ); ?>>Webhook Only (no provider)</option>
-                                    <option value="mautic" <?php selected( $provider, 'mautic' ); ?>>Mautic</option>
-                                    <option value="mailchimp" <?php selected( $provider, 'mailchimp' ); ?>>Mailchimp</option>
-                                    <option value="activecampaign" <?php selected( $provider, 'activecampaign' ); ?>>ActiveCampaign</option>
-                                    <option value="klaviyo" <?php selected( $provider, 'klaviyo' ); ?>>Klaviyo</option>
-                                    <option value="convertkit" <?php selected( $provider, 'convertkit' ); ?>>ConvertKit</option>
-                                </select>
-                                <p class="description">Select your email marketing platform. Webhooks fire regardless — the provider integration adds campaign stats and deep links to this dashboard.</p>
-                            </td>
-                        </tr>
-                        <tr class="slw-mautic-fields">
-                            <th scope="row"><label for="slw_mautic_url">Mautic URL</label></th>
-                            <td>
-                                <input type="url" id="slw_mautic_url" name="slw_mautic_url"
-                                       value="<?php echo esc_attr( get_option( 'slw_mautic_url', '' ) ); ?>"
-                                       class="regular-text" placeholder="https://marketing.example.com" />
-                                <p class="description">Your Mautic instance URL (no trailing slash).</p>
-                            </td>
-                        </tr>
-                        <tr class="slw-mautic-fields">
-                            <th scope="row"><label for="slw_mautic_client_id">Client ID</label></th>
-                            <td>
-                                <input type="text" id="slw_mautic_client_id" name="slw_mautic_client_id"
-                                       value="<?php echo esc_attr( get_option( 'slw_mautic_client_id', '' ) ); ?>"
-                                       class="regular-text" />
-                                <p class="description">OAuth2 Client ID from Mautic API Credentials.</p>
-                            </td>
-                        </tr>
-                        <tr class="slw-mautic-fields">
-                            <th scope="row"><label for="slw_mautic_client_secret">Client Secret</label></th>
-                            <td>
-                                <input type="password" id="slw_mautic_client_secret" name="slw_mautic_client_secret"
-                                       value="<?php echo esc_attr( get_option( 'slw_mautic_client_secret', '' ) ); ?>"
-                                       class="regular-text" autocomplete="new-password" />
-                                <p class="description">OAuth2 Client Secret. Stored securely in the database.</p>
-                            </td>
-                        </tr>
-                    </table>
-
-                    <!-- Mailchimp fields -->
-                    <table class="form-table slw-provider-fields slw-mailchimp-fields" style="display:none;">
-                        <tr>
-                            <th scope="row"><label for="slw_mailchimp_api_key">API Key</label></th>
-                            <td>
-                                <input type="password" id="slw_mailchimp_api_key" name="slw_mailchimp_api_key"
-                                       value="<?php echo esc_attr( get_option( 'slw_mailchimp_api_key', '' ) ); ?>"
-                                       class="regular-text" autocomplete="new-password" placeholder="xxxxxxxx-us21" />
-                                <p class="description">Your Mailchimp API key (includes the server prefix). Find it in Account > Extras > API Keys.</p>
-                            </td>
-                        </tr>
-                    </table>
-
-                    <!-- ActiveCampaign fields -->
-                    <table class="form-table slw-provider-fields slw-activecampaign-fields" style="display:none;">
-                        <tr>
-                            <th scope="row"><label for="slw_activecampaign_url">Account URL</label></th>
-                            <td>
-                                <input type="url" id="slw_activecampaign_url" name="slw_activecampaign_url"
-                                       value="<?php echo esc_attr( get_option( 'slw_activecampaign_url', '' ) ); ?>"
-                                       class="regular-text" placeholder="https://yourname.api-us1.com" />
-                            </td>
-                        </tr>
-                        <tr>
-                            <th scope="row"><label for="slw_activecampaign_api_key">API Key</label></th>
-                            <td>
-                                <input type="password" id="slw_activecampaign_api_key" name="slw_activecampaign_api_key"
-                                       value="<?php echo esc_attr( get_option( 'slw_activecampaign_api_key', '' ) ); ?>"
-                                       class="regular-text" autocomplete="new-password" />
-                                <p class="description">Settings > Developer > API Access.</p>
-                            </td>
-                        </tr>
-                    </table>
-
-                    <!-- Klaviyo fields -->
-                    <table class="form-table slw-provider-fields slw-klaviyo-fields" style="display:none;">
-                        <tr>
-                            <th scope="row"><label for="slw_klaviyo_api_key">Private API Key</label></th>
-                            <td>
-                                <input type="password" id="slw_klaviyo_api_key" name="slw_klaviyo_api_key"
-                                       value="<?php echo esc_attr( get_option( 'slw_klaviyo_api_key', '' ) ); ?>"
-                                       class="regular-text" autocomplete="new-password" />
-                                <p class="description">Account > Settings > API Keys > Private Key.</p>
-                            </td>
-                        </tr>
-                    </table>
-
-                    <!-- ConvertKit fields -->
-                    <table class="form-table slw-provider-fields slw-convertkit-fields" style="display:none;">
-                        <tr>
-                            <th scope="row"><label for="slw_convertkit_api_key">API Key</label></th>
-                            <td>
-                                <input type="password" id="slw_convertkit_api_key" name="slw_convertkit_api_key"
-                                       value="<?php echo esc_attr( get_option( 'slw_convertkit_api_key', '' ) ); ?>"
-                                       class="regular-text" autocomplete="new-password" />
-                                <p class="description">Settings > Advanced > API Key.</p>
-                            </td>
-                        </tr>
-                    </table>
-
-                    <!-- Coming soon notice for non-Mautic providers -->
-                    <div class="slw-provider-coming-soon" style="display:none;padding:16px 20px;background:#fff8e1;border:1px solid #ffe082;border-radius:6px;margin:12px 0;">
-                        <strong style="color:#e65100;">Coming Soon:</strong>
-                        <span style="color:#2C2C2C;">Full campaign stats and deep links for this provider are in development. Save your credentials now — webhook integration works immediately. Campaign stats will be available in a future update.</span>
-                    </div>
-
-                    <div class="slw-mautic-fields" style="margin-bottom: 16px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-                        <button type="button" id="slw-test-connection" class="button" data-nonce="<?php echo esc_attr( $nonce ); ?>">
-                            Test Connection
-                        </button>
-                        <?php if ( $connected ) : ?>
-                            <a href="<?php echo esc_url( $refresh_url ); ?>" class="button">&#8635; Refresh Data</a>
-                        <?php endif; ?>
-                        <span id="slw-test-result" style="margin-left: 4px;"></span>
-                    </div>
-
-                    <?php submit_button( 'Save Provider Settings' ); ?>
-                </form>
-            </div>
-            </details>
-
-            <!-- ─── Webhook & Mautic Activity (last section) ─── -->
+            <!-- ─── Webhook & Email Activity ─── -->
             <?php
             $last_webhook      = ! empty( $webhook_log ) ? $webhook_log[0] : null;
             $last_webhook_time = $last_webhook ? human_time_diff( strtotime( $last_webhook['time'] ?? '' ) ) . ' ago' : 'Never';
@@ -1044,7 +896,7 @@ class SLW_Email_Sequences {
             ?>
             <details class="slw-seq-accordion"<?php echo $fail_count > 0 ? ' open' : ''; ?>>
                 <summary class="slw-seq-accordion__bar">
-                    <span class="slw-seq-accordion__title">Webhook &amp; Mautic Activity</span>
+                    <span class="slw-seq-accordion__title">Webhook &amp; Email Activity</span>
                     <span class="slw-seq-accordion__summary">
                         Last activity: <?php echo esc_html( $last_webhook_time ); ?>
                         <?php if ( $last_webhook ) : ?>
@@ -1176,6 +1028,120 @@ class SLW_Email_Sequences {
                 <?php endif; ?>
             </details>
 
+            <!-- ─── Email Provider Settings (last section) ─── -->
+            <details id="slw-settings-accordion" class="slw-seq-accordion slw-seq-accordion--settings" <?php echo $settings_open ? 'open' : ''; ?>>
+                <summary class="slw-seq-accordion__bar">
+                    <span class="slw-seq-accordion__title">
+                        Email Provider: <?php echo esc_html( $provider_label ); ?>
+                        <?php if ( $connected ) : ?>
+                            <span class="slw-pill--green" style="margin-left:8px;">Connected</span>
+                            <span style="margin-left:12px;font-size:12px;font-weight:400;color:#628393;">
+                                <?php echo esc_html( wp_parse_url( $mautic_url, PHP_URL_HOST ) ); ?> &middot; <?php echo esc_html( $last_sync ); ?>
+                            </span>
+                        <?php elseif ( $has_config && $api_error ) : ?>
+                            <span class="slw-pill--red" style="margin-left:8px;">Error: <?php echo esc_html( $api_error ); ?></span>
+                        <?php elseif ( $provider === 'none' ) : ?>
+                            <span style="margin-left:8px;font-size:12px;color:#628393;">Webhook only</span>
+                        <?php endif; ?>
+                    </span>
+                    <span class="slw-seq-accordion__arrow dashicons dashicons-arrow-down-alt2"></span>
+                </summary>
+            <div class="slw-admin-card" style="border-radius:0 0 8px 8px;margin-top:0;">
+                <form method="post">
+                    <?php wp_nonce_field( 'slw_sequences_nonce' ); ?>
+                    <input type="hidden" name="slw_sequences_save" value="1" />
+                    <table class="form-table">
+                        <tr>
+                            <th scope="row"><label for="slw_email_provider">Provider</label></th>
+                            <td>
+                                <select id="slw_email_provider" name="slw_email_provider">
+                                    <option value="none" <?php selected( $provider, 'none' ); ?>>Webhook Only (no provider)</option>
+                                    <option value="mautic" <?php selected( $provider, 'mautic' ); ?>>Mautic</option>
+                                    <option value="mailchimp" <?php selected( $provider, 'mailchimp' ); ?>>Mailchimp</option>
+                                    <option value="activecampaign" <?php selected( $provider, 'activecampaign' ); ?>>ActiveCampaign</option>
+                                    <option value="klaviyo" <?php selected( $provider, 'klaviyo' ); ?>>Klaviyo</option>
+                                    <option value="convertkit" <?php selected( $provider, 'convertkit' ); ?>>ConvertKit</option>
+                                </select>
+                                <p class="description">Select your email marketing platform. Webhooks fire regardless — the provider integration adds campaign stats and deep links to this dashboard.</p>
+                            </td>
+                        </tr>
+                        <tr class="slw-mautic-fields">
+                            <th scope="row"><label for="slw_mautic_url">Mautic URL</label></th>
+                            <td>
+                                <input type="url" id="slw_mautic_url" name="slw_mautic_url"
+                                       value="<?php echo esc_attr( get_option( 'slw_mautic_url', '' ) ); ?>"
+                                       class="regular-text" placeholder="https://marketing.example.com" />
+                                <p class="description">Your Mautic instance URL (no trailing slash).</p>
+                            </td>
+                        </tr>
+                        <tr class="slw-mautic-fields">
+                            <th scope="row"><label for="slw_mautic_client_id">Client ID</label></th>
+                            <td>
+                                <input type="text" id="slw_mautic_client_id" name="slw_mautic_client_id"
+                                       value="<?php echo esc_attr( get_option( 'slw_mautic_client_id', '' ) ); ?>"
+                                       class="regular-text" />
+                                <p class="description">OAuth2 Client ID from Mautic API Credentials.</p>
+                            </td>
+                        </tr>
+                        <tr class="slw-mautic-fields">
+                            <th scope="row"><label for="slw_mautic_client_secret">Client Secret</label></th>
+                            <td>
+                                <input type="password" id="slw_mautic_client_secret" name="slw_mautic_client_secret"
+                                       value="<?php echo esc_attr( get_option( 'slw_mautic_client_secret', '' ) ); ?>"
+                                       class="regular-text" autocomplete="new-password" />
+                                <p class="description">OAuth2 Client Secret. Stored securely in the database.</p>
+                            </td>
+                        </tr>
+                    </table>
+                    <table class="form-table slw-provider-fields slw-mailchimp-fields" style="display:none;">
+                        <tr>
+                            <th scope="row"><label for="slw_mailchimp_api_key">API Key</label></th>
+                            <td>
+                                <input type="password" id="slw_mailchimp_api_key" name="slw_mailchimp_api_key"
+                                       value="<?php echo esc_attr( get_option( 'slw_mailchimp_api_key', '' ) ); ?>"
+                                       class="regular-text" autocomplete="new-password" placeholder="xxxxxxxx-us21" />
+                                <p class="description">Your Mailchimp API key (includes the server prefix). Find it in Account > Extras > API Keys.</p>
+                            </td>
+                        </tr>
+                    </table>
+                    <table class="form-table slw-provider-fields slw-activecampaign-fields" style="display:none;">
+                        <tr>
+                            <th scope="row"><label for="slw_activecampaign_url">Account URL</label></th>
+                            <td><input type="url" id="slw_activecampaign_url" name="slw_activecampaign_url" value="<?php echo esc_attr( get_option( 'slw_activecampaign_url', '' ) ); ?>" class="regular-text" placeholder="https://yourname.api-us1.com" /></td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><label for="slw_activecampaign_api_key">API Key</label></th>
+                            <td><input type="password" id="slw_activecampaign_api_key" name="slw_activecampaign_api_key" value="<?php echo esc_attr( get_option( 'slw_activecampaign_api_key', '' ) ); ?>" class="regular-text" autocomplete="new-password" /><p class="description">Settings > Developer > API Access.</p></td>
+                        </tr>
+                    </table>
+                    <table class="form-table slw-provider-fields slw-klaviyo-fields" style="display:none;">
+                        <tr>
+                            <th scope="row"><label for="slw_klaviyo_api_key">Private API Key</label></th>
+                            <td><input type="password" id="slw_klaviyo_api_key" name="slw_klaviyo_api_key" value="<?php echo esc_attr( get_option( 'slw_klaviyo_api_key', '' ) ); ?>" class="regular-text" autocomplete="new-password" /><p class="description">Account > Settings > API Keys > Private Key.</p></td>
+                        </tr>
+                    </table>
+                    <table class="form-table slw-provider-fields slw-convertkit-fields" style="display:none;">
+                        <tr>
+                            <th scope="row"><label for="slw_convertkit_api_key">API Key</label></th>
+                            <td><input type="password" id="slw_convertkit_api_key" name="slw_convertkit_api_key" value="<?php echo esc_attr( get_option( 'slw_convertkit_api_key', '' ) ); ?>" class="regular-text" autocomplete="new-password" /><p class="description">Settings > Advanced > API Key.</p></td>
+                        </tr>
+                    </table>
+                    <div class="slw-provider-coming-soon" style="display:none;padding:16px 20px;background:#fff8e1;border:1px solid #ffe082;border-radius:6px;margin:12px 0;">
+                        <strong style="color:#e65100;">Coming Soon:</strong>
+                        <span style="color:#2C2C2C;">Full campaign stats and deep links for this provider are in development. Save your credentials now — webhook integration works immediately.</span>
+                    </div>
+                    <div class="slw-mautic-fields" style="margin-bottom:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                        <button type="button" id="slw-test-connection" class="button" data-nonce="<?php echo esc_attr( $nonce ); ?>">Test Connection</button>
+                        <?php if ( $connected ) : ?>
+                            <a href="<?php echo esc_url( $refresh_url ); ?>" class="button">&#8635; Refresh Data</a>
+                        <?php endif; ?>
+                        <span id="slw-test-result" style="margin-left:4px;"></span>
+                    </div>
+                    <?php submit_button( 'Save Provider Settings' ); ?>
+                </form>
+            </div>
+            </details>
+
         </div>
 
         <script>
@@ -1262,11 +1228,20 @@ class SLW_Email_Sequences {
             toggleProviderFields();
 
             // Newsletter compose toggle
-            $('#slw-compose-newsletter-btn').on('click', function() {
-                $('#slw-newsletter-compose').slideToggle(200);
+            var nlBtn = $('#slw-compose-newsletter-btn');
+            var nlCompose = $('#slw-newsletter-compose');
+            function updateNlBtn() {
+                if (nlCompose.is(':visible')) {
+                    nlBtn.html('&#9650; Collapse');
+                } else {
+                    nlBtn.html('+ New Newsletter');
+                }
+            }
+            nlBtn.on('click', function() {
+                nlCompose.slideToggle(200, updateNlBtn);
             });
             $('#slw-cancel-newsletter-btn').on('click', function() {
-                $('#slw-newsletter-compose').slideUp(200);
+                nlCompose.slideUp(200, updateNlBtn);
             });
 
             // Show/hide audience sub-options
