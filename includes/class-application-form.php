@@ -580,7 +580,7 @@ class SLW_Application_Form {
             $body .= "Log in with your existing account: {$login_url}\n\n";
         }
         $minimum = number_format( (float) get_option( 'slw_first_order_minimum', 300 ), 0 );
-        $body .= "Your first order has a \${$minimum} minimum. After that, you can reorder any amount.\n\n";
+        $body .= "Your first order has a \${$minimum} minimum and will need to be paid upfront. After your first order, you'll be eligible for NET 30 payment terms. We prefer payment via ACH/bank transfer to keep costs down for everyone.\n\n";
         $body .= "Once you're logged in, head to {$site_url}/wholesale-order to browse products and place your order.\n\n";
         $body .= "In about 15 minutes, you'll get another email with product recommendations, bestsellers, and tips for setting up your shelf. Keep an eye out.\n\n";
         $body .= "Questions? Reply to this email or reach out at {$reply_email}.\n\n";

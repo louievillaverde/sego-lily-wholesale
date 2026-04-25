@@ -169,6 +169,15 @@ class SLW_Premium_Features {
         if ( is_admin() && ! defined( 'DOING_AJAX' ) ) return $rates;
         $is_wholesale = slw_is_wholesale_context();
 
+        // Always disable free shipping for wholesale orders
+        if ( $is_wholesale ) {
+            foreach ( $rates as $rate_id => $rate ) {
+                if ( strpos( $rate_id, 'free_shipping' ) === 0 ) {
+                    unset( $rates[ $rate_id ] );
+                }
+            }
+        }
+
         // Allowed methods per role, stored as arrays of method IDs in options
         $wholesale_allowed = (array) get_option( 'slw_wholesale_shipping_methods', array() );
         $retail_allowed    = (array) get_option( 'slw_retail_shipping_methods', array() );

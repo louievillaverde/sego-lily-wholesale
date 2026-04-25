@@ -170,6 +170,7 @@ class SLW_Email_Approve {
         $body  = "Hi {$first_name},\n\n";
         $body .= "Great news! Your wholesale application for {$app->business_name} has been approved.\n\n";
         $body .= "You now have access to wholesale pricing on all {$business_name} products at {$discount}% off retail.\n\n";
+        $body .= "Your first order will need to be paid upfront. After that, you'll be eligible for NET 30 payment terms. We prefer payment via ACH/bank transfer to keep costs down for everyone.\n\n";
         if ( ! $existing_user ) {
             $body .= "Here are your login details:\n";
             $body .= "Email: {$app->email}\n";

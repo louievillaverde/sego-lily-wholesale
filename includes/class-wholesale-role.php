@@ -54,6 +54,23 @@ class SLW_Wholesale_Role {
         add_action( 'edit_user_profile', array( __CLASS__, 'render_user_profile_section' ) );
         add_action( 'personal_options_update', array( __CLASS__, 'save_user_profile_section' ) );
         add_action( 'edit_user_profile_update', array( __CLASS__, 'save_user_profile_section' ) );
+
+        // Hide WooCommerce Subscriptions elements for wholesale users
+        add_filter( 'wcsatt_product_subscription_schemes', array( __CLASS__, 'hide_subscription_schemes' ), 999, 2 );
+        add_filter( 'woocommerce_subscriptions_product_price_string', array( __CLASS__, 'hide_subscription_price_string' ), 999, 2 );
+        add_filter( 'woocommerce_subscription_price_string', array( __CLASS__, 'hide_subscription_price_string' ), 999, 2 );
+        add_action( 'wp_enqueue_scripts', array( __CLASS__, 'hide_subscription_css' ) );
+
+        // Redirect "Return to shop" to wholesale order form for wholesale users
+        add_filter( 'woocommerce_return_to_shop_redirect', array( __CLASS__, 'wholesale_return_to_shop' ) );
+
+        // Add "Continue Shopping" link after add-to-cart on single product pages
+        add_action( 'woocommerce_after_add_to_cart_button', array( __CLASS__, 'continue_shopping_link' ) );
+
+        // Bulk action: grant NET 30 to existing wholesale accounts
+        add_filter( 'bulk_actions-users', array( __CLASS__, 'add_bulk_net30_action' ) );
+        add_filter( 'handle_bulk_actions-users', array( __CLASS__, 'handle_bulk_net30_action' ), 10, 3 );
+        add_action( 'admin_notices', array( __CLASS__, 'bulk_net30_notice' ) );
     }
 
     /**
@@ -421,5 +438,104 @@ class SLW_Wholesale_Role {
             return '<span class="slw-wholesale-label">Wholesale: </span>' . $price_html;
         }
         return $price_html;
+    }
+
+    /**
+     * Hide SATT/WCS subscription schemes on product pages for wholesale users.
+     */
+    public static function hide_subscription_schemes( $schemes, $product ) {
+        if ( slw_is_wholesale_context() ) {
+            return array();
+        }
+        return $schemes;
+    }
+
+    /**
+     * Strip "from $X / month" subscription price strings for wholesale users.
+     */
+    public static function hide_subscription_price_string( $price_string, $product ) {
+        if ( slw_is_wholesale_context() ) {
+            return '';
+        }
+        return $price_string;
+    }
+
+    /**
+     * Inject CSS to hide any remaining subscription UI elements for wholesale users.
+     */
+    public static function hide_subscription_css() {
+        if ( slw_is_wholesale_context() && ! is_admin() ) {
+            $css = '.wcsatt-options-wrapper,'
+                 . '.wcsatt-options-prompt,'
+                 . '.subscription-details,'
+                 . '.woocommerce-subscription-price,'
+                 . '.subscription-price,'
+                 . '[data-wcsatt]'
+                 . '{display:none!important}';
+            wp_add_inline_style( 'sego-lily-wholesale', $css );
+        }
+    }
+
+    /**
+     * Redirect "Return to shop" button to the wholesale portal order form.
+     */
+    public static function wholesale_return_to_shop( $url ) {
+        if ( slw_is_wholesale_context() ) {
+            return home_url( '/wholesale-portal/?tab=orders' );
+        }
+        return $url;
+    }
+
+    /**
+     * Add a "Continue Shopping" link after the add-to-cart button for wholesale users.
+     */
+    public static function continue_shopping_link() {
+        if ( slw_is_wholesale_context() ) {
+            echo '<a href="' . esc_url( home_url( '/wholesale-portal/?tab=orders' ) ) . '" class="slw-btn slw-btn-secondary slw-continue-shopping" style="margin-left:10px;">Continue Shopping</a>';
+        }
+    }
+
+    /**
+     * Add "Grant NET 30" to the Users list bulk-actions dropdown.
+     */
+    public static function add_bulk_net30_action( $actions ) {
+        $actions['slw_grant_net30'] = 'Grant NET 30 (skip first-order requirement)';
+        return $actions;
+    }
+
+    /**
+     * Handle the bulk NET 30 grant action. Sets the three user-meta keys
+     * needed so the selected wholesale users qualify for NET 30 immediately
+     * without placing a qualifying first order.
+     */
+    public static function handle_bulk_net30_action( $redirect_to, $action, $user_ids ) {
+        if ( $action !== 'slw_grant_net30' ) {
+            return $redirect_to;
+        }
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            return $redirect_to;
+        }
+        $count = 0;
+        foreach ( $user_ids as $user_id ) {
+            if ( ! slw_is_wholesale_user( $user_id ) ) {
+                continue;
+            }
+            update_user_meta( $user_id, 'slw_first_order_placed', current_time( 'mysql' ) );
+            update_user_meta( $user_id, 'slw_net_terms', 30 );
+            update_user_meta( $user_id, 'slw_net30_approved', '1' );
+            $count++;
+        }
+        return add_query_arg( 'slw_net30_granted', $count, $redirect_to );
+    }
+
+    /**
+     * Show a success notice after the bulk NET 30 action completes.
+     */
+    public static function bulk_net30_notice() {
+        if ( empty( $_GET['slw_net30_granted'] ) ) {
+            return;
+        }
+        $count = absint( $_GET['slw_net30_granted'] );
+        echo '<div class="notice notice-success is-dismissible"><p>' . esc_html( $count ) . ' wholesale account(s) granted NET 30 terms (first-order requirement skipped).</p></div>';
     }
 }

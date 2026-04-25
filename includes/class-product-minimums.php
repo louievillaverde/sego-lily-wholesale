@@ -24,7 +24,7 @@ class SLW_Product_Minimums {
 		add_action( 'woocommerce_check_cart_items', array( __CLASS__, 'enforce_case_packs' ) );
 
 		// Quantity input min attribute on product pages
-		add_filter( 'woocommerce_quantity_input_args', array( __CLASS__, 'quantity_input_args' ), 10, 2 );
+		add_filter( 'woocommerce_quantity_input_args', array( __CLASS__, 'quantity_input_args' ), 999, 2 );
 
 		// Order form integration: expose minimum data via a filter other
 		// modules can read, and hook into the product query args

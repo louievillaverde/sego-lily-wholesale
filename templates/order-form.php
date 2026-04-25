@@ -51,7 +51,7 @@ $products = wc_get_products( array(
         <?php endif; ?>
     </div>
 
-    <div id="slw-order-message" class="slw-notice" style="display:none;"></div>
+    <div id="slw-order-message" class="slw-notice" style="display:none;" tabindex="-1"></div>
 
     <?php
     // New Arrivals section — show recently published products in a card layout
@@ -159,7 +159,12 @@ $products = wc_get_products( array(
                 $case_pack = class_exists( 'SLW_Product_Minimums' ) ? SLW_Product_Minimums::get_case_pack_size( $product->get_id() ) : 0;
                 $min_qty   = class_exists( 'SLW_Product_Minimums' ) ? SLW_Product_Minimums::get_product_minimum( $product->get_id() ) : 0;
                 $step      = $case_pack > 0 ? $case_pack : 1;
-                $default_qty = $case_pack > 0 ? $case_pack : 0;
+                $default_qty = 0;
+                if ( $case_pack > 0 ) {
+                    $default_qty = $case_pack;
+                } elseif ( $min_qty > 0 ) {
+                    $default_qty = $min_qty;
+                }
                 $min_input = $case_pack > 0 ? $case_pack : 0;
                 if ( $min_qty > $min_input ) {
                     $min_input = $min_qty;
@@ -265,6 +270,7 @@ $products = wc_get_products( array(
         msgEl.className = 'slw-notice slw-notice-' + type;
         msgEl.style.display = 'block';
         msgEl.scrollIntoView({ behavior: 'smooth' });
+        setTimeout(function() { msgEl.focus(); }, 300);
     }
 
     function addToCart(items, btn) {
