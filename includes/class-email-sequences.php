@@ -24,6 +24,7 @@ class SLW_Email_Sequences {
         add_action( 'wp_ajax_slw_save_sequence_order',   array( __CLASS__, 'ajax_save_sequence_order' ) );
         add_action( 'wp_ajax_slw_save_nl_template',      array( __CLASS__, 'ajax_save_nl_template' ) );
         add_action( 'wp_ajax_slw_delete_nl_template',    array( __CLASS__, 'ajax_delete_nl_template' ) );
+        add_action( 'wp_ajax_slw_clear_failed_log',     array( __CLASS__, 'ajax_clear_failed_log' ) );
 
         // Scheduled newsletter cron handler
         add_action( 'slw_send_scheduled_newsletter', array( __CLASS__, 'execute_scheduled_newsletter' ) );
@@ -459,33 +460,91 @@ class SLW_Email_Sequences {
                 <div class="notice notice-success is-dismissible"><p>Settings saved.</p></div>
             <?php endif; ?>
 
-            <?php if ( ! empty( $failed_entries ) ) : ?>
-            <div class="notice notice-error" style="border-left-color:#c62828;padding:12px 16px;">
-                <p><strong>Email / Webhook Failures Detected</strong> &mdash; <?php echo esc_html( count( $failed_entries ) ); ?> failed event(s) in recent activity. Mautic campaigns may not be triggering.</p>
-                <table style="width:100%;border-collapse:collapse;margin-top:8px;font-size:13px;">
-                    <thead>
-                        <tr style="text-align:left;border-bottom:1px solid #ddd;">
-                            <th style="padding:4px 8px;">Event</th>
-                            <th style="padding:4px 8px;">Recipient</th>
-                            <th style="padding:4px 8px;">Error</th>
-                            <th style="padding:4px 8px;">When</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ( array_slice( $failed_entries, 0, 10 ) as $fail ) : ?>
-                        <tr style="border-bottom:1px solid #f0f0f0;">
-                            <td style="padding:4px 8px;"><code style="font-size:12px;"><?php echo esc_html( $fail['event'] ?? '' ); ?></code></td>
-                            <td style="padding:4px 8px;"><?php echo esc_html( $fail['email'] ?? '-' ); ?></td>
-                            <td style="padding:4px 8px;color:#c62828;"><?php echo esc_html( $fail['code'] ?? '-' ); ?></td>
-                            <td style="padding:4px 8px;"><?php echo esc_html( $fail['time'] ?? '' ); ?></td>
-                        </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-                <?php if ( count( $failed_entries ) > 10 ) : ?>
-                    <p style="margin:8px 0 0;font-size:12px;color:#666;">Showing 10 of <?php echo esc_html( count( $failed_entries ) ); ?> failures. See full log in Webhook Activity below.</p>
-                <?php endif; ?>
+            <?php if ( ! empty( $failed_entries ) ) :
+                // Categorize failures for the summary
+                $fail_categories = array();
+                foreach ( $failed_entries as $f ) {
+                    $evt = $f['event'] ?? '';
+                    $is_mautic = strpos( $evt, 'mautic:' ) === 0;
+                    $cat = $is_mautic ? 'Mautic tagging' : 'Webhook delivery';
+                    $fail_categories[ $cat ] = ( $fail_categories[ $cat ] ?? 0 ) + 1;
+                }
+                $category_summary = array();
+                foreach ( $fail_categories as $cat => $cnt ) {
+                    $category_summary[] = $cnt . ' ' . $cat;
+                }
+            ?>
+            <div id="slw-failures-banner" class="slw-admin-card" style="border-left:4px solid #c62828;padding:20px 24px;margin-bottom:20px;">
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;">
+                    <div style="flex:1;min-width:250px;">
+                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+                            <span class="dashicons dashicons-warning" style="color:#c62828;font-size:20px;"></span>
+                            <h3 style="margin:0;font-size:16px;color:#1E2A30;"><?php echo esc_html( count( $failed_entries ) ); ?> delivery failure<?php echo count( $failed_entries ) !== 1 ? 's' : ''; ?> detected</h3>
+                        </div>
+                        <p style="margin:0 0 0 30px;font-size:13px;color:#628393;">
+                            <?php echo esc_html( implode( ', ', $category_summary ) ); ?>.
+                            Affected contacts may not be entering Mautic campaigns.
+                        </p>
+                    </div>
+                    <button type="button" class="button" id="slw-clear-failures-btn" style="white-space:nowrap;" title="Remove failed entries from the log">Clear Failures</button>
+                </div>
+
+                <div style="margin-top:16px;display:flex;flex-direction:column;gap:8px;">
+                    <?php foreach ( array_slice( $failed_entries, 0, 8 ) as $fail ) :
+                        $f_event   = $fail['event'] ?? '';
+                        $f_email   = $fail['email'] ?? '';
+                        $f_detail  = $fail['code'] ?? '';
+                        $f_time    = $fail['time'] ?? '';
+                        $f_is_mautic = strpos( $f_event, 'mautic:' ) === 0;
+                        $f_label   = $f_is_mautic ? substr( $f_event, 7 ) : $f_event;
+                        $f_source  = $f_is_mautic ? 'Mautic' : 'Webhook';
+                        $f_ago     = $f_time ? human_time_diff( strtotime( $f_time ) ) . ' ago' : '';
+                    ?>
+                    <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#fdf2f2;border-radius:6px;flex-wrap:wrap;">
+                        <span class="slw-pill--red" style="padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;"><?php echo esc_html( $f_source ); ?></span>
+                        <code style="font-size:12px;color:#1E2A30;background:rgba(0,0,0,0.04);padding:2px 6px;border-radius:3px;"><?php echo esc_html( $f_label ); ?></code>
+                        <?php if ( $f_email ) : ?>
+                            <span style="font-size:13px;color:#1E2A30;">&rarr; <?php echo esc_html( $f_email ); ?></span>
+                        <?php endif; ?>
+                        <span style="flex:1;"></span>
+                        <span style="font-size:12px;color:#628393;"><?php echo esc_html( $f_ago ); ?></span>
+                    </div>
+                    <?php if ( $f_detail && ! is_numeric( $f_detail ) ) : ?>
+                    <div style="margin:-4px 0 0 34px;font-size:12px;color:#c62828;padding-left:14px;border-left:2px solid #fbe9e7;">
+                        <?php echo esc_html( strlen( $f_detail ) > 120 ? substr( $f_detail, 0, 120 ) . '...' : $f_detail ); ?>
+                    </div>
+                    <?php endif; ?>
+                    <?php endforeach; ?>
+
+                    <?php if ( count( $failed_entries ) > 8 ) : ?>
+                    <div style="text-align:center;font-size:12px;color:#628393;padding:4px 0;">
+                        + <?php echo esc_html( count( $failed_entries ) - 8 ); ?> more &mdash; see full log below
+                    </div>
+                    <?php endif; ?>
+                </div>
             </div>
+
+            <script>
+            (function() {
+                var btn = document.getElementById('slw-clear-failures-btn');
+                if (!btn) return;
+                btn.addEventListener('click', function() {
+                    if (!confirm('Clear all failed entries from the log? This only clears the log — it does not retry the failed events.')) return;
+                    btn.disabled = true;
+                    btn.textContent = 'Clearing...';
+                    var formData = new FormData();
+                    formData.append('action', 'slw_clear_failed_log');
+                    formData.append('nonce', '<?php echo esc_js( $nonce ); ?>');
+                    var xhr = new XMLHttpRequest();
+                    xhr.open('POST', ajaxurl);
+                    xhr.onload = function() {
+                        var banner = document.getElementById('slw-failures-banner');
+                        if (banner) banner.style.display = 'none';
+                    };
+                    xhr.send(formData);
+                });
+            })();
+            </script>
             <?php endif; ?>
 
             <?php if ( ! $has_config && $provider === 'none' ) : ?>
@@ -1856,6 +1915,30 @@ class SLW_Email_Sequences {
         }
 
         wp_send_json_success();
+    }
+
+    /**
+     * AJAX: Clear failed entries from the webhook log.
+     * Keeps successful entries intact so the activity history isn't lost.
+     */
+    public static function ajax_clear_failed_log() {
+        check_ajax_referer( 'slw_sequences_nonce', 'nonce' );
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_send_json_error( 'Permission denied.' );
+        }
+
+        $log = get_option( 'slw_webhook_log', array() );
+        if ( ! is_array( $log ) ) {
+            $log = array();
+        }
+
+        // Keep only successful/skipped entries
+        $cleaned = array_values( array_filter( $log, function( $entry ) {
+            return ( $entry['status'] ?? '' ) !== 'failed';
+        } ) );
+
+        update_option( 'slw_webhook_log', $cleaned, false );
+        wp_send_json_success( 'Failed entries cleared.' );
     }
 
     /* =================================================================
