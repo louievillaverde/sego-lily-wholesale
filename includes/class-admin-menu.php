@@ -103,9 +103,22 @@ class SLW_Admin_Menu {
             add_submenu_page( 'slw-dashboard', 'Wholesale Orders', 'Orders', 'manage_woocommerce', 'slw-orders', array( 'SLW_Wholesale_Orders', 'render_page' ) );
         }
 
-        // 4. Sequences (email campaigns + newsletters)
+        // 4. Sequences (email campaigns + newsletters) — with failure count badge
         if ( class_exists( 'SLW_Email_Sequences' ) ) {
-            add_submenu_page( 'slw-dashboard', 'Email Sequences', 'Sequences', 'manage_woocommerce', 'slw-sequences', array( 'SLW_Email_Sequences', 'render_page' ) );
+            $seq_label = 'Sequences';
+            $webhook_log = get_option( 'slw_webhook_log', array() );
+            $fail_count = 0;
+            if ( is_array( $webhook_log ) ) {
+                foreach ( $webhook_log as $wh_entry ) {
+                    if ( ( $wh_entry['status'] ?? '' ) === 'failed' ) {
+                        $fail_count++;
+                    }
+                }
+            }
+            if ( $fail_count > 0 ) {
+                $seq_label .= ' <span class="awaiting-mod update-plugins count-' . $fail_count . '"><span class="pending-count">' . $fail_count . '</span></span>';
+            }
+            add_submenu_page( 'slw-dashboard', 'Email Sequences', $seq_label, 'manage_woocommerce', 'slw-sequences', array( 'SLW_Email_Sequences', 'render_page' ) );
         }
 
         // 5. Quotes (RFQ management)
