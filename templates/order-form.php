@@ -316,9 +316,10 @@ $products = wc_get_products( array(
             var productId = this.getAttribute('data-product-id');
             var input = document.querySelector('.slw-qty-input[data-product-id="' + productId + '"]');
             var qty = parseInt(input.value) || 0;
-            if (qty < 1) {
-                input.value = 1;
-                qty = 1;
+            var minVal = parseInt(input.getAttribute('min')) || 1;
+            if (qty < minVal) {
+                input.value = minVal;
+                qty = minVal;
             }
             addToCart([{ product_id: productId, quantity: qty }], this);
         });
