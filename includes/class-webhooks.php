@@ -92,39 +92,15 @@ class SLW_Webhooks {
         $client_secret = get_option( 'slw_mautic_client_secret', '' );
 
         if ( empty( $base_url ) || empty( $client_id ) || empty( $client_secret ) ) {
-            return; // Mautic not configured — skip silently
+            self::log_mautic( $tag, $email, 'skipped', 'Mautic not configured' );
+            return;
         }
 
-        // Get OAuth2 token (use cached if available)
-        $token = get_transient( 'slw_mautic_access_token' );
+        // Get OAuth2 token (use cached if available, retry on failure)
+        $token = self::get_mautic_token( $base_url, $client_id, $client_secret );
         if ( ! $token ) {
-            $token_response = wp_remote_post( $base_url . '/oauth/v2/token', array(
-                'timeout' => 10,
-                'headers' => array(
-                    'Content-Type' => 'application/x-www-form-urlencoded',
-                    'User-Agent'   => self::USER_AGENT,
-                ),
-                'body' => array(
-                    'grant_type'    => 'client_credentials',
-                    'client_id'     => $client_id,
-                    'client_secret' => $client_secret,
-                ),
-            ));
-
-            if ( is_wp_error( $token_response ) ) {
-                if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                    error_log( 'SLW Mautic Token Error: ' . $token_response->get_error_message() );
-                }
-                return;
-            }
-
-            $token_body = json_decode( wp_remote_retrieve_body( $token_response ), true );
-            if ( empty( $token_body['access_token'] ) ) {
-                return;
-            }
-
-            $token = $token_body['access_token'];
-            set_transient( 'slw_mautic_access_token', $token, 50 * MINUTE_IN_SECONDS );
+            self::log_mautic( $tag, $email, 'failed', 'Could not obtain OAuth token' );
+            return;
         }
 
         $headers = array(
@@ -140,23 +116,48 @@ class SLW_Webhooks {
             'headers' => $headers,
         ));
 
-        $contact_id = null;
-        if ( ! is_wp_error( $search ) ) {
-            $search_body = json_decode( wp_remote_retrieve_body( $search ), true );
-            $contacts    = $search_body['contacts'] ?? array();
-            if ( ! empty( $contacts ) ) {
-                // Get the first contact
-                $contact_id = array_key_first( $contacts );
+        // Handle 401 on search — token may have expired between cache and use
+        if ( ! is_wp_error( $search ) && wp_remote_retrieve_response_code( $search ) === 401 ) {
+            delete_transient( 'slw_mautic_access_token' );
+            $token = self::get_mautic_token( $base_url, $client_id, $client_secret );
+            if ( ! $token ) {
+                self::log_mautic( $tag, $email, 'failed', 'OAuth token expired and refresh failed' );
+                return;
             }
+            $headers['Authorization'] = 'Bearer ' . $token;
+            $search = wp_remote_get( $base_url . '/api/contacts?search=' . rawurlencode( $email ) . '&limit=1', array(
+                'timeout' => 10,
+                'headers' => $headers,
+            ));
+        }
+
+        if ( is_wp_error( $search ) ) {
+            self::log_mautic( $tag, $email, 'failed', 'Contact search error: ' . $search->get_error_message() );
+            return;
+        }
+
+        $search_code = wp_remote_retrieve_response_code( $search );
+        if ( $search_code < 200 || $search_code >= 300 ) {
+            self::log_mautic( $tag, $email, 'failed', 'Contact search HTTP ' . $search_code );
+            return;
+        }
+
+        $contact_id = null;
+        $search_body = json_decode( wp_remote_retrieve_body( $search ), true );
+        $contacts    = $search_body['contacts'] ?? array();
+        if ( ! empty( $contacts ) ) {
+            $contact_id = array_key_first( $contacts );
         }
 
         // Build contact data for create/update
-        $tags = array( $tag );
+        // For existing contacts, prefix tags with + to ADD them (Mautic API requirement)
+        $tags = $contact_id ? array( '+' . $tag ) : array( $tag );
 
         // Retail quiz leads also get quiz-completed + routing tags
+        $prefix = $contact_id ? '+' : '';
         if ( ! empty( $data['skin_concern'] ) ) {
-            $tags[] = 'quiz-completed';
-            $tags[] = 'retail-quiz-lead';
+            $tags[] = $prefix . 'quiz-completed';
+            $tags[] = $prefix . 'retail-quiz-lead';
             $skin_tag_map = array(
                 'Dryness & tightness'  => 'skin-dryness',
                 'Breakouts'            => 'skin-breakouts',
@@ -164,7 +165,7 @@ class SLW_Webhooks {
                 'Wrinkles & dark spots' => 'skin-aging',
             );
             if ( isset( $skin_tag_map[ $data['skin_concern'] ] ) ) {
-                $tags[] = $skin_tag_map[ $data['skin_concern'] ];
+                $tags[] = $prefix . $skin_tag_map[ $data['skin_concern'] ];
             }
         }
         if ( ! empty( $data['frustration'] ) ) {
@@ -175,7 +176,7 @@ class SLW_Webhooks {
                 'Just want something simple' => 'frustration-simple',
             );
             if ( isset( $frustration_tag_map[ $data['frustration'] ] ) ) {
-                $tags[] = $frustration_tag_map[ $data['frustration'] ];
+                $tags[] = $prefix . $frustration_tag_map[ $data['frustration'] ];
             }
         }
 
@@ -227,19 +228,34 @@ class SLW_Webhooks {
 
         if ( $contact_id ) {
             // Update existing contact — add the tag
-            wp_remote_request( $base_url . '/api/contacts/' . $contact_id . '/edit', array(
+            $response = wp_remote_request( $base_url . '/api/contacts/' . $contact_id . '/edit', array(
                 'method'  => 'PATCH',
                 'timeout' => 10,
                 'headers' => $headers,
                 'body'    => wp_json_encode( $contact_data ),
             ));
+            $action = 'update';
         } else {
             // Create new contact with the tag
-            wp_remote_post( $base_url . '/api/contacts/new', array(
+            $response = wp_remote_post( $base_url . '/api/contacts/new', array(
                 'timeout' => 10,
                 'headers' => $headers,
                 'body'    => wp_json_encode( $contact_data ),
             ));
+            $action = 'create';
+        }
+
+        // Log the result
+        if ( is_wp_error( $response ) ) {
+            self::log_mautic( $tag, $email, 'failed', 'Contact ' . $action . ' error: ' . $response->get_error_message() );
+        } else {
+            $code = wp_remote_retrieve_response_code( $response );
+            if ( $code >= 200 && $code < 300 ) {
+                self::log_mautic( $tag, $email, 'success', 'Contact ' . $action . ' OK (HTTP ' . $code . ')' );
+            } else {
+                $body = wp_remote_retrieve_body( $response );
+                self::log_mautic( $tag, $email, 'failed', 'Contact ' . $action . ' HTTP ' . $code . ': ' . substr( $body, 0, 200 ) );
+            }
         }
     }
 
@@ -259,9 +275,10 @@ class SLW_Webhooks {
             return;
         }
 
-        $token = get_transient( 'slw_mautic_access_token' );
+        // Get token — obtain fresh one if needed (don't silently skip)
+        $token = self::get_mautic_token( $base_url, $client_id, $client_secret );
         if ( ! $token ) {
-            return; // No cached token — skip to avoid slowing down the request
+            return;
         }
 
         $headers = array(
@@ -300,6 +317,54 @@ class SLW_Webhooks {
         ));
     }
 
+    // ── Shared Helpers ───────────────────────────────────────────────────
+
+    /**
+     * Get a valid Mautic OAuth2 token. Uses cached transient when available,
+     * fetches a new one otherwise.
+     *
+     * @param string $base_url      Mautic base URL.
+     * @param string $client_id     OAuth2 client ID.
+     * @param string $client_secret OAuth2 client secret.
+     * @return string|false Access token or false on failure.
+     */
+    private static function get_mautic_token( $base_url, $client_id, $client_secret ) {
+        $cached = get_transient( 'slw_mautic_access_token' );
+        if ( $cached ) {
+            return $cached;
+        }
+
+        $response = wp_remote_post( $base_url . '/oauth/v2/token', array(
+            'timeout' => 10,
+            'headers' => array(
+                'Content-Type' => 'application/x-www-form-urlencoded',
+                'User-Agent'   => self::USER_AGENT,
+            ),
+            'body' => array(
+                'grant_type'    => 'client_credentials',
+                'client_id'     => $client_id,
+                'client_secret' => $client_secret,
+            ),
+        ));
+
+        if ( is_wp_error( $response ) ) {
+            error_log( 'SLW Mautic Token Error: ' . $response->get_error_message() );
+            return false;
+        }
+
+        $code = wp_remote_retrieve_response_code( $response );
+        $body = json_decode( wp_remote_retrieve_body( $response ), true );
+
+        if ( $code !== 200 || empty( $body['access_token'] ) ) {
+            $msg = $body['error_description'] ?? ( 'HTTP ' . $code );
+            error_log( 'SLW Mautic Token Failed: ' . $msg );
+            return false;
+        }
+
+        set_transient( 'slw_mautic_access_token', $body['access_token'], 50 * MINUTE_IN_SECONDS );
+        return $body['access_token'];
+    }
+
     /**
      * Log a webhook fire to the circular buffer.
      */
@@ -314,6 +379,28 @@ class SLW_Webhooks {
             'email'  => isset( $data['email'] ) ? $data['email'] : '',
             'status' => $success ? 'success' : 'failed',
             'code'   => $response_code,
+            'time'   => current_time( 'mysql' ),
+        ));
+
+        $log = array_slice( $log, 0, 50 );
+        update_option( 'slw_webhook_log', $log, false );
+    }
+
+    /**
+     * Log a Mautic API operation to the circular buffer.
+     * Shares the same log as webhooks so everything is visible in one place.
+     */
+    private static function log_mautic( $tag, $email, $status, $detail = '' ) {
+        $log = get_option( 'slw_webhook_log', array() );
+        if ( ! is_array( $log ) ) {
+            $log = array();
+        }
+
+        array_unshift( $log, array(
+            'event'  => 'mautic:' . $tag,
+            'email'  => $email,
+            'status' => $status,
+            'code'   => $detail,
             'time'   => current_time( 'mysql' ),
         ));
 
