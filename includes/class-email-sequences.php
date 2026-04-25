@@ -460,93 +460,6 @@ class SLW_Email_Sequences {
                 <div class="notice notice-success is-dismissible"><p>Settings saved.</p></div>
             <?php endif; ?>
 
-            <?php if ( ! empty( $failed_entries ) ) :
-                // Categorize failures for the summary
-                $fail_categories = array();
-                foreach ( $failed_entries as $f ) {
-                    $evt = $f['event'] ?? '';
-                    $is_mautic = strpos( $evt, 'mautic:' ) === 0;
-                    $cat = $is_mautic ? 'Mautic tagging' : 'Webhook delivery';
-                    $fail_categories[ $cat ] = ( $fail_categories[ $cat ] ?? 0 ) + 1;
-                }
-                $category_summary = array();
-                foreach ( $fail_categories as $cat => $cnt ) {
-                    $category_summary[] = $cnt . ' ' . $cat;
-                }
-            ?>
-            <div id="slw-failures-banner" class="slw-admin-card" style="border-left:4px solid #c62828;padding:20px 24px;margin-bottom:20px;">
-                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;">
-                    <div style="flex:1;min-width:250px;">
-                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
-                            <span class="dashicons dashicons-warning" style="color:#c62828;font-size:20px;"></span>
-                            <h3 style="margin:0;font-size:16px;color:#1E2A30;"><?php echo esc_html( count( $failed_entries ) ); ?> delivery failure<?php echo count( $failed_entries ) !== 1 ? 's' : ''; ?> detected</h3>
-                        </div>
-                        <p style="margin:0 0 0 30px;font-size:13px;color:#628393;">
-                            <?php echo esc_html( implode( ', ', $category_summary ) ); ?>.
-                            Affected contacts may not be entering Mautic campaigns.
-                        </p>
-                    </div>
-                    <button type="button" class="button" id="slw-clear-failures-btn" style="white-space:nowrap;" title="Remove failed entries from the log">Clear Failures</button>
-                </div>
-
-                <div style="margin-top:16px;display:flex;flex-direction:column;gap:8px;">
-                    <?php foreach ( array_slice( $failed_entries, 0, 8 ) as $fail ) :
-                        $f_event   = $fail['event'] ?? '';
-                        $f_email   = $fail['email'] ?? '';
-                        $f_detail  = $fail['code'] ?? '';
-                        $f_time    = $fail['time'] ?? '';
-                        $f_is_mautic = strpos( $f_event, 'mautic:' ) === 0;
-                        $f_label   = $f_is_mautic ? substr( $f_event, 7 ) : $f_event;
-                        $f_source  = $f_is_mautic ? 'Mautic' : 'Webhook';
-                        $f_ago     = $f_time ? human_time_diff( strtotime( $f_time ) ) . ' ago' : '';
-                    ?>
-                    <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#fdf2f2;border-radius:6px;flex-wrap:wrap;">
-                        <span class="slw-pill--red" style="padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;"><?php echo esc_html( $f_source ); ?></span>
-                        <code style="font-size:12px;color:#1E2A30;background:rgba(0,0,0,0.04);padding:2px 6px;border-radius:3px;"><?php echo esc_html( $f_label ); ?></code>
-                        <?php if ( $f_email ) : ?>
-                            <span style="font-size:13px;color:#1E2A30;">&rarr; <?php echo esc_html( $f_email ); ?></span>
-                        <?php endif; ?>
-                        <span style="flex:1;"></span>
-                        <span style="font-size:12px;color:#628393;"><?php echo esc_html( $f_ago ); ?></span>
-                    </div>
-                    <?php if ( $f_detail && ! is_numeric( $f_detail ) ) : ?>
-                    <div style="margin:-4px 0 0 34px;font-size:12px;color:#c62828;padding-left:14px;border-left:2px solid #fbe9e7;">
-                        <?php echo esc_html( strlen( $f_detail ) > 120 ? substr( $f_detail, 0, 120 ) . '...' : $f_detail ); ?>
-                    </div>
-                    <?php endif; ?>
-                    <?php endforeach; ?>
-
-                    <?php if ( count( $failed_entries ) > 8 ) : ?>
-                    <div style="text-align:center;font-size:12px;color:#628393;padding:4px 0;">
-                        + <?php echo esc_html( count( $failed_entries ) - 8 ); ?> more &mdash; see full log below
-                    </div>
-                    <?php endif; ?>
-                </div>
-            </div>
-
-            <script>
-            (function() {
-                var btn = document.getElementById('slw-clear-failures-btn');
-                if (!btn) return;
-                btn.addEventListener('click', function() {
-                    if (!confirm('Clear all failed entries from the log? This only clears the log — it does not retry the failed events.')) return;
-                    btn.disabled = true;
-                    btn.textContent = 'Clearing...';
-                    var formData = new FormData();
-                    formData.append('action', 'slw_clear_failed_log');
-                    formData.append('nonce', '<?php echo esc_js( $nonce ); ?>');
-                    var xhr = new XMLHttpRequest();
-                    xhr.open('POST', ajaxurl);
-                    xhr.onload = function() {
-                        var banner = document.getElementById('slw-failures-banner');
-                        if (banner) banner.style.display = 'none';
-                    };
-                    xhr.send(formData);
-                });
-            })();
-            </script>
-            <?php endif; ?>
-
             <?php if ( ! $has_config && $provider === 'none' ) : ?>
             <!-- ─── Empty State: No Provider ─── -->
             <div class="slw-seq-empty-state">
@@ -760,9 +673,6 @@ class SLW_Email_Sequences {
 
             <?php endif; /* end if $connected */ ?>
 
-            <!-- ─── Email Templates (copyable) ─── -->
-            <?php self::render_email_templates(); ?>
-
             <!-- ─── Transactional Emails (sent by WordPress, not Mautic) ─── -->
             <h2 class="title">Transactional Emails</h2>
             <p style="color:#628393;font-size:13px;margin:-8px 0 16px;">These are sent instantly by WordPress when specific actions happen. They handle logistics (credentials, invoices, confirmations) while your campaign sequences above handle relationship-building and marketing.</p>
@@ -850,55 +760,128 @@ class SLW_Email_Sequences {
                         <p>No activity recorded yet. Events are logged when applications are approved, first orders are placed, Mautic contacts are tagged, or reorder reminders trigger.</p>
                     </div>
                 <?php else : ?>
-                    <div class="slw-admin-card" style="padding: 0; overflow: hidden;">
-                        <table class="wp-list-table widefat striped">
-                            <thead>
-                                <tr>
-                                    <th style="width:22%;">Event</th>
-                                    <th style="width:18%;">Recipient</th>
-                                    <th style="width:8%;">Status</th>
-                                    <th style="width:35%;">Detail</th>
-                                    <th style="width:17%;">Time</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ( array_slice( $webhook_log, 0, 50 ) as $entry ) :
-                                    $wh_event  = $entry['event'] ?? '';
-                                    $wh_status = $entry['status'] ?? 'unknown';
-                                    $wh_detail = $entry['code'] ?? '-';
-                                    $is_mautic = strpos( $wh_event, 'mautic:' ) === 0;
+                    <?php if ( $fail_count > 0 ) :
+                        $fail_categories = array();
+                        foreach ( $failed_entries as $f ) {
+                            $evt = $f['event'] ?? '';
+                            $cat = strpos( $evt, 'mautic:' ) === 0 ? 'Mautic tagging' : 'Webhook delivery';
+                            $fail_categories[ $cat ] = ( $fail_categories[ $cat ] ?? 0 ) + 1;
+                        }
+                        $category_summary = array();
+                        foreach ( $fail_categories as $cat => $cnt ) {
+                            $category_summary[] = $cnt . ' ' . $cat;
+                        }
+                    ?>
+                    <div id="slw-failures-section" style="border-left:4px solid #c62828;padding:20px 24px;margin:0;background:#fff;">
+                        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;">
+                            <div style="flex:1;min-width:250px;">
+                                <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+                                    <span class="dashicons dashicons-warning" style="color:#c62828;font-size:20px;"></span>
+                                    <h3 style="margin:0;font-size:16px;color:#1E2A30;"><?php echo esc_html( $fail_count ); ?> delivery failure<?php echo $fail_count !== 1 ? 's' : ''; ?> detected</h3>
+                                </div>
+                                <p style="margin:0 0 0 30px;font-size:13px;color:#628393;">
+                                    <?php echo esc_html( implode( ', ', $category_summary ) ); ?>.
+                                    Affected contacts may not be entering Mautic campaigns.
+                                </p>
+                            </div>
+                            <button type="button" class="button" id="slw-clear-failures-btn" style="white-space:nowrap;" title="Remove failed entries from the log">Clear Failures</button>
+                        </div>
 
-                                    if ( $wh_status === 'success' ) {
-                                        $wh_badge_class = 'slw-status-approved';
-                                    } elseif ( $wh_status === 'skipped' ) {
-                                        $wh_badge_class = 'slw-status-pending';
-                                    } else {
-                                        $wh_badge_class = 'slw-status-declined';
-                                    }
+                        <div style="margin-top:16px;display:flex;flex-direction:column;gap:8px;">
+                            <?php foreach ( array_slice( $failed_entries, 0, 8 ) as $fail ) :
+                                $f_event   = $fail['event'] ?? '';
+                                $f_email   = $fail['email'] ?? '';
+                                $f_detail  = $fail['code'] ?? '';
+                                $f_time    = $fail['time'] ?? '';
+                                $f_is_mautic = strpos( $f_event, 'mautic:' ) === 0;
+                                $f_label   = $f_is_mautic ? substr( $f_event, 7 ) : $f_event;
+                                $f_source  = $f_is_mautic ? 'Mautic' : 'Webhook';
+                                $f_ago     = $f_time ? human_time_diff( strtotime( $f_time ) ) . ' ago' : '';
+                            ?>
+                            <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#fdf2f2;border-radius:6px;flex-wrap:wrap;">
+                                <span class="slw-pill--red" style="padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;"><?php echo esc_html( $f_source ); ?></span>
+                                <code style="font-size:12px;color:#1E2A30;background:rgba(0,0,0,0.04);padding:2px 6px;border-radius:3px;"><?php echo esc_html( $f_label ); ?></code>
+                                <?php if ( $f_email ) : ?>
+                                    <span style="font-size:13px;color:#1E2A30;">&rarr; <?php echo esc_html( $f_email ); ?></span>
+                                <?php endif; ?>
+                                <span style="flex:1;"></span>
+                                <span style="font-size:12px;color:#628393;"><?php echo esc_html( $f_ago ); ?></span>
+                            </div>
+                            <?php if ( $f_detail && ! is_numeric( $f_detail ) ) : ?>
+                            <div style="margin:-4px 0 0 34px;font-size:12px;color:#c62828;padding-left:14px;border-left:2px solid #fbe9e7;">
+                                <?php echo esc_html( strlen( $f_detail ) > 120 ? substr( $f_detail, 0, 120 ) . '...' : $f_detail ); ?>
+                            </div>
+                            <?php endif; ?>
+                            <?php endforeach; ?>
 
-                                    $row_style = $wh_status === 'failed' ? 'background:#fff5f5;' : '';
-                                ?>
-                                <tr style="<?php echo esc_attr( $row_style ); ?>">
-                                    <td>
-                                        <?php if ( $is_mautic ) : ?>
-                                            <span style="color:#628393;font-size:10px;font-weight:600;text-transform:uppercase;">Mautic</span><br>
-                                        <?php else : ?>
-                                            <span style="color:#386174;font-size:10px;font-weight:600;text-transform:uppercase;">Webhook</span><br>
-                                        <?php endif; ?>
-                                        <code style="font-size:12px;"><?php echo esc_html( $is_mautic ? substr( $wh_event, 7 ) : $wh_event ); ?></code>
-                                    </td>
-                                    <td><?php echo esc_html( $entry['email'] ?? '-' ); ?></td>
-                                    <td>
-                                        <span class="<?php echo esc_attr( $wh_badge_class ); ?>"><?php echo esc_html( ucfirst( $wh_status ) ); ?></span>
-                                    </td>
-                                    <td style="font-size:12px;<?php echo $wh_status === 'failed' ? 'color:#c62828;' : 'color:#666;'; ?>">
-                                        <?php echo esc_html( is_numeric( $wh_detail ) ? 'HTTP ' . $wh_detail : $wh_detail ); ?>
-                                    </td>
-                                    <td><?php echo esc_html( $entry['time'] ?? '' ); ?></td>
-                                </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
+                            <?php if ( $fail_count > 8 ) : ?>
+                            <div style="text-align:center;font-size:12px;color:#628393;padding:4px 0;">
+                                + <?php echo esc_html( $fail_count - 8 ); ?> more in log below
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <script>
+                    (function() {
+                        var btn = document.getElementById('slw-clear-failures-btn');
+                        if (!btn) return;
+                        btn.addEventListener('click', function() {
+                            if (!confirm('Clear all failed entries from the log? This only clears the log — it does not retry the failed events.')) return;
+                            btn.disabled = true;
+                            btn.textContent = 'Clearing...';
+                            var formData = new FormData();
+                            formData.append('action', 'slw_clear_failed_log');
+                            formData.append('nonce', '<?php echo esc_js( $nonce ); ?>');
+                            var xhr = new XMLHttpRequest();
+                            xhr.open('POST', ajaxurl);
+                            xhr.onload = function() {
+                                var section = document.getElementById('slw-failures-section');
+                                if (section) section.style.display = 'none';
+                            };
+                            xhr.send(formData);
+                        });
+                    })();
+                    </script>
+                    <?php endif; ?>
+
+                    <div style="padding:16px 24px;border-top:<?php echo $fail_count > 0 ? '1px solid #e0ddd8' : 'none'; ?>;">
+                        <div style="display:flex;flex-direction:column;gap:6px;">
+                            <?php foreach ( array_slice( $webhook_log, 0, 50 ) as $entry ) :
+                                $wh_event  = $entry['event'] ?? '';
+                                $wh_status = $entry['status'] ?? 'unknown';
+                                $wh_detail = $entry['code'] ?? '-';
+                                $is_mautic = strpos( $wh_event, 'mautic:' ) === 0;
+                                $wh_label  = $is_mautic ? substr( $wh_event, 7 ) : $wh_event;
+                                $wh_source = $is_mautic ? 'Mautic' : 'Webhook';
+                                $wh_ago    = ! empty( $entry['time'] ) ? human_time_diff( strtotime( $entry['time'] ) ) . ' ago' : '';
+
+                                if ( $wh_status === 'failed' ) {
+                                    $pill_class = 'slw-pill--red';
+                                    $row_bg = '#fdf2f2';
+                                } elseif ( $wh_status === 'skipped' ) {
+                                    $pill_class = 'slw-pill--yellow';
+                                    $row_bg = '#fffdf5';
+                                } else {
+                                    $pill_class = 'slw-pill--green';
+                                    $row_bg = '#f6faf6';
+                                }
+                            ?>
+                            <div style="display:flex;align-items:center;gap:10px;padding:8px 14px;background:<?php echo esc_attr( $row_bg ); ?>;border-radius:6px;flex-wrap:wrap;">
+                                <span class="<?php echo esc_attr( $pill_class ); ?>" style="padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;"><?php echo esc_html( $wh_source ); ?></span>
+                                <code style="font-size:12px;color:#1E2A30;background:rgba(0,0,0,0.04);padding:2px 6px;border-radius:3px;"><?php echo esc_html( $wh_label ); ?></code>
+                                <?php if ( ! empty( $entry['email'] ) ) : ?>
+                                    <span style="font-size:13px;color:#1E2A30;">&rarr; <?php echo esc_html( $entry['email'] ); ?></span>
+                                <?php endif; ?>
+                                <span style="flex:1;"></span>
+                                <span style="font-size:12px;color:#628393;"><?php echo esc_html( $wh_ago ); ?></span>
+                            </div>
+                            <?php if ( $wh_status === 'failed' && $wh_detail && ! is_numeric( $wh_detail ) ) : ?>
+                            <div style="margin:-2px 0 0 34px;font-size:12px;color:#c62828;padding-left:14px;border-left:2px solid #fbe9e7;">
+                                <?php echo esc_html( strlen( $wh_detail ) > 150 ? substr( $wh_detail, 0, 150 ) . '...' : $wh_detail ); ?>
+                            </div>
+                            <?php endif; ?>
+                            <?php endforeach; ?>
+                        </div>
                     </div>
                 <?php endif; ?>
             </details>
@@ -971,7 +954,7 @@ class SLW_Email_Sequences {
                                 wp_editor( '', 'slw_nl_body', array(
                                     'textarea_name' => 'slw_nl_body',
                                     'media_buttons' => true,
-                                    'textarea_rows' => 12,
+                                    'textarea_rows' => 24,
                                     'teeny'         => false,
                                     'quicktags'     => true,
                                 ) );
