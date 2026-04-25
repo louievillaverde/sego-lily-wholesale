@@ -420,8 +420,18 @@ class SLW_Email_Sequences {
             }
         }
 
-        // Webhook log
+        // Webhook log (includes both webhook POSTs and Mautic API operations)
         $webhook_log = get_option( 'slw_webhook_log', array() );
+
+        // Separate failed entries for the alert banner
+        $failed_entries = array();
+        if ( is_array( $webhook_log ) ) {
+            foreach ( $webhook_log as $entry ) {
+                if ( ( $entry['status'] ?? '' ) === 'failed' || ( $entry['status'] ?? '' ) === 'skipped' ) {
+                    $failed_entries[] = $entry;
+                }
+            }
+        }
 
         // Last sync time (when transients were set)
         $last_sync = get_transient( 'slw_mautic_campaigns' ) !== false ? 'Cached (within 15 min)' : 'Not cached';
@@ -447,6 +457,35 @@ class SLW_Email_Sequences {
 
             <?php if ( $saved ) : ?>
                 <div class="notice notice-success is-dismissible"><p>Settings saved.</p></div>
+            <?php endif; ?>
+
+            <?php if ( ! empty( $failed_entries ) ) : ?>
+            <div class="notice notice-error" style="border-left-color:#c62828;padding:12px 16px;">
+                <p><strong>Email / Webhook Failures Detected</strong> &mdash; <?php echo esc_html( count( $failed_entries ) ); ?> failed event(s) in recent activity. Mautic campaigns may not be triggering.</p>
+                <table style="width:100%;border-collapse:collapse;margin-top:8px;font-size:13px;">
+                    <thead>
+                        <tr style="text-align:left;border-bottom:1px solid #ddd;">
+                            <th style="padding:4px 8px;">Event</th>
+                            <th style="padding:4px 8px;">Recipient</th>
+                            <th style="padding:4px 8px;">Error</th>
+                            <th style="padding:4px 8px;">When</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ( array_slice( $failed_entries, 0, 10 ) as $fail ) : ?>
+                        <tr style="border-bottom:1px solid #f0f0f0;">
+                            <td style="padding:4px 8px;"><code style="font-size:12px;"><?php echo esc_html( $fail['event'] ?? '' ); ?></code></td>
+                            <td style="padding:4px 8px;"><?php echo esc_html( $fail['email'] ?? '-' ); ?></td>
+                            <td style="padding:4px 8px;color:#c62828;"><?php echo esc_html( $fail['code'] ?? '-' ); ?></td>
+                            <td style="padding:4px 8px;"><?php echo esc_html( $fail['time'] ?? '' ); ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+                <?php if ( count( $failed_entries ) > 10 ) : ?>
+                    <p style="margin:8px 0 0;font-size:12px;color:#666;">Showing 10 of <?php echo esc_html( count( $failed_entries ) ); ?> failures. See full log in Webhook Activity below.</p>
+                <?php endif; ?>
+            </div>
             <?php endif; ?>
 
             <?php if ( ! $has_config && $provider === 'none' ) : ?>
@@ -729,46 +768,73 @@ class SLW_Email_Sequences {
             $last_webhook_time = $last_webhook ? human_time_diff( strtotime( $last_webhook['time'] ?? '' ) ) . ' ago' : 'Never';
             $last_webhook_ok   = $last_webhook && ( $last_webhook['status'] ?? '' ) === 'success';
             ?>
-            <details class="slw-seq-accordion">
+            <?php
+            $fail_count   = count( $failed_entries );
+            $fail_summary = $fail_count > 0
+                ? $fail_count . ' failed'
+                : 'All healthy';
+            ?>
+            <details class="slw-seq-accordion"<?php echo $fail_count > 0 ? ' open' : ''; ?>>
                 <summary class="slw-seq-accordion__bar">
-                    <span class="slw-seq-accordion__title">Webhook Activity</span>
+                    <span class="slw-seq-accordion__title">Webhook &amp; Mautic Activity</span>
                     <span class="slw-seq-accordion__summary">
-                        Last webhook: <?php echo esc_html( $last_webhook_time ); ?>
+                        Last activity: <?php echo esc_html( $last_webhook_time ); ?>
                         <?php if ( $last_webhook ) : ?>
                             (<span class="<?php echo $last_webhook_ok ? 'slw-pill--green' : 'slw-pill--red'; ?>"><?php echo esc_html( $last_webhook_ok ? 'success' : 'failed' ); ?></span>)
                         <?php endif; ?>
+                        &middot; <?php echo esc_html( $fail_summary ); ?>
                     </span>
                     <span class="slw-seq-accordion__arrow dashicons dashicons-arrow-down-alt2"></span>
                 </summary>
                 <?php if ( empty( $webhook_log ) ) : ?>
                     <div class="slw-admin-card">
-                        <p>No webhook activity recorded yet. Webhooks fire when applications are approved, first orders are placed, or reorder reminders trigger.</p>
+                        <p>No activity recorded yet. Events are logged when applications are approved, first orders are placed, Mautic contacts are tagged, or reorder reminders trigger.</p>
                     </div>
                 <?php else : ?>
                     <div class="slw-admin-card" style="padding: 0; overflow: hidden;">
                         <table class="wp-list-table widefat striped">
                             <thead>
                                 <tr>
-                                    <th>Event</th>
-                                    <th>Email</th>
-                                    <th>Status</th>
-                                    <th>HTTP Code</th>
-                                    <th>Time</th>
+                                    <th style="width:22%;">Event</th>
+                                    <th style="width:18%;">Recipient</th>
+                                    <th style="width:8%;">Status</th>
+                                    <th style="width:35%;">Detail</th>
+                                    <th style="width:17%;">Time</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                <?php foreach ( array_slice( $webhook_log, 0, 25 ) as $entry ) : ?>
-                                <tr>
-                                    <td><code><?php echo esc_html( $entry['event'] ?? '' ); ?></code></td>
+                                <?php foreach ( array_slice( $webhook_log, 0, 50 ) as $entry ) :
+                                    $wh_event  = $entry['event'] ?? '';
+                                    $wh_status = $entry['status'] ?? 'unknown';
+                                    $wh_detail = $entry['code'] ?? '-';
+                                    $is_mautic = strpos( $wh_event, 'mautic:' ) === 0;
+
+                                    if ( $wh_status === 'success' ) {
+                                        $wh_badge_class = 'slw-status-approved';
+                                    } elseif ( $wh_status === 'skipped' ) {
+                                        $wh_badge_class = 'slw-status-pending';
+                                    } else {
+                                        $wh_badge_class = 'slw-status-declined';
+                                    }
+
+                                    $row_style = $wh_status === 'failed' ? 'background:#fff5f5;' : '';
+                                ?>
+                                <tr style="<?php echo esc_attr( $row_style ); ?>">
+                                    <td>
+                                        <?php if ( $is_mautic ) : ?>
+                                            <span style="color:#628393;font-size:10px;font-weight:600;text-transform:uppercase;">Mautic</span><br>
+                                        <?php else : ?>
+                                            <span style="color:#386174;font-size:10px;font-weight:600;text-transform:uppercase;">Webhook</span><br>
+                                        <?php endif; ?>
+                                        <code style="font-size:12px;"><?php echo esc_html( $is_mautic ? substr( $wh_event, 7 ) : $wh_event ); ?></code>
+                                    </td>
                                     <td><?php echo esc_html( $entry['email'] ?? '-' ); ?></td>
                                     <td>
-                                        <?php
-                                        $wh_status     = $entry['status'] ?? 'unknown';
-                                        $wh_badge_class = $wh_status === 'success' ? 'slw-status-approved' : 'slw-status-declined';
-                                        ?>
                                         <span class="<?php echo esc_attr( $wh_badge_class ); ?>"><?php echo esc_html( ucfirst( $wh_status ) ); ?></span>
                                     </td>
-                                    <td><?php echo esc_html( $entry['code'] ?? '-' ); ?></td>
+                                    <td style="font-size:12px;<?php echo $wh_status === 'failed' ? 'color:#c62828;' : 'color:#666;'; ?>">
+                                        <?php echo esc_html( is_numeric( $wh_detail ) ? 'HTTP ' . $wh_detail : $wh_detail ); ?>
+                                    </td>
                                     <td><?php echo esc_html( $entry['time'] ?? '' ); ?></td>
                                 </tr>
                                 <?php endforeach; ?>
