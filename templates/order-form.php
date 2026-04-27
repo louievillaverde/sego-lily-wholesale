@@ -132,7 +132,7 @@ $products = $all_products; // keep for empty check
         $cat_slug = sanitize_title( $category_name );
     ?>
     <div class="slw-category-section" data-category="<?php echo esc_attr( $cat_slug ); ?>">
-        <div class="slw-category-header" style="display:flex;justify-content:space-between;align-items:center;background:#386174;color:#F7F6F3;padding:14px 20px;border-radius:8px 8px 0 0;margin-top:20px;cursor:pointer;" data-toggle="<?php echo esc_attr( $cat_slug ); ?>">
+        <div class="slw-category-header" style="display:flex;justify-content:space-between;align-items:center;background:#386174;color:#F7F6F3;padding:14px 20px;border-radius:8px 8px 0 0;margin-top:20px;cursor:pointer;" data-category="<?php echo esc_attr( $cat_slug ); ?>">
             <div>
                 <h3 style="margin:0;font-size:18px;color:#F7F6F3;font-family:Georgia,'Times New Roman',serif;"><?php echo esc_html( $category_name ); ?></h3>
                 <span style="font-size:13px;opacity:0.8;"><?php echo esc_html( count( $cat_products ) ); ?> product<?php echo count( $cat_products ) !== 1 ? 's' : ''; ?></span>
@@ -473,7 +473,7 @@ $products = $all_products; // keep for empty check
     // Category header collapse/expand
     document.querySelectorAll('.slw-category-header').forEach(function(header) {
         header.addEventListener('click', function() {
-            var cat = this.getAttribute('data-toggle');
+            var cat = this.getAttribute('data-category');
             var body = document.getElementById('slw-cat-' + cat);
             var arrow = this.querySelector('.slw-category-toggle');
             if (body) {

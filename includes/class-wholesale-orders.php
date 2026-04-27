@@ -28,10 +28,11 @@ class SLW_Wholesale_Orders {
         }
 
         $active_tab = sanitize_key( $_GET['tab'] ?? 'orders' );
+        $page_title = $active_tab === 'quotes' ? 'Quote Requests' : 'Wholesale Orders';
 
         ?>
         <div class="wrap slw-wholesale-orders">
-            <h1 class="wp-heading-inline">Wholesale Orders</h1>
+            <h1 class="wp-heading-inline"><?php echo esc_html( $page_title ); ?></h1>
             <hr class="wp-header-end">
 
             <h2 class="nav-tab-wrapper">
@@ -43,7 +44,7 @@ class SLW_Wholesale_Orders {
 
         if ( $active_tab === 'quotes' ) {
             if ( class_exists( 'SLW_RFQ' ) ) {
-                SLW_RFQ::render_admin_page();
+                SLW_RFQ::render_rfq_list_only();
             }
             return;
         }

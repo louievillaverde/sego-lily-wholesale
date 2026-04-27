@@ -11,7 +11,40 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 class SLW_Customers_Page {
 
     public static function init() {
-        // Nothing needed - render is called by menu.
+        add_action( 'admin_init', array( __CLASS__, 'maybe_export_csv' ) );
+    }
+
+    /**
+     * Handle CSV export of wholesale customers.
+     */
+    public static function maybe_export_csv() {
+        if ( ! isset( $_GET['page'] ) || $_GET['page'] !== 'slw-customers' ) return;
+        if ( ! isset( $_GET['action'] ) || $_GET['action'] !== 'export_csv' ) return;
+        if ( ! current_user_can( 'manage_woocommerce' ) ) return;
+        if ( ! wp_verify_nonce( $_GET['_wpnonce'] ?? '', 'slw_export_customers' ) ) wp_die( 'Invalid nonce.' );
+
+        $users = get_users( array( 'role' => 'wholesale_customer' ) );
+
+        header( 'Content-Type: text/csv; charset=utf-8' );
+        header( 'Content-Disposition: attachment; filename=wholesale-customers-' . date( 'Y-m-d' ) . '.csv' );
+
+        $out = fopen( 'php://output', 'w' );
+        fputcsv( $out, array( 'Name', 'Email', 'Business Name', 'Tier', 'NET Terms', 'Phone' ) );
+
+        foreach ( $users as $user ) {
+            $tier = class_exists( 'SLW_Tiers' ) ? SLW_Tiers::get_user_tier( $user->ID ) : 'standard';
+            $net = class_exists( 'SLW_Gateway_Net30' ) ? SLW_Gateway_Net30::get_user_net_terms( $user->ID ) : 0;
+            fputcsv( $out, array(
+                $user->first_name . ' ' . $user->last_name,
+                $user->user_email,
+                get_user_meta( $user->ID, 'slw_business_name', true ),
+                ucfirst( $tier ),
+                $net > 0 ? 'NET ' . $net : 'None',
+                get_user_meta( $user->ID, 'billing_phone', true ),
+            ) );
+        }
+        fclose( $out );
+        exit;
     }
 
     /**
@@ -79,15 +112,73 @@ class SLW_Customers_Page {
             'order'   => 'DESC',
         );
 
-        // Search by business name via meta query.
+        // Search by business name, first name, last name, or email.
         if ( $search ) {
+            $args['search']         = '*' . $search . '*';
+            $args['search_columns'] = array( 'user_email', 'display_name' );
             $args['meta_query'] = array(
+                'relation' => 'OR',
                 array(
                     'key'     => 'slw_business_name',
                     'value'   => $search,
                     'compare' => 'LIKE',
                 ),
+                array(
+                    'key'     => 'first_name',
+                    'value'   => $search,
+                    'compare' => 'LIKE',
+                ),
+                array(
+                    'key'     => 'last_name',
+                    'value'   => $search,
+                    'compare' => 'LIKE',
+                ),
             );
+            // WP_User_Query combines search + meta_query with AND by default.
+            // We need OR across all of them, so use a custom approach:
+            // Remove the built-in search and rely on meta_query + a filter.
+            unset( $args['search'], $args['search_columns'] );
+
+            // Instead, get IDs that match email/display_name separately.
+            $email_match_args = array(
+                'role'           => 'wholesale_customer',
+                'search'         => '*' . $search . '*',
+                'search_columns' => array( 'user_email', 'display_name' ),
+                'fields'         => 'ID',
+            );
+            $email_matched_ids = get_users( $email_match_args );
+
+            $meta_match_args = array(
+                'role'       => 'wholesale_customer',
+                'fields'     => 'ID',
+                'meta_query' => array(
+                    'relation' => 'OR',
+                    array(
+                        'key'     => 'slw_business_name',
+                        'value'   => $search,
+                        'compare' => 'LIKE',
+                    ),
+                    array(
+                        'key'     => 'first_name',
+                        'value'   => $search,
+                        'compare' => 'LIKE',
+                    ),
+                    array(
+                        'key'     => 'last_name',
+                        'value'   => $search,
+                        'compare' => 'LIKE',
+                    ),
+                ),
+            );
+            $meta_matched_ids = get_users( $meta_match_args );
+
+            $matched_ids = array_unique( array_merge( $email_matched_ids, $meta_matched_ids ) );
+
+            if ( empty( $matched_ids ) ) {
+                $matched_ids = array( 0 ); // Force empty result set.
+            }
+
+            $args['include'] = $matched_ids;
         }
 
         $user_query  = new WP_User_Query( $args );
@@ -95,6 +186,8 @@ class SLW_Customers_Page {
         $total_users = $user_query->get_total();
         $total_pages = ceil( $total_users / $per_page );
         ?>
+
+        <?php $export_url = wp_nonce_url( admin_url( 'admin.php?page=slw-customers&action=export_csv' ), 'slw_export_customers' ); ?>
 
         <!-- Search Box -->
         <div class="slw-admin-card" style="padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;">
@@ -111,9 +204,12 @@ class SLW_Customers_Page {
                     <a href="<?php echo esc_url( admin_url( 'admin.php?page=slw-customers&tab=customers' ) ); ?>" class="button">Clear</a>
                 <?php endif; ?>
             </form>
-            <span style="color: #628393; font-size: 13px;">
-                <?php echo esc_html( $total_users ); ?> customer<?php echo $total_users !== 1 ? 's' : ''; ?>
-            </span>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <a href="<?php echo esc_url( $export_url ); ?>" class="page-title-action">Export CSV</a>
+                <span style="color: #628393; font-size: 13px;">
+                    <?php echo esc_html( $total_users ); ?> customer<?php echo $total_users !== 1 ? 's' : ''; ?>
+                </span>
+            </div>
         </div>
 
         <!-- Customers Table -->
@@ -139,6 +235,33 @@ class SLW_Customers_Page {
                             </td>
                         </tr>
                     <?php else : ?>
+                        <?php
+                        // Batch query order counts and last order dates for all customers on this page.
+                        $user_ids = wp_list_pluck( $customers, 'ID' );
+                        $order_counts = array();
+                        $last_orders  = array();
+                        foreach ( $user_ids as $uid ) {
+                            $order_counts[ $uid ] = 0;
+                            $last_orders[ $uid ]  = null;
+                        }
+                        $all_order_ids = wc_get_orders( array(
+                            'customer_id' => $user_ids,
+                            'limit'       => -1,
+                            'return'      => 'ids',
+                            'status'      => array( 'wc-processing', 'wc-completed', 'wc-on-hold', 'wc-pending', 'wc-cancelled', 'wc-refunded', 'wc-failed' ),
+                        ) );
+                        foreach ( $all_order_ids as $oid ) {
+                            $order = wc_get_order( $oid );
+                            if ( ! $order ) continue;
+                            $uid = $order->get_user_id();
+                            if ( ! isset( $order_counts[ $uid ] ) ) continue;
+                            $order_counts[ $uid ] = ( $order_counts[ $uid ] ?? 0 ) + 1;
+                            $date = $order->get_date_created();
+                            if ( $date && ( ! isset( $last_orders[ $uid ] ) || $date > $last_orders[ $uid ] ) ) {
+                                $last_orders[ $uid ] = $date;
+                            }
+                        }
+                        ?>
                         <?php foreach ( $customers as $customer ) : ?>
                             <?php
                             $user_id       = $customer->ID;
@@ -149,26 +272,10 @@ class SLW_Customers_Page {
                             $tier          = class_exists( 'SLW_Tiers' ) ? SLW_Tiers::get_user_tier( $user_id ) : 'standard';
                             $net_terms     = class_exists( 'SLW_Gateway_Net30' ) ? SLW_Gateway_Net30::get_user_net_terms( $user_id ) : 0;
 
-                            // Order count and last order date.
-                            $order_ids  = wc_get_orders( array(
-                                'customer' => $user_id,
-                                'return'   => 'ids',
-                                'limit'    => -1,
-                            ) );
-                            $order_count = count( $order_ids );
-
-                            $last_order_date = '&mdash;';
-                            if ( $order_count > 0 ) {
-                                $latest_orders = wc_get_orders( array(
-                                    'customer' => $user_id,
-                                    'limit'    => 1,
-                                    'orderby'  => 'date',
-                                    'order'    => 'DESC',
-                                ) );
-                                if ( ! empty( $latest_orders ) ) {
-                                    $last_order_date = $latest_orders[0]->get_date_created()->date_i18n( get_option( 'date_format' ) );
-                                }
-                            }
+                            $order_count     = $order_counts[ $user_id ] ?? 0;
+                            $last_order_date = isset( $last_orders[ $user_id ] ) && $last_orders[ $user_id ]
+                                ? $last_orders[ $user_id ]->date_i18n( get_option( 'date_format' ) )
+                                : '&mdash;';
                             ?>
                             <tr>
                                 <td><strong><?php echo esc_html( $full_name ); ?></strong></td>

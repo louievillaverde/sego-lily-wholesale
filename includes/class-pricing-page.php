@@ -139,16 +139,16 @@ class SLW_Pricing_Page {
                     </ul>
                 </div>
 
+                <!-- Section 3: Per-Product Overrides (editable) -->
+                <div class="slw-admin-card" style="padding:20px 24px;margin-bottom:24px;">
+                    <h2 class="slw-admin-card__heading" style="margin-bottom:16px;">Per-Product Overrides</h2>
+                    <p style="color:#628393;margin-bottom:16px;">Set custom wholesale pricing, minimum quantities, and case pack sizes per product. Changes here are saved along with the rest of the pricing settings.</p>
+
+                    <?php self::render_product_overrides_table(); ?>
+                </div>
+
                 <?php submit_button( 'Save Pricing Settings' ); ?>
             </form>
-
-            <!-- Section 3: Per-Product Overview (read-only) -->
-            <div class="slw-admin-card" style="padding:20px 24px;margin-bottom:24px;">
-                <h2 class="slw-admin-card__heading" style="margin-bottom:16px;">Per-Product Overrides</h2>
-                <p style="color:#628393;margin-bottom:16px;">Products with custom wholesale pricing, minimum quantities, or case pack sizes. Edit these values on each product's edit page.</p>
-
-                <?php self::render_product_overrides_table(); ?>
-            </div>
         </div>
 
         <script>
@@ -237,57 +237,92 @@ class SLW_Pricing_Page {
 
         update_option( 'slw_wholesale_tiers', $tiers );
 
+        // Save per-product overrides
+        if ( isset( $_POST['slw_product_price'] ) && is_array( $_POST['slw_product_price'] ) ) {
+            foreach ( $_POST['slw_product_price'] as $pid => $price ) {
+                $pid = absint( $pid );
+                if ( $pid <= 0 ) continue;
+                update_post_meta( $pid, '_slw_wholesale_price', wc_clean( $price ) );
+            }
+        }
+        if ( isset( $_POST['slw_product_min'] ) && is_array( $_POST['slw_product_min'] ) ) {
+            foreach ( $_POST['slw_product_min'] as $pid => $min ) {
+                $pid = absint( $pid );
+                if ( $pid <= 0 ) continue;
+                update_post_meta( $pid, '_slw_minimum_qty', wc_clean( $min ) );
+            }
+        }
+        if ( isset( $_POST['slw_product_case'] ) && is_array( $_POST['slw_product_case'] ) ) {
+            foreach ( $_POST['slw_product_case'] as $pid => $case ) {
+                $pid = absint( $pid );
+                if ( $pid <= 0 ) continue;
+                update_post_meta( $pid, '_slw_case_pack_size', wc_clean( $case ) );
+            }
+        }
+
+        // Save new product override (from "Add Product" row)
+        if ( ! empty( $_POST['slw_new_product_id'] ) ) {
+            $new_pid = absint( $_POST['slw_new_product_id'] );
+            if ( $new_pid > 0 && get_post_type( $new_pid ) === 'product' ) {
+                if ( ! empty( $_POST['slw_new_product_price'] ) ) {
+                    update_post_meta( $new_pid, '_slw_wholesale_price', wc_clean( $_POST['slw_new_product_price'] ) );
+                }
+                if ( ! empty( $_POST['slw_new_product_min'] ) ) {
+                    update_post_meta( $new_pid, '_slw_minimum_qty', wc_clean( $_POST['slw_new_product_min'] ) );
+                }
+                if ( ! empty( $_POST['slw_new_product_case'] ) ) {
+                    update_post_meta( $new_pid, '_slw_case_pack_size', wc_clean( $_POST['slw_new_product_case'] ) );
+                }
+            }
+        }
+
         // Redirect back with success flag
         wp_redirect( add_query_arg( 'slw_pricing_saved', '1', wp_get_referer() ? wp_get_referer() : admin_url( 'admin.php?page=slw-pricing' ) ) );
         exit;
     }
 
     /**
-     * Render the read-only per-product overrides table.
+     * Render the editable per-product overrides table with pagination.
      */
     private static function render_product_overrides_table() {
+        $paged = isset( $_GET['slw_prod_page'] ) ? max( 1, absint( $_GET['slw_prod_page'] ) ) : 1;
+        $per_page = 20;
+
         $args = array(
-            'post_type'      => 'product',
+            'post_type'      => array( 'product' ),
             'post_status'    => 'publish',
-            'posts_per_page' => -1,
-            'meta_query'     => array(
-                'relation' => 'OR',
+            'posts_per_page' => $per_page,
+            'paged'          => $paged,
+            'orderby'        => 'title',
+            'order'          => 'ASC',
+            'tax_query'      => array(
                 array(
-                    'key'     => '_slw_wholesale_price',
-                    'value'   => '',
-                    'compare' => '!=',
-                ),
-                array(
-                    'key'     => '_slw_minimum_qty',
-                    'value'   => '0',
-                    'compare' => '>',
-                    'type'    => 'NUMERIC',
-                ),
-                array(
-                    'key'     => '_slw_case_pack_size',
-                    'value'   => '0',
-                    'compare' => '>',
-                    'type'    => 'NUMERIC',
+                    'taxonomy' => 'product_type',
+                    'field'    => 'slug',
+                    'terms'    => array( 'simple', 'variable' ),
                 ),
             ),
-            'orderby' => 'title',
-            'order'   => 'ASC',
         );
 
-        $products = get_posts( $args );
+        $query = new WP_Query( $args );
+        $products = $query->posts;
+        $total_pages = $query->max_num_pages;
+        $total_products = $query->found_posts;
 
         if ( empty( $products ) ) {
-            echo '<p style="color:#888;font-style:italic;">No products have custom wholesale pricing overrides. You can set these on individual product edit pages.</p>';
+            echo '<p style="color:#888;font-style:italic;">No published products found.</p>';
             return;
         }
 
+        $base_url = admin_url( 'admin.php?page=slw-pricing' );
         ?>
+        <p style="color:#888;margin-bottom:8px;">Showing page <?php echo $paged; ?> of <?php echo $total_pages; ?> (<?php echo $total_products; ?> products)</p>
         <table class="widefat fixed striped" style="max-width:900px;">
             <thead>
                 <tr>
                     <th style="width:30%;">Product Name</th>
                     <th style="width:15%;">SKU</th>
-                    <th style="width:20%;">Wholesale Price Override</th>
+                    <th style="width:20%;">Wholesale Price ($)</th>
                     <th style="width:15%;">Min Qty</th>
                     <th style="width:20%;">Case Pack Size</th>
                 </tr>
@@ -297,25 +332,62 @@ class SLW_Pricing_Page {
                     $product = wc_get_product( $post->ID );
                     if ( ! $product ) continue;
 
-                    $wholesale_price = get_post_meta( $post->ID, '_slw_wholesale_price', true );
-                    $min_qty         = get_post_meta( $post->ID, '_slw_minimum_qty', true );
-                    $case_pack       = get_post_meta( $post->ID, '_slw_case_pack_size', true );
-                    $edit_url        = get_edit_post_link( $post->ID );
+                    $pid             = $post->ID;
+                    $title           = $product->get_name();
+                    $wholesale_price = get_post_meta( $pid, '_slw_wholesale_price', true );
+                    $min_qty         = get_post_meta( $pid, '_slw_minimum_qty', true );
+                    $case_pack       = get_post_meta( $pid, '_slw_case_pack_size', true );
                 ?>
                 <tr>
                     <td>
-                        <a href="<?php echo esc_url( $edit_url ); ?>" style="color:#386174;text-decoration:none;font-weight:500;">
-                            <?php echo esc_html( $product->get_name() ); ?>
-                        </a>
+                        <a href="<?php echo esc_url( admin_url( 'post.php?post=' . $pid . '&action=edit' ) ); ?>" style="color:#386174;text-decoration:none;font-weight:500;"><?php echo esc_html( $title ); ?></a>
                     </td>
                     <td><?php echo esc_html( $product->get_sku() ?: '—' ); ?></td>
-                    <td><?php echo $wholesale_price ? wp_kses_post( wc_price( $wholesale_price ) ) : '—'; ?></td>
-                    <td><?php echo $min_qty ? esc_html( $min_qty ) : '—'; ?></td>
-                    <td><?php echo $case_pack ? esc_html( $case_pack ) : '—'; ?></td>
+                    <td>
+                        <input type="number" name="slw_product_price[<?php echo $pid; ?>]" value="<?php echo esc_attr( $wholesale_price ); ?>" step="0.01" min="0" style="width:80px;" />
+                    </td>
+                    <td>
+                        <input type="number" name="slw_product_min[<?php echo $pid; ?>]" value="<?php echo esc_attr( $min_qty ); ?>" step="1" min="0" style="width:60px;" />
+                    </td>
+                    <td>
+                        <input type="number" name="slw_product_case[<?php echo $pid; ?>]" value="<?php echo esc_attr( $case_pack ); ?>" step="1" min="0" style="width:60px;" />
+                    </td>
                 </tr>
                 <?php endforeach; ?>
+
+                <!-- Add Product row -->
+                <tr style="background:#f0f8f0;">
+                    <td colspan="2">
+                        <label style="font-weight:500;color:#386174;">Add override by Product ID:</label>
+                        <input type="number" name="slw_new_product_id" value="" min="1" step="1" style="width:80px;margin-left:6px;" placeholder="ID" />
+                    </td>
+                    <td>
+                        <input type="number" name="slw_new_product_price" value="" step="0.01" min="0" style="width:80px;" placeholder="Price" />
+                    </td>
+                    <td>
+                        <input type="number" name="slw_new_product_min" value="" step="1" min="0" style="width:60px;" placeholder="Min" />
+                    </td>
+                    <td>
+                        <input type="number" name="slw_new_product_case" value="" step="1" min="0" style="width:60px;" placeholder="Case" />
+                    </td>
+                </tr>
             </tbody>
         </table>
+
+        <?php if ( $total_pages > 1 ) : ?>
+        <div style="margin-top:12px;">
+            <?php
+            for ( $i = 1; $i <= $total_pages; $i++ ) {
+                $page_url = add_query_arg( 'slw_prod_page', $i, $base_url );
+                if ( $i === $paged ) {
+                    echo '<strong style="margin-right:8px;padding:4px 10px;background:#386174;color:#fff;border-radius:3px;">' . $i . '</strong>';
+                } else {
+                    echo '<a href="' . esc_url( $page_url ) . '" style="margin-right:8px;padding:4px 10px;border:1px solid #ccc;border-radius:3px;text-decoration:none;color:#386174;">' . $i . '</a>';
+                }
+            }
+            ?>
+        </div>
+        <?php endif; ?>
         <?php
     }
 }

@@ -329,9 +329,27 @@ class SLW_RFQ {
 	}
 
 	/**
-	 * Render the RFQ list view.
+	 * Render just the RFQ list content (filter bar + table) without the
+	 * wrapping <div class="wrap"> and <h1>. Used when the list is embedded
+	 * inside another page (e.g. the Wholesale Orders tabs).
 	 */
-	private static function render_rfq_list( $table ) {
+	public static function render_rfq_list_only() {
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			return;
+		}
+
+		global $wpdb;
+		$table = $wpdb->prefix . 'slw_rfq';
+		self::render_rfq_list( $table, false );
+	}
+
+	/**
+	 * Render the RFQ list view.
+	 *
+	 * @param string $table  The DB table name.
+	 * @param bool   $wrap   Whether to output the <div class="wrap"> and <h1>. Default true.
+	 */
+	private static function render_rfq_list( $table, $wrap = true ) {
 		global $wpdb;
 
 		$status_filter = sanitize_text_field( $_GET['status'] ?? 'all' );
@@ -348,8 +366,10 @@ class SLW_RFQ {
 		$counts = $wpdb->get_results( "SELECT status, COUNT(*) as count FROM {$table} GROUP BY status", OBJECT_K );
 		$total  = array_sum( wp_list_pluck( $counts, 'count' ) );
 		?>
+		<?php if ( $wrap ) : ?>
 		<div class="wrap">
 			<h1>Quote Requests</h1>
+		<?php endif; ?>
 
 			<!-- Summary Stats -->
 			<?php
@@ -426,7 +446,9 @@ class SLW_RFQ {
 					<?php endif; ?>
 				</tbody>
 			</table>
+		<?php if ( $wrap ) : ?>
 		</div>
+		<?php endif; ?>
 
 		<style>
 			.slw-status-pending  { color: #996800; font-weight: bold; }

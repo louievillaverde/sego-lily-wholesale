@@ -95,34 +95,11 @@ class SLW_Settings {
                 <?php wp_nonce_field( 'slw_settings_nonce' ); ?>
                 <input type="hidden" name="slw_settings_save" value="1" />
 
+                <div class="slw-admin-card" style="padding:16px 20px;background:#fff8e1;border:1px solid #ffe082;border-radius:6px;margin-bottom:20px;">
+                    <strong>Pricing settings have moved.</strong> Discount percentage, order minimums, and tiers are now managed on the <a href="<?php echo esc_url( admin_url( 'admin.php?page=slw-pricing' ) ); ?>">Pricing page</a>.
+                </div>
+
                 <table class="form-table">
-                    <tr>
-                        <th scope="row"><label for="slw_discount_percent">Wholesale Discount (%)</label></th>
-                        <td>
-                            <input type="number" id="slw_discount_percent" name="slw_discount_percent"
-                                   value="<?php echo esc_attr( get_option( 'slw_discount_percent', 50 ) ); ?>"
-                                   min="1" max="99" step="1" class="small-text" />
-                            <p class="description">Percentage off retail price for wholesale customers. Default: 50%.</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row"><label for="slw_first_order_minimum">First Order Minimum ($)</label></th>
-                        <td>
-                            <input type="number" id="slw_first_order_minimum" name="slw_first_order_minimum"
-                                   value="<?php echo esc_attr( get_option( 'slw_first_order_minimum', 300 ) ); ?>"
-                                   min="0" step="1" class="small-text" />
-                            <p class="description">Minimum cart total required for a wholesale customer's first order.</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row"><label for="slw_reorder_minimum">Reorder Minimum ($)</label></th>
-                        <td>
-                            <input type="number" id="slw_reorder_minimum" name="slw_reorder_minimum"
-                                   value="<?php echo esc_attr( get_option( 'slw_reorder_minimum', 0 ) ); ?>"
-                                   min="0" step="1" class="small-text" />
-                            <p class="description">Minimum cart total for subsequent orders. Set to 0 for no minimum on reorders.</p>
-                        </td>
-                    </tr>
                     <tr>
                         <th scope="row"><label for="slw_webhook_url">Automation Webhook URL</label></th>
                         <td>
