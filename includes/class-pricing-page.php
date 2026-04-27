@@ -288,26 +288,19 @@ class SLW_Pricing_Page {
         $paged = isset( $_GET['slw_prod_page'] ) ? max( 1, absint( $_GET['slw_prod_page'] ) ) : 1;
         $per_page = 20;
 
-        $args = array(
-            'post_type'      => array( 'product' ),
-            'post_status'    => 'publish',
-            'posts_per_page' => $per_page,
-            'paged'          => $paged,
-            'orderby'        => 'title',
-            'order'          => 'ASC',
-            'tax_query'      => array(
-                array(
-                    'taxonomy' => 'product_type',
-                    'field'    => 'slug',
-                    'terms'    => array( 'simple', 'variable' ),
-                ),
-            ),
-        );
+        $results = wc_get_products( array(
+            'status'   => 'publish',
+            'type'     => array( 'simple', 'variable' ),
+            'limit'    => $per_page,
+            'page'     => $paged,
+            'orderby'  => 'title',
+            'order'    => 'ASC',
+            'paginate' => true,
+        ) );
 
-        $query = new WP_Query( $args );
-        $products = $query->posts;
-        $total_pages = $query->max_num_pages;
-        $total_products = $query->found_posts;
+        $products = $results->products;
+        $total_pages = $results->max_num_pages;
+        $total_products = $results->total;
 
         if ( empty( $products ) ) {
             echo '<p style="color:#888;font-style:italic;">No published products found.</p>';
@@ -316,7 +309,7 @@ class SLW_Pricing_Page {
 
         $base_url = admin_url( 'admin.php?page=slw-pricing' );
         ?>
-        <p style="color:#888;margin-bottom:8px;">Showing page <?php echo $paged; ?> of <?php echo $total_pages; ?> (<?php echo $total_products; ?> products)</p>
+        <p style="color:#888;margin-bottom:8px;">Showing page <?php echo esc_html( $paged ); ?> of <?php echo esc_html( $total_pages ); ?> (<?php echo esc_html( $total_products ); ?> products)</p>
         <table class="widefat fixed striped" style="max-width:900px;">
             <thead>
                 <tr>
@@ -328,11 +321,10 @@ class SLW_Pricing_Page {
                 </tr>
             </thead>
             <tbody>
-                <?php foreach ( $products as $post ) :
-                    $product = wc_get_product( $post->ID );
+                <?php foreach ( $products as $product ) :
                     if ( ! $product ) continue;
 
-                    $pid             = $post->ID;
+                    $pid             = $product->get_id();
                     $title           = $product->get_name();
                     $wholesale_price = get_post_meta( $pid, '_slw_wholesale_price', true );
                     $min_qty         = get_post_meta( $pid, '_slw_minimum_qty', true );
