@@ -704,7 +704,7 @@ class SLW_Email_Sequences {
                             'wholesale-outreach' => array(
                                 'name'    => 'Wholesale Outreach',
                                 'subject' => "Carry {$brand} in your shop?",
-                                'body'    => "Hi [Name],\n\nI came across [Shop Name] and love what you're doing. I think {$brand} products would be a great fit for your customers.\n\nI'm {$owner}. We make small-batch, clean-ingredient skincare and our wholesale partners get 50% off retail.\n\nHere's our wholesale application if you want to take a look:\n{$w_url}\n\nHappy to send over a price list or hop on a quick call if that's easier.\n\n{$owner}",
+                                'body'    => "Hi {contactfield=firstname},\n\nI came across {contactfield=company} and love what you're doing. I think {$brand} products would be a great fit for your customers.\n\nI'm {$owner}. We make small-batch, clean-ingredient skincare and our wholesale partners get 50% off retail.\n\nHere's our wholesale application if you want to take a look:\n{$w_url}\n\nHappy to send over a price list or hop on a quick call if that's easier.\n\n{$owner}",
                             ),
                             'quarterly-newsletter' => array(
                                 'name'    => 'Quarterly Newsletter',
@@ -1682,42 +1682,40 @@ class SLW_Email_Sequences {
      * @return string         Complete HTML email.
      */
     public static function build_branded_email( $subject, $body ) {
-        $from_name = class_exists( 'SLW_Email_Settings' ) ? SLW_Email_Settings::get( 'from_name' ) : get_bloginfo( 'name' );
-        $signature = class_exists( 'SLW_Email_Settings' ) ? SLW_Email_Settings::get_signature() : '';
+        $brand_name = class_exists( 'SLW_Email_Settings' ) ? SLW_Email_Settings::get_business_name() : get_bloginfo( 'name' );
+        $owner_name = class_exists( 'SLW_Email_Settings' ) ? SLW_Email_Settings::get( 'owner_name' ) : '';
+        $site_url   = home_url();
+
+        // Signature block (matches Mautic onboarding emails)
+        $sig = '';
+        if ( $owner_name ) {
+            $sig = '<td style="padding:20px 30px;border-top:1px solid #e0ddd8;font-size:14px;line-height:1.6;color:#386174;font-family:Georgia,\'Times New Roman\',serif;">'
+                 . '<strong>' . esc_html( $owner_name ) . '</strong><br />'
+                 . 'Founder, <a href="' . esc_url( $site_url ) . '" style="color:#386174;">' . esc_html( $brand_name ) . '</a><br />'
+                 . '<span style="color:#628393;font-size:13px;">Montana Made. Science Backed.</span>'
+                 . '</td>';
+        }
 
         $html = '<!DOCTYPE html>
 <html>
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>' . esc_html( $subject ) . '</title>
-</head>
-<body style="margin:0;padding:0;background:#f4f4f4;font-family:Georgia,\'Times New Roman\',serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f4f4;padding:20px 0;">
-<tr><td align="center">
-<table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:8px;overflow:hidden;">
-    <!-- Header -->
-    <tr>
-        <td style="background:#386174;padding:28px 32px;text-align:center;">
-            <h1 style="margin:0;font-family:Georgia,\'Times New Roman\',serif;font-size:24px;color:#F7F6F3;">'
-            . esc_html( $from_name ) .
-            '</h1>
-        </td>
-    </tr>
-    <!-- Body -->
-    <tr>
-        <td style="padding:32px;font-family:Georgia,\'Times New Roman\',serif;font-size:16px;line-height:1.6;color:#2C2C2C;">'
-            . $body .
-            ( $signature ? '<br><br><div style="border-top:1px solid #e0ddd8;padding-top:16px;margin-top:16px;color:#628393;font-size:14px;">' . nl2br( esc_html( $signature ) ) . '</div>' : '' ) .
-        '</td>
-    </tr>
-    <!-- Footer -->
-    <tr>
-        <td style="background:#1E2A30;padding:20px 32px;text-align:center;font-size:12px;color:#628393;">
-            <p style="margin:0;">' . esc_html( $from_name ) . ' &middot; Wholesale Partners</p>
-        </td>
-    </tr>
+<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
+<body style="margin:0;padding:0;background-color:#F7F6F3;font-family:Georgia,\'Times New Roman\',serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#F7F6F3;">
+<tr><td align="center" style="padding:30px 15px;">
+<table width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;border-radius:4px;overflow:hidden;">
+<tr><td style="background-color:#386174;padding:20px 30px;">
+<span style="color:#F7F6F3;font-size:18px;font-family:Georgia,\'Times New Roman\',serif;letter-spacing:1px;">' . esc_html( strtoupper( $brand_name ) ) . '</span>
+</td></tr>
+<tr><td style="padding:30px;color:#2C2C2C;font-size:15px;line-height:1.7;font-family:Georgia,\'Times New Roman\',serif;">'
+. $body .
+'</td></tr>'
+. ( $sig ? '<tr>' . $sig . '</tr>' : '' ) .
+'</table>
+</td></tr>
 </table>
+<table width="100%" cellpadding="0" cellspacing="0" style="background-color:#F7F6F3;">
+<tr><td align="center" style="padding:15px 15px 30px;font-size:12px;color:#8A9499;font-family:Georgia,\'Times New Roman\',serif;line-height:1.5;">
+' . esc_html( $brand_name ) . ' &bull; Montana, USA
 </td></tr>
 </table>
 </body>

@@ -183,13 +183,7 @@ class SLW_Email_Approve {
         $body .= $owner ? "— {$owner}" : "— The {$business_name} Team";
 
         $headers = class_exists( 'SLW_Email_Settings' ) ? SLW_Email_Settings::get_headers() : array();
-        if ( class_exists( 'SLW_Email_Sequences' ) && method_exists( 'SLW_Email_Sequences', 'build_branded_email' ) ) {
-            $html_body = SLW_Email_Sequences::build_branded_email( $subject, nl2br( $body ) );
-            $headers[] = 'Content-Type: text/html; charset=UTF-8';
-            wp_mail( $app->email, $subject, $html_body, $headers );
-        } else {
-            wp_mail( $app->email, $subject, $body, $headers );
-        }
+        wp_mail( $app->email, $subject, $body, $headers );
 
         // Fire webhook for Mautic
         if ( class_exists( 'SLW_Webhooks' ) ) {

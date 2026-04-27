@@ -35,7 +35,8 @@ class SLW_Referral_Dashboard {
 
         if ( empty( $referrer_ids ) ) {
             echo '<div class="slw-admin-card" style="text-align:center;padding:40px 20px;">';
-            echo '<p style="color:#628393;font-size:15px;">No referral codes have been generated yet. Codes are created automatically after a retail customer completes their first order.</p>';
+            echo '<p style="color:#628393;font-size:15px;">No referral codes generated yet.</p>';
+            echo '<p style="color:#628393;font-size:13px;">Referral codes are created automatically when a retail customer completes their first order. Customers who come through the trade show quiz funnel and make a purchase will get 3 unique referral codes to share. Their friends get 15% off, and the referrer earns reward coupons as codes are redeemed.</p>';
             echo '</div>';
             return;
         }

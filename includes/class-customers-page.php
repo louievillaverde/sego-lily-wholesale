@@ -55,8 +55,8 @@ class SLW_Customers_Page {
         $tabs = array(
             'customers' => 'Customers',
             'leads'     => 'Leads',
-            'referrals' => 'Referrals',
             'import'    => 'Import',
+            'referrals' => 'Referrals',
         );
         ?>
         <div class="wrap slw-admin-dashboard">
