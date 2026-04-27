@@ -66,11 +66,13 @@ class SLW_Order_Form {
 
         $added = 0;
         foreach ( $items as $item ) {
-            $product_id = absint( $item['product_id'] ?? 0 );
-            $quantity   = absint( $item['quantity'] ?? 0 );
+            $product_id   = absint( $item['product_id'] ?? 0 );
+            $quantity     = absint( $item['quantity'] ?? 0 );
+            $variation_id = absint( $item['variation_id'] ?? 0 );
+            $variation    = isset( $item['variation'] ) && is_array( $item['variation'] ) ? array_map( 'sanitize_text_field', $item['variation'] ) : array();
 
             if ( $product_id > 0 && $quantity > 0 ) {
-                $result = WC()->cart->add_to_cart( $product_id, $quantity );
+                $result = WC()->cart->add_to_cart( $product_id, $quantity, $variation_id, $variation );
                 if ( $result ) {
                     $added++;
                 }

@@ -28,6 +28,9 @@ class SLW_Settings {
         'slw_booth_retail_offer'            => array( 'sanitize' => 'sanitize_text_field',  'default' => '15% off your first order' ),
         'slw_booth_retail_url'              => array( 'sanitize' => 'esc_url_raw',          'default' => '' ),
         'slw_booth_wholesale_heading'       => array( 'sanitize' => 'sanitize_text_field',  'default' => "Welcome! Here's our wholesale price list" ),
+        // Product Visibility
+        'slw_wholesale_only_categories'     => array( 'sanitize' => 'array',               'default' => array() ),
+        'slw_order_form_categories'         => array( 'sanitize' => 'array',               'default' => array() ),
         // Store Notice
         'slw_store_notice_enabled'          => array( 'sanitize' => 'rest_sanitize_boolean','default' => false ),
         'slw_store_notice_text'             => array( 'sanitize' => 'wp_kses_post',        'default' => '' ),
@@ -194,6 +197,10 @@ class SLW_Settings {
                     </tr>
                 </table>
 
+                <h2 class="title">Product Visibility</h2>
+                <p>Control which product categories are visible to retail vs. wholesale customers, and which appear on the wholesale order form.</p>
+                <?php self::render_category_checkboxes(); ?>
+
                 <h2 class="title">Store Notice</h2>
                 <p>Display a banner at the top of the wholesale order form and dashboard.</p>
                 <table class="form-table">
@@ -310,6 +317,51 @@ class SLW_Settings {
                         </label>
                     <?php endforeach; ?>
                     <p class="description">Leave all unchecked to allow every method.</p>
+                </td>
+            </tr>
+        </table>
+        <?php
+    }
+
+    /**
+     * Render checkbox lists for Wholesale-Only Categories and Order Form Categories.
+     */
+    private static function render_category_checkboxes() {
+        $terms = get_terms( array( 'taxonomy' => 'product_cat', 'hide_empty' => false ) );
+
+        if ( is_wp_error( $terms ) || empty( $terms ) ) {
+            echo '<p><em>No product categories found. Create categories in Products &gt; Categories first.</em></p>';
+            return;
+        }
+
+        $wholesale_only_cats  = (array) get_option( 'slw_wholesale_only_categories', array() );
+        $order_form_cats      = (array) get_option( 'slw_order_form_categories', array() );
+        ?>
+        <table class="form-table">
+            <tr>
+                <th scope="row">Wholesale-Only Categories</th>
+                <td>
+                    <?php foreach ( $terms as $term ) : ?>
+                        <label style="display:block;margin-bottom:6px;">
+                            <input type="checkbox" name="slw_wholesale_only_categories[]" value="<?php echo esc_attr( $term->term_id ); ?>"
+                                <?php checked( in_array( (string) $term->term_id, $wholesale_only_cats, false ) ); ?> />
+                            <?php echo esc_html( $term->name ); ?>
+                        </label>
+                    <?php endforeach; ?>
+                    <p class="description">Products in these categories are hidden from retail customers but visible to wholesale users.</p>
+                </td>
+            </tr>
+            <tr>
+                <th scope="row">Order Form Categories</th>
+                <td>
+                    <?php foreach ( $terms as $term ) : ?>
+                        <label style="display:block;margin-bottom:6px;">
+                            <input type="checkbox" name="slw_order_form_categories[]" value="<?php echo esc_attr( $term->term_id ); ?>"
+                                <?php checked( in_array( (string) $term->term_id, $order_form_cats, false ) ); ?> />
+                            <?php echo esc_html( $term->name ); ?>
+                        </label>
+                    <?php endforeach; ?>
+                    <p class="description">Only these categories appear on the wholesale order form. Leave all unchecked to show every category.</p>
                 </td>
             </tr>
         </table>

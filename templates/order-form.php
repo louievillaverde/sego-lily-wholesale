@@ -3,8 +3,8 @@
  * Template: Wholesale Order Form
  *
  * Rendered by the [sego_wholesale_order_form] shortcode.
- * Shows all products in a table with quantity inputs. Wholesale customers
- * can add individual items or bulk-add everything at once.
+ * Products grouped by category with inline variation rows.
+ * Each category is collapsible with its own "Add to Cart" button.
  */
 
 if ( ! defined( 'ABSPATH' ) ) exit;
@@ -17,12 +17,34 @@ $nonce = wp_create_nonce( 'slw_order_form' );
 $ajax_url = admin_url( 'admin-ajax.php' );
 
 // Get all published products
-$products = wc_get_products( array(
-    'status' => 'publish',
-    'limit'  => -1,
+$all_products = wc_get_products( array(
+    'status'  => 'publish',
+    'limit'   => -1,
     'orderby' => 'title',
     'order'   => 'ASC',
+    'type'    => array( 'simple', 'variable' ),
 ));
+
+// Filter by order form categories if configured
+$allowed_cats = get_option( 'slw_order_form_categories', array() );
+$allowed_cats = is_array( $allowed_cats ) ? array_filter( array_map( 'absint', $allowed_cats ) ) : array();
+
+// Group products by category
+$grouped = array();
+foreach ( $all_products as $product ) {
+    $terms = get_the_terms( $product->get_id(), 'product_cat' );
+    $category_name = ( $terms && ! is_wp_error( $terms ) ) ? $terms[0]->name : 'Uncategorized';
+    $category_id   = ( $terms && ! is_wp_error( $terms ) ) ? $terms[0]->term_id : 0;
+
+    // Skip if category filtering is active and this category isn't allowed
+    if ( ! empty( $allowed_cats ) && $category_id && ! in_array( $category_id, $allowed_cats, true ) ) {
+        continue;
+    }
+
+    $grouped[ $category_name ][] = $product;
+}
+ksort( $grouped );
+$products = $all_products; // keep for empty check
 ?>
 
 <div class="slw-order-form-wrap">
@@ -54,7 +76,7 @@ $products = wc_get_products( array(
     <div id="slw-order-message" class="slw-notice" style="display:none;" tabindex="-1"></div>
 
     <?php
-    // New Arrivals section — show recently published products in a card layout
+    // New Arrivals section
     $new_arrivals = class_exists( 'SLW_New_Arrivals' ) ? SLW_New_Arrivals::get_products() : array();
     if ( ! empty( $new_arrivals ) ) :
     ?>
@@ -102,130 +124,197 @@ $products = wc_get_products( array(
     </div>
     <?php endif; ?>
 
-    <?php if ( empty( $products ) ) : ?>
+    <?php if ( empty( $grouped ) ) : ?>
         <p>No products available right now. Check back soon!</p>
     <?php else : ?>
 
-    <table class="slw-product-table">
-        <thead>
-            <tr>
-                <th class="slw-col-image"></th>
-                <th class="slw-col-product">Product</th>
-                <th class="slw-col-price">Wholesale Price</th>
-                <th class="slw-col-qty">Qty</th>
-                <th class="slw-col-action"></th>
-            </tr>
-        </thead>
-        <tbody>
-            <?php foreach ( $products as $product ) :
-                // Skip grouped or external products
-                if ( ! $product->is_type( 'simple' ) && ! $product->is_type( 'variable' ) ) continue;
+    <?php foreach ( $grouped as $category_name => $cat_products ) :
+        $cat_slug = sanitize_title( $category_name );
+    ?>
+    <div class="slw-category-section" data-category="<?php echo esc_attr( $cat_slug ); ?>">
+        <div class="slw-category-header" style="display:flex;justify-content:space-between;align-items:center;background:#386174;color:#F7F6F3;padding:14px 20px;border-radius:8px 8px 0 0;margin-top:20px;cursor:pointer;" data-toggle="<?php echo esc_attr( $cat_slug ); ?>">
+            <div>
+                <h3 style="margin:0;font-size:18px;color:#F7F6F3;font-family:Georgia,'Times New Roman',serif;"><?php echo esc_html( $category_name ); ?></h3>
+                <span style="font-size:13px;opacity:0.8;"><?php echo esc_html( count( $cat_products ) ); ?> product<?php echo count( $cat_products ) !== 1 ? 's' : ''; ?></span>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;">
+                <button type="button" class="slw-btn slw-btn-small slw-add-category" data-category="<?php echo esc_attr( $cat_slug ); ?>" style="background:#D4AF37;color:#1E2A30;border:none;font-weight:700;" onclick="event.stopPropagation();">Add <?php echo esc_html( $category_name ); ?> to Cart</button>
+                <span class="slw-category-toggle" style="font-size:18px;">&#9660;</span>
+            </div>
+        </div>
 
-                $image = wp_get_attachment_image_url( $product->get_image_id(), 'thumbnail' );
-                if ( ! $image ) {
-                    $image = wc_placeholder_img_src( 'thumbnail' );
-                }
+        <div class="slw-category-body" id="slw-cat-<?php echo esc_attr( $cat_slug ); ?>">
+        <table class="slw-product-table" style="border-radius:0 0 8px 8px;margin-top:0;">
+            <thead>
+                <tr>
+                    <th class="slw-col-image"></th>
+                    <th class="slw-col-product">Product</th>
+                    <th class="slw-col-price">Wholesale Price</th>
+                    <th class="slw-col-qty">Qty</th>
+                    <th class="slw-col-action"></th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ( $cat_products as $product ) :
 
-                // For variable products, show the price range
-                if ( $product->is_type( 'variable' ) ) {
-                    $price_html = $product->get_price_html();
-                } else {
-                    $price_html = wc_price( $product->get_price() );
-                }
+                    // Variable products: render each variation as its own row
+                    if ( $product->is_type( 'variable' ) ) :
+                        $variations = $product->get_available_variations();
+                        $parent_image = wp_get_attachment_image_url( $product->get_image_id(), 'thumbnail' );
+                        if ( ! $parent_image ) {
+                            $parent_image = wc_placeholder_img_src( 'thumbnail' );
+                        }
 
-                // Build a subtitle from product attributes (scent, size, etc.)
-                $attributes = $product->get_attributes();
-                $subtitle_parts = array();
-                foreach ( $attributes as $attr ) {
-                    if ( is_object( $attr ) && method_exists( $attr, 'get_options' ) ) {
-                        $terms = $attr->get_options();
-                        if ( $attr->is_taxonomy() ) {
-                            $term_names = array();
-                            foreach ( $terms as $term_id ) {
-                                $term = get_term( $term_id );
-                                if ( $term && ! is_wp_error( $term ) ) {
-                                    $term_names[] = $term->name;
+                        // Parent product minimums apply to each variation
+                        $parent_case_pack = class_exists( 'SLW_Product_Minimums' ) ? SLW_Product_Minimums::get_case_pack_size( $product->get_id() ) : 0;
+                        $parent_min_qty   = class_exists( 'SLW_Product_Minimums' ) ? SLW_Product_Minimums::get_product_minimum( $product->get_id() ) : 0;
+
+                        foreach ( $variations as $var_data ) :
+                            $variation = wc_get_product( $var_data['variation_id'] );
+                            if ( ! $variation || ! $variation->is_in_stock() ) continue;
+
+                            // Variation image or fall back to parent
+                            $var_image = $var_data['image']['thumb_src'] ?? '';
+                            if ( ! $var_image ) {
+                                $var_image = $parent_image;
+                            }
+
+                            // Build variation name from attributes
+                            $var_attrs = $var_data['attributes'] ?? array();
+                            $var_label_parts = array();
+                            foreach ( $var_attrs as $attr_key => $attr_val ) {
+                                if ( $attr_val ) {
+                                    // Try to get the term name for taxonomy attributes
+                                    $taxonomy = str_replace( 'attribute_', '', $attr_key );
+                                    $term = get_term_by( 'slug', $attr_val, $taxonomy );
+                                    $var_label_parts[] = $term ? $term->name : ucfirst( $attr_val );
                                 }
                             }
-                            $subtitle_parts[] = implode( ', ', $term_names );
-                        } else {
-                            $subtitle_parts[] = implode( ', ', $terms );
-                        }
-                    }
-                }
-                $subtitle = implode( ' | ', $subtitle_parts );
+                            $var_label = ! empty( $var_label_parts ) ? implode( ' / ', $var_label_parts ) : $variation->get_name();
 
-                // Case pack size
-                $case_pack = class_exists( 'SLW_Product_Minimums' ) ? SLW_Product_Minimums::get_case_pack_size( $product->get_id() ) : 0;
-                $min_qty   = class_exists( 'SLW_Product_Minimums' ) ? SLW_Product_Minimums::get_product_minimum( $product->get_id() ) : 0;
-                $step      = $case_pack > 0 ? $case_pack : 1;
-                $default_qty = $case_pack > 0 ? $case_pack : 0;
-                $min_input = $case_pack > 0 ? $case_pack : 0;
-                if ( $min_qty > $min_input ) {
-                    $min_input = $min_qty;
-                }
-            ?>
-            <tr data-product-id="<?php echo esc_attr( $product->get_id() ); ?>" id="slw-product-<?php echo esc_attr( $product->get_id() ); ?>">
-                <td class="slw-col-image">
-                    <img src="<?php echo esc_url( $image ); ?>" alt="<?php echo esc_attr( $product->get_name() ); ?>" width="60" height="60" />
-                </td>
-                <td class="slw-col-product">
-                    <strong><?php echo esc_html( $product->get_name() ); ?></strong>
-                    <?php if ( $case_pack > 0 ) : ?>
-                        <br><span class="slw-case-pack-label">Case of <?php echo esc_html( $case_pack ); ?></span>
-                    <?php endif; ?>
-                    <?php if ( $subtitle ) : ?>
-                        <br><span class="slw-product-meta"><?php echo esc_html( $subtitle ); ?></span>
-                    <?php endif; ?>
-                    <?php if ( $product->get_sku() ) : ?>
-                        <br><span class="slw-product-sku">SKU: <?php echo esc_html( $product->get_sku() ); ?></span>
-                    <?php endif; ?>
-                </td>
-                <td class="slw-col-price"><?php echo $price_html; ?></td>
-                <td class="slw-col-qty">
-                    <?php if ( $product->is_type( 'simple' ) && $product->is_in_stock() ) : ?>
-                        <input type="number" class="slw-qty-input" min="<?php echo esc_attr( $min_input ); ?>" max="999" step="<?php echo esc_attr( $step ); ?>" value="<?php echo esc_attr( $default_qty ); ?>" data-product-id="<?php echo esc_attr( $product->get_id() ); ?>" />
-                    <?php elseif ( ! $product->is_in_stock() ) : ?>
-                        <span class="slw-out-of-stock">Out of stock</span>
-                    <?php else : ?>
-                        <a href="<?php echo esc_url( $product->get_permalink() ); ?>" class="slw-btn slw-btn-small">Select options</a>
-                    <?php endif; ?>
-                </td>
-                <td class="slw-col-action">
-                    <?php if ( $product->is_type( 'simple' ) && $product->is_in_stock() ) : ?>
-                        <button type="button" class="slw-btn slw-btn-small slw-add-single" data-product-id="<?php echo esc_attr( $product->get_id() ); ?>">Add</button>
-                    <?php endif; ?>
-                </td>
-            </tr>
-            <?php
-            // Product Recommendations row
-            if ( class_exists( 'SLW_Product_Recommendations' ) ) :
-                $rec_ids = SLW_Product_Recommendations::get_recommendations( $product->get_id() );
-                if ( ! empty( $rec_ids ) ) :
-                    $rec_names = array();
-                    foreach ( $rec_ids as $rec_id ) {
-                        $rec_product = wc_get_product( $rec_id );
-                        if ( $rec_product ) {
-                            $rec_names[] = '<a href="#slw-product-' . esc_attr( $rec_id ) . '" class="slw-rec-link" data-target="slw-product-' . esc_attr( $rec_id ) . '">' . esc_html( $rec_product->get_name() ) . '</a>';
+                            // Variation-level or parent-level minimums
+                            $v_case_pack = class_exists( 'SLW_Product_Minimums' ) ? SLW_Product_Minimums::get_case_pack_size( $variation->get_id() ) : 0;
+                            $v_min_qty   = class_exists( 'SLW_Product_Minimums' ) ? SLW_Product_Minimums::get_product_minimum( $variation->get_id() ) : 0;
+                            if ( $v_case_pack <= 0 ) $v_case_pack = $parent_case_pack;
+                            if ( $v_min_qty <= 0 ) $v_min_qty = $parent_min_qty;
+
+                            $v_step = $v_case_pack > 0 ? $v_case_pack : 1;
+                            $v_default = $v_case_pack > 0 ? $v_case_pack : 0;
+                            $v_min_input = $v_case_pack > 0 ? $v_case_pack : 0;
+                            if ( $v_min_qty > $v_min_input ) {
+                                $v_min_input = $v_min_qty;
+                            }
+
+                            $v_price_html = wc_price( $variation->get_price() );
+                ?>
+                <tr data-product-id="<?php echo esc_attr( $product->get_id() ); ?>" data-variation-id="<?php echo esc_attr( $variation->get_id() ); ?>" data-category="<?php echo esc_attr( $cat_slug ); ?>" id="slw-product-<?php echo esc_attr( $variation->get_id() ); ?>">
+                    <td class="slw-col-image">
+                        <img src="<?php echo esc_url( $var_image ); ?>" alt="<?php echo esc_attr( $var_label ); ?>" width="60" height="60" />
+                    </td>
+                    <td class="slw-col-product">
+                        <strong><?php echo esc_html( $product->get_name() ); ?></strong>
+                        <br><span class="slw-product-meta"><?php echo esc_html( $var_label ); ?></span>
+                        <?php if ( $v_case_pack > 0 ) : ?>
+                            <br><span class="slw-case-pack-label">Case of <?php echo esc_html( $v_case_pack ); ?></span>
+                        <?php endif; ?>
+                        <?php if ( $variation->get_sku() ) : ?>
+                            <br><span class="slw-product-sku">SKU: <?php echo esc_html( $variation->get_sku() ); ?></span>
+                        <?php endif; ?>
+                    </td>
+                    <td class="slw-col-price"><?php echo $v_price_html; ?></td>
+                    <td class="slw-col-qty">
+                        <input type="number" class="slw-qty-input" min="<?php echo esc_attr( $v_min_input ); ?>" max="999" step="<?php echo esc_attr( $v_step ); ?>" value="<?php echo esc_attr( $v_default ); ?>"
+                               data-product-id="<?php echo esc_attr( $product->get_id() ); ?>"
+                               data-variation-id="<?php echo esc_attr( $variation->get_id() ); ?>"
+                               data-variation="<?php echo esc_attr( wp_json_encode( $var_attrs ) ); ?>" />
+                    </td>
+                    <td class="slw-col-action">
+                        <button type="button" class="slw-btn slw-btn-small slw-add-single"
+                                data-product-id="<?php echo esc_attr( $product->get_id() ); ?>"
+                                data-variation-id="<?php echo esc_attr( $variation->get_id() ); ?>">Add</button>
+                    </td>
+                </tr>
+                <?php
+                        endforeach;
+
+                    // Simple products: same as before
+                    else :
+                        $image = wp_get_attachment_image_url( $product->get_image_id(), 'thumbnail' );
+                        if ( ! $image ) {
+                            $image = wc_placeholder_img_src( 'thumbnail' );
                         }
-                    }
-                    if ( ! empty( $rec_names ) ) :
-            ?>
-            <tr class="slw-recommendation-row">
-                <td colspan="5">
-                    <span class="slw-rec-dot"></span>
-                    <span class="slw-rec-label">Pairs well with:</span>
-                    <?php echo implode( ', ', $rec_names ); ?>
-                </td>
-            </tr>
-            <?php
+                        $price_html = wc_price( $product->get_price() );
+
+                        $case_pack = class_exists( 'SLW_Product_Minimums' ) ? SLW_Product_Minimums::get_case_pack_size( $product->get_id() ) : 0;
+                        $min_qty   = class_exists( 'SLW_Product_Minimums' ) ? SLW_Product_Minimums::get_product_minimum( $product->get_id() ) : 0;
+                        $step      = $case_pack > 0 ? $case_pack : 1;
+                        $default_qty = $case_pack > 0 ? $case_pack : 0;
+                        $min_input = $case_pack > 0 ? $case_pack : 0;
+                        if ( $min_qty > $min_input ) {
+                            $min_input = $min_qty;
+                        }
+                ?>
+                <tr data-product-id="<?php echo esc_attr( $product->get_id() ); ?>" data-category="<?php echo esc_attr( $cat_slug ); ?>" id="slw-product-<?php echo esc_attr( $product->get_id() ); ?>">
+                    <td class="slw-col-image">
+                        <img src="<?php echo esc_url( $image ); ?>" alt="<?php echo esc_attr( $product->get_name() ); ?>" width="60" height="60" />
+                    </td>
+                    <td class="slw-col-product">
+                        <strong><?php echo esc_html( $product->get_name() ); ?></strong>
+                        <?php if ( $case_pack > 0 ) : ?>
+                            <br><span class="slw-case-pack-label">Case of <?php echo esc_html( $case_pack ); ?></span>
+                        <?php endif; ?>
+                        <?php if ( $product->get_sku() ) : ?>
+                            <br><span class="slw-product-sku">SKU: <?php echo esc_html( $product->get_sku() ); ?></span>
+                        <?php endif; ?>
+                    </td>
+                    <td class="slw-col-price"><?php echo $price_html; ?></td>
+                    <td class="slw-col-qty">
+                        <?php if ( $product->is_in_stock() ) : ?>
+                            <input type="number" class="slw-qty-input" min="<?php echo esc_attr( $min_input ); ?>" max="999" step="<?php echo esc_attr( $step ); ?>" value="<?php echo esc_attr( $default_qty ); ?>" data-product-id="<?php echo esc_attr( $product->get_id() ); ?>" />
+                        <?php else : ?>
+                            <span class="slw-out-of-stock">Out of stock</span>
+                        <?php endif; ?>
+                    </td>
+                    <td class="slw-col-action">
+                        <?php if ( $product->is_in_stock() ) : ?>
+                            <button type="button" class="slw-btn slw-btn-small slw-add-single" data-product-id="<?php echo esc_attr( $product->get_id() ); ?>">Add</button>
+                        <?php endif; ?>
+                    </td>
+                </tr>
+                <?php
                     endif;
-                endif;
-            endif;
-            ?>
-            <?php endforeach; ?>
-        </tbody>
-    </table>
+
+                    // Product Recommendations row
+                    if ( class_exists( 'SLW_Product_Recommendations' ) ) :
+                        $rec_ids = SLW_Product_Recommendations::get_recommendations( $product->get_id() );
+                        if ( ! empty( $rec_ids ) ) :
+                            $rec_names = array();
+                            foreach ( $rec_ids as $rec_id ) {
+                                $rec_product = wc_get_product( $rec_id );
+                                if ( $rec_product ) {
+                                    $rec_names[] = '<a href="#slw-product-' . esc_attr( $rec_id ) . '" class="slw-rec-link" data-target="slw-product-' . esc_attr( $rec_id ) . '">' . esc_html( $rec_product->get_name() ) . '</a>';
+                                }
+                            }
+                            if ( ! empty( $rec_names ) ) :
+                ?>
+                <tr class="slw-recommendation-row">
+                    <td colspan="5">
+                        <span class="slw-rec-dot"></span>
+                        <span class="slw-rec-label">Pairs well with:</span>
+                        <?php echo implode( ', ', $rec_names ); ?>
+                    </td>
+                </tr>
+                <?php
+                            endif;
+                        endif;
+                    endif;
+                ?>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+        </div>
+    </div>
+    <?php endforeach; ?>
 
     <!-- Shipping Estimate -->
     <div class="slw-shipping-calculator" id="slw-shipping-calculator">
@@ -268,7 +357,34 @@ $products = wc_get_products( array(
         setTimeout(function() { msgEl.focus(); }, 300);
     }
 
-    function addToCart(items, btn) {
+    function collectItems(scope) {
+        var items = [];
+        var inputs = scope
+            ? scope.querySelectorAll('.slw-qty-input')
+            : document.querySelectorAll('.slw-qty-input');
+        inputs.forEach(function(input) {
+            var qty = parseInt(input.value) || 0;
+            if (qty > 0) {
+                var item = {
+                    product_id: input.getAttribute('data-product-id'),
+                    quantity: qty
+                };
+                var varId = input.getAttribute('data-variation-id');
+                if (varId) {
+                    item.variation_id = varId;
+                    try {
+                        item.variation = JSON.parse(input.getAttribute('data-variation') || '{}');
+                    } catch(e) {
+                        item.variation = {};
+                    }
+                }
+                items.push(item);
+            }
+        });
+        return items;
+    }
+
+    function addToCart(items, btn, origText) {
         if (btn) {
             btn.disabled = true;
             btn.textContent = 'Adding...';
@@ -297,14 +413,14 @@ $products = wc_get_products( array(
             }
             if (btn) {
                 btn.disabled = false;
-                btn.textContent = btn.id === 'slw-add-all-btn' ? 'Add All to Cart' : 'Add';
+                btn.textContent = origText || 'Add';
             }
         };
         xhr.onerror = function() {
             showMessage('Network error. Please try again.', 'error');
             if (btn) {
                 btn.disabled = false;
-                btn.textContent = btn.id === 'slw-add-all-btn' ? 'Add All to Cart' : 'Add';
+                btn.textContent = origText || 'Add';
             }
         };
         xhr.send(formData);
@@ -314,14 +430,61 @@ $products = wc_get_products( array(
     document.querySelectorAll('.slw-add-single').forEach(function(btn) {
         btn.addEventListener('click', function() {
             var productId = this.getAttribute('data-product-id');
-            var input = document.querySelector('.slw-qty-input[data-product-id="' + productId + '"]');
+            var varId = this.getAttribute('data-variation-id');
+            var selector = varId
+                ? '.slw-qty-input[data-variation-id="' + varId + '"]'
+                : '.slw-qty-input[data-product-id="' + productId + '"]:not([data-variation-id])';
+            var input = document.querySelector(selector);
+            if (!input) return;
             var qty = parseInt(input.value) || 0;
             var minVal = parseInt(input.getAttribute('min')) || 1;
             if (qty < minVal) {
                 input.value = minVal;
                 qty = minVal;
             }
-            addToCart([{ product_id: productId, quantity: qty }], this);
+            var item = { product_id: productId, quantity: qty };
+            if (varId) {
+                item.variation_id = varId;
+                try {
+                    item.variation = JSON.parse(input.getAttribute('data-variation') || '{}');
+                } catch(e) {
+                    item.variation = {};
+                }
+            }
+            addToCart([item], this, 'Add');
+        });
+    });
+
+    // Category "Add to Cart" buttons
+    document.querySelectorAll('.slw-add-category').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var cat = this.getAttribute('data-category');
+            var section = document.querySelector('.slw-category-section[data-category="' + cat + '"]');
+            if (!section) return;
+            var items = collectItems(section);
+            if (items.length === 0) {
+                showMessage('Set quantities for the products you want in this category, then click the button.', 'info');
+                return;
+            }
+            addToCart(items, this, this.textContent);
+        });
+    });
+
+    // Category header collapse/expand
+    document.querySelectorAll('.slw-category-header').forEach(function(header) {
+        header.addEventListener('click', function() {
+            var cat = this.getAttribute('data-toggle');
+            var body = document.getElementById('slw-cat-' + cat);
+            var arrow = this.querySelector('.slw-category-toggle');
+            if (body) {
+                if (body.style.display === 'none') {
+                    body.style.display = '';
+                    if (arrow) arrow.innerHTML = '&#9660;';
+                } else {
+                    body.style.display = 'none';
+                    if (arrow) arrow.innerHTML = '&#9654;';
+                }
+            }
         });
     });
 
@@ -370,21 +533,12 @@ $products = wc_get_products( array(
     var addAllBtn = document.getElementById('slw-add-all-btn');
     if (addAllBtn) {
         addAllBtn.addEventListener('click', function() {
-            var items = [];
-            document.querySelectorAll('.slw-qty-input').forEach(function(input) {
-                var qty = parseInt(input.value) || 0;
-                if (qty > 0) {
-                    items.push({
-                        product_id: input.getAttribute('data-product-id'),
-                        quantity: qty
-                    });
-                }
-            });
+            var items = collectItems(null);
             if (items.length === 0) {
                 showMessage('Set quantities for the products you want, then click Add All to Cart.', 'info');
                 return;
             }
-            addToCart(items, this);
+            addToCart(items, this, 'Add All to Cart');
         });
     }
 
@@ -447,17 +601,7 @@ $products = wc_get_products( array(
     var shipDebounceTimer = null;
 
     function getCartItems() {
-        var items = [];
-        document.querySelectorAll('.slw-qty-input').forEach(function(input) {
-            var qty = parseInt(input.value) || 0;
-            if (qty > 0) {
-                items.push({
-                    product_id: input.getAttribute('data-product-id'),
-                    quantity: qty
-                });
-            }
-        });
-        return items;
+        return collectItems(null);
     }
 
     function calculateShipping() {

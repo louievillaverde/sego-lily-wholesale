@@ -113,6 +113,8 @@ class SLW_Wholesale_Role {
     public static function filter_wholesale_only_products( $query ) {
         if ( is_admin() || ! $query->is_main_query() ) return;
         if ( slw_is_wholesale_context() ) return;  // wholesale context sees everything
+
+        // Hide individually-flagged wholesale-only products
         $meta_query = $query->get( 'meta_query' ) ?: array();
         $meta_query[] = array(
             'relation' => 'OR',
@@ -127,6 +129,19 @@ class SLW_Wholesale_Role {
             ),
         );
         $query->set( 'meta_query', $meta_query );
+
+        // Hide products in wholesale-only categories
+        $wholesale_cats = get_option( 'slw_wholesale_only_categories', array() );
+        if ( ! empty( $wholesale_cats ) ) {
+            $tax_query = $query->get( 'tax_query' ) ?: array();
+            $tax_query[] = array(
+                'taxonomy' => 'product_cat',
+                'field'    => 'term_id',
+                'terms'    => array_map( 'absint', $wholesale_cats ),
+                'operator' => 'NOT IN',
+            );
+            $query->set( 'tax_query', $tax_query );
+        }
     }
 
     /**
