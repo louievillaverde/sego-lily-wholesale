@@ -27,6 +27,27 @@ class SLW_Wholesale_Orders {
             return;
         }
 
+        $active_tab = sanitize_key( $_GET['tab'] ?? 'orders' );
+
+        ?>
+        <div class="wrap slw-wholesale-orders">
+            <h1 class="wp-heading-inline">Wholesale Orders</h1>
+            <hr class="wp-header-end">
+
+            <h2 class="nav-tab-wrapper">
+                <a href="?page=slw-orders&tab=orders" class="nav-tab <?php echo $active_tab === 'orders' ? 'nav-tab-active' : ''; ?>">Orders</a>
+                <a href="?page=slw-orders&tab=quotes" class="nav-tab <?php echo $active_tab === 'quotes' ? 'nav-tab-active' : ''; ?>">Quote Requests</a>
+            </h2>
+        </div>
+        <?php
+
+        if ( $active_tab === 'quotes' ) {
+            if ( class_exists( 'SLW_RFQ' ) ) {
+                SLW_RFQ::render_admin_page();
+            }
+            return;
+        }
+
         // Gather wholesale user IDs
         $wholesale_users = get_users( array(
             'role'   => 'wholesale_customer',

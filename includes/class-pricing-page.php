@@ -1,0 +1,321 @@
+<?php
+/**
+ * Pricing Page
+ *
+ * Consolidated admin page for all pricing-related configuration:
+ * global pricing settings, wholesale tiers, and per-product overrides.
+ */
+
+if ( ! defined( 'ABSPATH' ) ) exit;
+
+class SLW_Pricing_Page {
+
+    public static function init() {
+        add_action( 'admin_init', array( __CLASS__, 'handle_save' ) );
+    }
+
+    /**
+     * Render the consolidated pricing page.
+     */
+    public static function render_page() {
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            return;
+        }
+
+        $saved = isset( $_GET['slw_pricing_saved'] ) && $_GET['slw_pricing_saved'] === '1';
+        $tiers = SLW_Tiers::get_tiers();
+        ?>
+        <div class="wrap slw-admin-dashboard">
+            <h1>Pricing Configuration</h1>
+            <p style="color:#628393;margin-bottom:24px;">Manage global pricing, wholesale tiers, and view per-product overrides in one place.</p>
+
+            <?php if ( $saved ) : ?>
+                <div class="notice notice-success is-dismissible">
+                    <p>Pricing settings saved successfully.</p>
+                </div>
+            <?php endif; ?>
+
+            <form method="post">
+                <?php wp_nonce_field( 'slw_pricing_save' ); ?>
+                <input type="hidden" name="slw_pricing_save" value="1" />
+
+                <!-- Section 1: Global Pricing -->
+                <div class="slw-admin-card" style="padding:20px 24px;margin-bottom:24px;">
+                    <h2 class="slw-admin-card__heading" style="margin-bottom:16px;">Global Pricing</h2>
+                    <p style="color:#628393;margin-bottom:16px;">These defaults apply to all wholesale customers unless overridden by a tier or per-product setting.</p>
+
+                    <table class="form-table">
+                        <tr>
+                            <th scope="row"><label for="slw_discount_percent">Wholesale Discount (%)</label></th>
+                            <td>
+                                <input type="number" id="slw_discount_percent" name="slw_discount_percent"
+                                       value="<?php echo esc_attr( get_option( 'slw_discount_percent', 50 ) ); ?>"
+                                       min="1" max="99" step="1" class="small-text" />
+                                <p class="description">Percentage off retail price for wholesale customers. Default: 50%.</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><label for="slw_first_order_minimum">First Order Minimum ($)</label></th>
+                            <td>
+                                <input type="number" id="slw_first_order_minimum" name="slw_first_order_minimum"
+                                       value="<?php echo esc_attr( get_option( 'slw_first_order_minimum', 300 ) ); ?>"
+                                       min="0" step="1" class="small-text" />
+                                <p class="description">Minimum cart total required for a wholesale customer's first order.</p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row"><label for="slw_reorder_minimum">Reorder Minimum ($)</label></th>
+                            <td>
+                                <input type="number" id="slw_reorder_minimum" name="slw_reorder_minimum"
+                                       value="<?php echo esc_attr( get_option( 'slw_reorder_minimum', 0 ) ); ?>"
+                                       min="0" step="1" class="small-text" />
+                                <p class="description">Minimum cart total for subsequent orders. Set to 0 for no minimum on reorders.</p>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+
+                <!-- Section 2: Wholesale Tiers -->
+                <div class="slw-admin-card" style="padding:20px 24px;margin-bottom:24px;">
+                    <h2 class="slw-admin-card__heading" style="margin-bottom:16px;">Wholesale Tiers</h2>
+                    <p style="color:#628393;margin-bottom:16px;">Define your wholesale tiers below. Each tier has a discount percentage and upgrade thresholds. Customers are auto-upgraded when they meet <strong>either</strong> the order count or lifetime spend threshold.</p>
+
+                    <table class="widefat fixed striped" style="max-width:900px;">
+                        <thead>
+                            <tr>
+                                <th style="width:120px;">Tier Slug</th>
+                                <th style="width:160px;">Display Name</th>
+                                <th style="width:100px;">Discount %</th>
+                                <th style="width:130px;">Orders Threshold</th>
+                                <th style="width:130px;">Spend Threshold ($)</th>
+                                <th style="width:60px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="slw-tier-rows">
+                            <?php
+                            $index = 0;
+                            foreach ( $tiers as $slug => $tier ) :
+                            ?>
+                            <tr class="slw-tier-row">
+                                <td>
+                                    <input type="text" name="tiers[<?php echo $index; ?>][slug]" value="<?php echo esc_attr( $slug ); ?>" class="regular-text" style="width:100%;" pattern="[a-z0-9_]+" title="Lowercase letters, numbers, underscores only" required />
+                                </td>
+                                <td>
+                                    <input type="text" name="tiers[<?php echo $index; ?>][name]" value="<?php echo esc_attr( $tier['name'] ); ?>" class="regular-text" style="width:100%;" required />
+                                </td>
+                                <td>
+                                    <input type="number" name="tiers[<?php echo $index; ?>][discount]" value="<?php echo esc_attr( $tier['discount'] ); ?>" min="0" max="99" step="0.5" style="width:100%;" required />
+                                </td>
+                                <td>
+                                    <input type="number" name="tiers[<?php echo $index; ?>][order_threshold]" value="<?php echo esc_attr( $tier['order_threshold'] ?? 0 ); ?>" min="0" step="1" style="width:100%;" />
+                                </td>
+                                <td>
+                                    <input type="number" name="tiers[<?php echo $index; ?>][spend_threshold]" value="<?php echo esc_attr( $tier['spend_threshold'] ?? 0 ); ?>" min="0" step="1" style="width:100%;" />
+                                </td>
+                                <td>
+                                    <?php if ( $slug !== 'standard' ) : ?>
+                                        <button type="button" class="button slw-remove-tier" title="Remove tier">&times;</button>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                            <?php
+                            $index++;
+                            endforeach;
+                            ?>
+                        </tbody>
+                    </table>
+
+                    <p style="margin-top:12px;">
+                        <button type="button" class="button" id="slw-add-tier">+ Add Tier</button>
+                    </p>
+
+                    <h3 style="margin-top:20px;">How Tiers Work</h3>
+                    <ul style="list-style:disc;margin-left:20px;color:#628393;">
+                        <li>The <strong>Standard</strong> tier is the default for all new wholesale partners. Its discount should match your global wholesale discount.</li>
+                        <li>Higher tiers unlock automatically when a customer reaches <strong>either</strong> the order count or the lifetime spend threshold.</li>
+                        <li>Tiers are evaluated from top to bottom. The highest tier the customer qualifies for is assigned.</li>
+                        <li>Auto-upgrade happens when an order status changes to "Completed". You can also set tiers manually on user profiles.</li>
+                        <li>Tiers never auto-downgrade. Use the user profile to manually adjust if needed.</li>
+                    </ul>
+                </div>
+
+                <?php submit_button( 'Save Pricing Settings' ); ?>
+            </form>
+
+            <!-- Section 3: Per-Product Overview (read-only) -->
+            <div class="slw-admin-card" style="padding:20px 24px;margin-bottom:24px;">
+                <h2 class="slw-admin-card__heading" style="margin-bottom:16px;">Per-Product Overrides</h2>
+                <p style="color:#628393;margin-bottom:16px;">Products with custom wholesale pricing, minimum quantities, or case pack sizes. Edit these values on each product's edit page.</p>
+
+                <?php self::render_product_overrides_table(); ?>
+            </div>
+        </div>
+
+        <script>
+        (function() {
+            var tbody = document.getElementById('slw-tier-rows');
+            var addBtn = document.getElementById('slw-add-tier');
+
+            addBtn.addEventListener('click', function() {
+                var rows = tbody.querySelectorAll('.slw-tier-row');
+                var idx = rows.length;
+                var tr = document.createElement('tr');
+                tr.className = 'slw-tier-row';
+                tr.innerHTML = '<td><input type="text" name="tiers[' + idx + '][slug]" value="" class="regular-text" style="width:100%;" pattern="[a-z0-9_]+" title="Lowercase letters, numbers, underscores only" required /></td>'
+                    + '<td><input type="text" name="tiers[' + idx + '][name]" value="" class="regular-text" style="width:100%;" required /></td>'
+                    + '<td><input type="number" name="tiers[' + idx + '][discount]" value="50" min="0" max="99" step="0.5" style="width:100%;" required /></td>'
+                    + '<td><input type="number" name="tiers[' + idx + '][order_threshold]" value="0" min="0" step="1" style="width:100%;" /></td>'
+                    + '<td><input type="number" name="tiers[' + idx + '][spend_threshold]" value="0" min="0" step="1" style="width:100%;" /></td>'
+                    + '<td><button type="button" class="button slw-remove-tier" title="Remove tier">&times;</button></td>';
+                tbody.appendChild(tr);
+            });
+
+            tbody.addEventListener('click', function(e) {
+                if (e.target.classList.contains('slw-remove-tier')) {
+                    e.target.closest('tr').remove();
+                }
+            });
+        })();
+        </script>
+        <?php
+    }
+
+    /**
+     * Handle form save on admin_init.
+     */
+    public static function handle_save() {
+        if ( ! isset( $_POST['slw_pricing_save'] ) ) {
+            return;
+        }
+
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_die( 'Unauthorized', 403 );
+        }
+
+        check_admin_referer( 'slw_pricing_save' );
+
+        // Save global pricing fields
+        $discount = absint( $_POST['slw_discount_percent'] ?? 50 );
+        $discount = max( 1, min( 99, $discount ) );
+        update_option( 'slw_discount_percent', $discount );
+
+        $first_min = floatval( $_POST['slw_first_order_minimum'] ?? 300 );
+        update_option( 'slw_first_order_minimum', max( 0, $first_min ) );
+
+        $reorder_min = floatval( $_POST['slw_reorder_minimum'] ?? 0 );
+        update_option( 'slw_reorder_minimum', max( 0, $reorder_min ) );
+
+        // Save tiers
+        $raw_tiers = isset( $_POST['tiers'] ) ? $_POST['tiers'] : array();
+        $tiers = array();
+
+        foreach ( $raw_tiers as $raw ) {
+            $slug = sanitize_key( $raw['slug'] ?? '' );
+            if ( ! $slug ) {
+                continue;
+            }
+
+            $tiers[ $slug ] = array(
+                'name'            => sanitize_text_field( $raw['name'] ?? $slug ),
+                'discount'        => max( 0, min( 99, (float) ( $raw['discount'] ?? 50 ) ) ),
+                'order_threshold' => max( 0, absint( $raw['order_threshold'] ?? 0 ) ),
+                'spend_threshold' => max( 0, (float) ( $raw['spend_threshold'] ?? 0 ) ),
+            );
+        }
+
+        // Ensure standard tier always exists
+        if ( ! isset( $tiers['standard'] ) ) {
+            $tiers = array_merge( array(
+                'standard' => array(
+                    'name'            => 'Standard',
+                    'discount'        => 50,
+                    'order_threshold' => 0,
+                    'spend_threshold' => 0,
+                ),
+            ), $tiers );
+        }
+
+        update_option( 'slw_wholesale_tiers', $tiers );
+
+        // Redirect back with success flag
+        wp_redirect( add_query_arg( 'slw_pricing_saved', '1', wp_get_referer() ? wp_get_referer() : admin_url( 'admin.php?page=slw-pricing' ) ) );
+        exit;
+    }
+
+    /**
+     * Render the read-only per-product overrides table.
+     */
+    private static function render_product_overrides_table() {
+        $args = array(
+            'post_type'      => 'product',
+            'post_status'    => 'publish',
+            'posts_per_page' => -1,
+            'meta_query'     => array(
+                'relation' => 'OR',
+                array(
+                    'key'     => '_slw_wholesale_price',
+                    'value'   => '',
+                    'compare' => '!=',
+                ),
+                array(
+                    'key'     => '_slw_minimum_qty',
+                    'value'   => '0',
+                    'compare' => '>',
+                    'type'    => 'NUMERIC',
+                ),
+                array(
+                    'key'     => '_slw_case_pack_size',
+                    'value'   => '0',
+                    'compare' => '>',
+                    'type'    => 'NUMERIC',
+                ),
+            ),
+            'orderby' => 'title',
+            'order'   => 'ASC',
+        );
+
+        $products = get_posts( $args );
+
+        if ( empty( $products ) ) {
+            echo '<p style="color:#888;font-style:italic;">No products have custom wholesale pricing overrides. You can set these on individual product edit pages.</p>';
+            return;
+        }
+
+        ?>
+        <table class="widefat fixed striped" style="max-width:900px;">
+            <thead>
+                <tr>
+                    <th style="width:30%;">Product Name</th>
+                    <th style="width:15%;">SKU</th>
+                    <th style="width:20%;">Wholesale Price Override</th>
+                    <th style="width:15%;">Min Qty</th>
+                    <th style="width:20%;">Case Pack Size</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ( $products as $post ) :
+                    $product = wc_get_product( $post->ID );
+                    if ( ! $product ) continue;
+
+                    $wholesale_price = get_post_meta( $post->ID, '_slw_wholesale_price', true );
+                    $min_qty         = get_post_meta( $post->ID, '_slw_minimum_qty', true );
+                    $case_pack       = get_post_meta( $post->ID, '_slw_case_pack_size', true );
+                    $edit_url        = get_edit_post_link( $post->ID );
+                ?>
+                <tr>
+                    <td>
+                        <a href="<?php echo esc_url( $edit_url ); ?>" style="color:#386174;text-decoration:none;font-weight:500;">
+                            <?php echo esc_html( $product->get_name() ); ?>
+                        </a>
+                    </td>
+                    <td><?php echo esc_html( $product->get_sku() ?: '—' ); ?></td>
+                    <td><?php echo $wholesale_price ? wp_kses_post( wc_price( $wholesale_price ) ) : '—'; ?></td>
+                    <td><?php echo $min_qty ? esc_html( $min_qty ) : '—'; ?></td>
+                    <td><?php echo $case_pack ? esc_html( $case_pack ) : '—'; ?></td>
+                </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+        <?php
+    }
+}

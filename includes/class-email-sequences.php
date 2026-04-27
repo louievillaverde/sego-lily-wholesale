@@ -695,7 +695,7 @@ class SLW_Email_Sequences {
                             'wholesale-outreach' => array(
                                 'name'    => 'Wholesale Outreach',
                                 'subject' => "Carry {$brand} in your shop?",
-                                'body'    => "Hi {shop_owner_name},\n\nI came across {shop_name} and love what you're doing. I think our products would be a great fit for your customers.\n\nI'm {$owner} — I run {$brand}. We make small-batch, clean-ingredient skincare and our wholesale partners get 50% off retail pricing.\n\nIf you're open to it, I'd love to send you our price list or set up a quick call:\n\n{$w_url}\n\nNo pressure at all — just thought it could be a good match.\n\nTalk soon,\n{$owner}",
+                                'body'    => "Hi {contactfield=firstname},\n\nI came across {contactfield=company} and love what you're doing. I think our products would be a great fit for your customers.\n\nI'm {$owner} — I run {$brand}. We make small-batch, clean-ingredient skincare and our wholesale partners get 50% off retail pricing.\n\nIf you're open to it, I'd love to send you our price list or set up a quick call:\n\n{$w_url}\n\nNo pressure at all — just thought it could be a good match.\n\nTalk soon,\n{$owner}",
                             ),
                             'quarterly-newsletter' => array(
                                 'name'    => 'Quarterly Newsletter',
@@ -746,6 +746,22 @@ class SLW_Email_Sequences {
                                     'quicktags'     => true,
                                 ) );
                                 ?>
+                                <div style="margin-top:8px;display:flex;gap:8px;align-items:center;">
+                                    <label style="font-size:13px;color:#628393;">Insert field:</label>
+                                    <select id="slw-nl-merge-field" style="min-width:200px;">
+                                        <option value="">-- Select a merge field --</option>
+                                        <option value="{contactfield=firstname}">First Name</option>
+                                        <option value="{contactfield=lastname}">Last Name</option>
+                                        <option value="{contactfield=email}">Email</option>
+                                        <option value="{contactfield=company}">Business Name</option>
+                                        <option value="{contactfield=company_industry}">Industry</option>
+                                        <option value="<?php echo esc_attr( home_url( '/wholesale-portal' ) ); ?>">Portal Link</option>
+                                        <option value="<?php echo esc_attr( home_url( '/wholesale-order' ) ); ?>">Order Form Link</option>
+                                        <option value="<?php echo esc_attr( home_url( '/wholesale-partners' ) ); ?>">Application Link</option>
+                                    </select>
+                                    <button type="button" class="button" id="slw-nl-insert-field">Insert</button>
+                                    <span style="font-size:12px;color:#628393;">Mautic replaces these with each recipient's data.</span>
+                                </div>
                             </td>
                         </tr>
                         <tr>
@@ -1452,6 +1468,26 @@ class SLW_Email_Sequences {
                 });
             });
 
+            // Insert merge field into newsletter body
+            $('#slw-nl-insert-field').on('click', function() {
+                var select = document.getElementById('slw-nl-merge-field');
+                var val = select.value;
+                if (!val) return;
+                // Insert into TinyMCE if active, otherwise into textarea
+                if (typeof tinymce !== 'undefined' && tinymce.get('slw_nl_body') && !tinymce.get('slw_nl_body').isHidden()) {
+                    tinymce.get('slw_nl_body').execCommand('mceInsertContent', false, val);
+                } else {
+                    var ta = document.getElementById('slw_nl_body');
+                    if (ta) {
+                        var start = ta.selectionStart;
+                        ta.value = ta.value.substring(0, start) + val + ta.value.substring(ta.selectionEnd);
+                        ta.selectionStart = ta.selectionEnd = start + val.length;
+                        ta.focus();
+                    }
+                }
+                select.value = '';
+            });
+
             // Test connection
             $('#slw-test-connection').on('click', function() {
                 var $btn = $(this);
@@ -1745,7 +1781,7 @@ class SLW_Email_Sequences {
     }
 
     /**
-     * Send newsletter via wp_mail() fallback. Batches in groups of 10 via BCC.
+     * Send newsletter via wp_mail() fallback. Sends individually to support merge tag personalization.
      *
      * @param string $subject Email subject.
      * @param string $html    Full HTML email.
@@ -1759,20 +1795,16 @@ class SLW_Email_Sequences {
             $headers = array_merge( $headers, SLW_Email_Settings::get_headers() );
         }
 
-        $from_address = class_exists( 'SLW_Email_Settings' ) ? SLW_Email_Settings::get( 'from_address' ) : get_option( 'admin_email' );
+        $sent = 0;
 
-        $batches = array_chunk( $emails, 10 );
-        $sent    = 0;
+        // Send individual emails so merge tags can be personalized per recipient.
+        foreach ( $emails as $recipient_email ) {
+            $personalized_subject = self::replace_merge_tags( $subject, $recipient_email );
+            $personalized_html    = self::replace_merge_tags( $html, $recipient_email );
 
-        foreach ( $batches as $batch ) {
-            $bcc_headers = $headers;
-            foreach ( $batch as $email_addr ) {
-                $bcc_headers[] = 'Bcc: ' . $email_addr;
-            }
-
-            $result = wp_mail( $from_address, $subject, $html, $bcc_headers );
+            $result = wp_mail( $recipient_email, $personalized_subject, $personalized_html, $headers );
             if ( $result ) {
-                $sent += count( $batch );
+                $sent++;
             }
         }
 
@@ -1781,6 +1813,25 @@ class SLW_Email_Sequences {
         }
 
         return $sent;
+    }
+
+    /**
+     * Replace Mautic-style merge tags with WP user data for wp_mail fallback.
+     *
+     * @param string $html            The email content (subject or body).
+     * @param string $recipient_email The recipient's email address.
+     * @return string Content with merge tags replaced.
+     */
+    private static function replace_merge_tags( $html, $recipient_email ) {
+        $user = get_user_by( 'email', $recipient_email );
+        $replacements = array(
+            '{contactfield=firstname}'        => $user ? $user->first_name : '',
+            '{contactfield=lastname}'         => $user ? $user->last_name : '',
+            '{contactfield=email}'            => $recipient_email,
+            '{contactfield=company}'          => $user ? get_user_meta( $user->ID, 'slw_business_name', true ) : '',
+            '{contactfield=company_industry}' => $user ? get_user_meta( $user->ID, 'slw_business_type', true ) : '',
+        );
+        return str_replace( array_keys( $replacements ), array_values( $replacements ), $html );
     }
 
     /**
@@ -1898,9 +1949,9 @@ class SLW_Email_Sequences {
         if ( ! $owner_name ) $owner_name = 'Holly';
 
         $template_1_subject = "Carry {$brand_name} in your shop?";
-        $template_1_body = "Hi {shop_owner_name},
+        $template_1_body = "Hi {contactfield=firstname},
 
-I came across {shop_name} and love what you're doing. I think our products would be a great fit for your customers.
+I came across {contactfield=company} and love what you're doing. I think our products would be a great fit for your customers.
 
 I'm {$owner_name} — I run {$brand_name}. We make small-batch, clean-ingredient skincare and our wholesale partners get 50% off retail pricing.
 
@@ -1938,7 +1989,7 @@ Thanks for being a partner,
 
         ?>
         <h2 class="title">Email Templates</h2>
-        <p style="color:#628393;font-size:13px;margin:-8px 0 16px;">Copy these templates and customize before sending. Replace {shop_owner_name} and {shop_name} with the actual names.</p>
+        <p style="color:#628393;font-size:13px;margin:-8px 0 16px;">Copy these templates and customize before sending. Mautic merge tags like <code>{contactfield=firstname}</code> are replaced automatically when sent.</p>
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
             <div class="slw-admin-card" style="margin-bottom:0;">

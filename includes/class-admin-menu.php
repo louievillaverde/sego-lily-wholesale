@@ -84,7 +84,7 @@ class SLW_Admin_Menu {
         );
 
         // -----------------------------------------------------------
-        // Sub-pages — ordered by relevance for daily workflow
+        // Sub-pages (9 items) — ordered by relevance for daily workflow
         // -----------------------------------------------------------
 
         // 1. Dashboard (landing page, replaces auto-generated first item)
@@ -98,12 +98,22 @@ class SLW_Admin_Menu {
         }
         add_submenu_page( 'slw-dashboard', 'Wholesale Applications', $app_label, 'manage_woocommerce', 'slw-applications', array( 'SLW_Application_Form', 'render_admin_page' ) );
 
-        // 3. Orders (reviewing wholesale orders)
+        // 3. Orders (includes Quotes tab)
         if ( class_exists( 'SLW_Wholesale_Orders' ) ) {
             add_submenu_page( 'slw-dashboard', 'Wholesale Orders', 'Orders', 'manage_woocommerce', 'slw-orders', array( 'SLW_Wholesale_Orders', 'render_page' ) );
         }
 
-        // 4. Sequences (email campaigns + newsletters) — with failure count badge
+        // 4. Pricing (tiers + pricing rules — consolidates old Tiers page)
+        if ( class_exists( 'SLW_Pricing_Page' ) ) {
+            add_submenu_page( 'slw-dashboard', 'Wholesale Pricing', 'Pricing', 'manage_woocommerce', 'slw-pricing', array( 'SLW_Pricing_Page', 'render_page' ) );
+        }
+
+        // 5. Customers (leads, import, customer groups — consolidates old Leads + Import pages)
+        if ( class_exists( 'SLW_Customers_Page' ) ) {
+            add_submenu_page( 'slw-dashboard', 'Wholesale Customers', 'Customers', 'manage_woocommerce', 'slw-customers', array( 'SLW_Customers_Page', 'render_page' ) );
+        }
+
+        // 6. Sequences (email campaigns + newsletters) — with failure count badge
         if ( class_exists( 'SLW_Email_Sequences' ) ) {
             $seq_label = 'Sequences';
             $webhook_log = get_option( 'slw_webhook_log', array() );
@@ -121,43 +131,15 @@ class SLW_Admin_Menu {
             add_submenu_page( 'slw-dashboard', 'Email Sequences', $seq_label, 'manage_woocommerce', 'slw-sequences', array( 'SLW_Email_Sequences', 'render_page' ) );
         }
 
-        // 5. Quotes (RFQ management)
-        if ( class_exists( 'SLW_RFQ' ) ) {
-            add_submenu_page( 'slw-dashboard', 'Quote Requests', 'Quotes', 'manage_woocommerce', 'slw-rfq', array( 'SLW_RFQ', 'render_admin_page' ) );
-        }
-
-        // 6. Leads (prospect pipeline)
-        if ( class_exists( 'SLW_Lead_Capture' ) ) {
-            add_submenu_page( 'slw-dashboard', 'Lead Capture', 'Leads', 'manage_woocommerce', 'slw-leads', array( 'SLW_Lead_Capture', 'render_admin_page' ) );
-        }
-
-        // 7. Tiers (pricing tier configuration)
-        if ( class_exists( 'SLW_Tier_Settings' ) ) {
-            add_submenu_page( 'slw-dashboard', 'Wholesale Tiers', 'Tiers', 'manage_woocommerce', 'slw-tiers', array( 'SLW_Tier_Settings', 'render_page' ) );
-        }
-
-        // 8. Import (add customers)
-        if ( class_exists( 'SLW_Premium_Features' ) ) {
-            add_submenu_page( 'slw-dashboard', 'Import Wholesale Users', 'Import', 'manage_woocommerce', 'slw-import', array( 'SLW_Premium_Features', 'render_import_page' ) );
-        }
-
-        // 9. Preview (customer portal iframe)
-        add_submenu_page( 'slw-dashboard', 'Portal Preview', 'Preview', 'manage_woocommerce', 'slw-preview', array( __CLASS__, 'render_preview_page' ) );
-
-        // 10. Invoices (branding + email config — setup task, not daily)
-        if ( class_exists( 'SLW_Invoice_Settings' ) ) {
-            add_submenu_page( 'slw-dashboard', 'Invoice Settings', 'Invoices', 'manage_woocommerce', 'slw-invoice-settings', array( 'SLW_Invoice_Settings', 'render_page' ) );
-        }
-
-        // 11. Analytics (funnels + page intelligence)
+        // 7. Analytics (funnels + page intelligence)
         if ( class_exists( 'SLW_Analytics' ) ) {
             add_submenu_page( 'slw-dashboard', 'Analytics', 'Analytics', 'manage_woocommerce', 'slw-analytics', array( 'SLW_Analytics', 'render_page' ) );
         }
 
-        // 12. Settings (discounts, minimums, NET terms — setup task)
+        // 8. Settings (discounts, minimums, NET terms, invoices — setup task)
         add_submenu_page( 'slw-dashboard', 'Wholesale Settings', 'Settings', 'manage_woocommerce', 'slw-settings', array( 'SLW_Settings', 'render_page' ) );
 
-        // 13. Help (always last)
+        // 9. Help (always last)
         add_submenu_page( 'slw-dashboard', 'Help & Resources', 'Help', 'manage_woocommerce', 'slw-docs', array( 'SLW_Docs', 'render_page' ) );
     }
 }
