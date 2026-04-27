@@ -55,6 +55,7 @@ class SLW_Customers_Page {
         $tabs = array(
             'customers' => 'Customers',
             'leads'     => 'Leads',
+            'referrals' => 'Referrals',
             'import'    => 'Import',
         );
         ?>
@@ -76,6 +77,12 @@ class SLW_Customers_Page {
                 case 'leads':
                     if ( class_exists( 'SLW_Lead_Capture' ) ) {
                         SLW_Lead_Capture::render_admin_page();
+                    }
+                    break;
+
+                case 'referrals':
+                    if ( class_exists( 'SLW_Referral_Dashboard' ) ) {
+                        SLW_Referral_Dashboard::render_admin_summary();
                     }
                     break;
 

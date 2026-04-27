@@ -31,6 +31,8 @@ class SLW_Settings {
         // Product Visibility
         'slw_wholesale_only_categories'     => array( 'sanitize' => 'array',               'default' => array() ),
         'slw_order_form_categories'         => array( 'sanitize' => 'array',               'default' => array() ),
+        // Analytics
+        'slw_clarity_project_id'            => array( 'sanitize' => 'sanitize_text_field', 'default' => '' ),
         // Store Notice
         'slw_store_notice_enabled'          => array( 'sanitize' => 'rest_sanitize_boolean','default' => false ),
         'slw_store_notice_text'             => array( 'sanitize' => 'wp_kses_post',        'default' => '' ),
@@ -178,6 +180,20 @@ class SLW_Settings {
                 <p>Control which product categories are visible to retail vs. wholesale customers, and which appear on the wholesale order form.</p>
                 <?php self::render_category_checkboxes(); ?>
 
+                <h2 class="title">Analytics</h2>
+                <p>Configuration for the Page Intelligence tab on the Analytics page.</p>
+                <table class="form-table">
+                    <tr>
+                        <th scope="row"><label for="slw_clarity_project_id">Clarity Project ID</label></th>
+                        <td>
+                            <input type="text" id="slw_clarity_project_id" name="slw_clarity_project_id"
+                                   value="<?php echo esc_attr( get_option( 'slw_clarity_project_id', '' ) ); ?>"
+                                   class="regular-text" placeholder="e.g. wggeipzv3y" />
+                            <p class="description">Your Microsoft Clarity project ID. Find it at <a href="https://clarity.microsoft.com" target="_blank">clarity.microsoft.com</a> under your project settings. Used on the Analytics &rarr; Page Intelligence tab.</p>
+                        </td>
+                    </tr>
+                </table>
+
                 <h2 class="title">Store Notice</h2>
                 <p>Display a banner at the top of the wholesale order form and dashboard.</p>
                 <table class="form-table">
@@ -316,7 +332,7 @@ class SLW_Settings {
         ?>
         <table class="form-table">
             <tr>
-                <th scope="row">Wholesale-Only Categories</th>
+                <th scope="row">Wholesale Exclusive Categories</th>
                 <td>
                     <?php foreach ( $terms as $term ) : ?>
                         <label style="display:block;margin-bottom:6px;">
@@ -325,11 +341,11 @@ class SLW_Settings {
                             <?php echo esc_html( $term->name ); ?>
                         </label>
                     <?php endforeach; ?>
-                    <p class="description">Products in these categories are hidden from retail customers but visible to wholesale users.</p>
+                    <p class="description">Products in these categories are hidden from your retail shop. Only wholesale customers can see and purchase them.</p>
                 </td>
             </tr>
             <tr>
-                <th scope="row">Order Form Categories</th>
+                <th scope="row">Order Form Filter</th>
                 <td>
                     <?php foreach ( $terms as $term ) : ?>
                         <label style="display:block;margin-bottom:6px;">
@@ -338,7 +354,7 @@ class SLW_Settings {
                             <?php echo esc_html( $term->name ); ?>
                         </label>
                     <?php endforeach; ?>
-                    <p class="description">Only these categories appear on the wholesale order form. Leave all unchecked to show every category.</p>
+                    <p class="description">Limit the wholesale order form to only show these categories. Leave all unchecked to show everything.</p>
                 </td>
             </tr>
         </table>

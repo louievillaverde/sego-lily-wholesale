@@ -684,23 +684,32 @@ class SLW_Email_Sequences {
                     <h3>Compose Newsletter</h3>
                     <?php
                     $saved_templates = get_option( 'slw_newsletter_templates', array() );
-                    if ( empty( $saved_templates ) ) {
-                        // Seed with the two default templates
-                        $brand  = class_exists( 'SLW_Email_Settings' ) ? SLW_Email_Settings::get_business_name() : get_bloginfo( 'name' );
-                        $owner  = class_exists( 'SLW_Email_Settings' ) ? SLW_Email_Settings::get( 'owner_name' ) : '';
-                        if ( ! $owner ) $owner = 'Holly';
-                        $w_url  = home_url( '/wholesale-partners' );
-                        $p_url  = home_url( '/wholesale-portal' );
+                    $brand  = class_exists( 'SLW_Email_Settings' ) ? SLW_Email_Settings::get_business_name() : get_bloginfo( 'name' );
+                    $owner  = class_exists( 'SLW_Email_Settings' ) ? SLW_Email_Settings::get( 'owner_name' ) : '';
+                    if ( ! $owner ) $owner = 'Holly';
+                    $w_url  = home_url( '/wholesale-partners' );
+                    $p_url  = home_url( '/wholesale-portal' );
+
+                    // Migration: overwrite stale templates that use old syntax
+                    $needs_reseed = empty( $saved_templates );
+                    if ( ! $needs_reseed && isset( $saved_templates['wholesale-outreach'] ) ) {
+                        $body = $saved_templates['wholesale-outreach']['body'] ?? '';
+                        if ( strpos( $body, '{shop_owner_name}' ) !== false || strpos( $body, '{shop_name}' ) !== false ) {
+                            $needs_reseed = true;
+                        }
+                    }
+
+                    if ( $needs_reseed ) {
                         $saved_templates = array(
                             'wholesale-outreach' => array(
                                 'name'    => 'Wholesale Outreach',
                                 'subject' => "Carry {$brand} in your shop?",
-                                'body'    => "Hi {contactfield=firstname},\n\nI came across {contactfield=company} and love what you're doing. I think our products would be a great fit for your customers.\n\nI'm {$owner} — I run {$brand}. We make small-batch, clean-ingredient skincare and our wholesale partners get 50% off retail pricing.\n\nIf you're open to it, I'd love to send you our price list or set up a quick call:\n\n{$w_url}\n\nNo pressure at all — just thought it could be a good match.\n\nTalk soon,\n{$owner}",
+                                'body'    => "Hi [Name],\n\nI came across [Shop Name] and love what you're doing. I think {$brand} products would be a great fit for your customers.\n\nI'm {$owner}. We make small-batch, clean-ingredient skincare and our wholesale partners get 50% off retail.\n\nHere's our wholesale application if you want to take a look:\n{$w_url}\n\nHappy to send over a price list or hop on a quick call if that's easier.\n\n{$owner}",
                             ),
                             'quarterly-newsletter' => array(
                                 'name'    => 'Quarterly Newsletter',
-                                'subject' => "What's new this quarter at {$brand}",
-                                'body'    => "Hi there,\n\nHope business is going well! Here's a quick update from our end.\n\nNEW PRODUCTS\n[Describe any new products launched this quarter]\n\nWHAT'S SELLING BEST\n[Share your top 2-3 bestsellers and why customers love them]\n\nSEASONAL RECOMMENDATION\n[Suggest a product or bundle that fits the upcoming season]\n\nREORDER\nReady to restock? Place your next order here:\n{$p_url}\n\nAs always, reach out anytime if you need samples, marketing materials, or just want to chat.\n\nThanks for being a partner,\n{$owner}",
+                                'subject' => "What's new at {$brand}",
+                                'body'    => "Hi {contactfield=firstname},\n\nQuick update from our end.\n\nNEW PRODUCTS\n[What launched this quarter]\n\nBESTSELLERS\n[Top 2-3 products and why they sell]\n\nSEASONAL PICK\n[Product or bundle that fits the upcoming season]\n\nREORDER\nPlace your next order here:\n{$p_url}\n\nReach out anytime if you need samples or marketing materials.\n\n{$owner}",
                             ),
                         );
                         update_option( 'slw_newsletter_templates', $saved_templates );
@@ -1672,7 +1681,7 @@ class SLW_Email_Sequences {
      * @param string $body    The email body HTML.
      * @return string         Complete HTML email.
      */
-    private static function build_branded_email( $subject, $body ) {
+    public static function build_branded_email( $subject, $body ) {
         $from_name = class_exists( 'SLW_Email_Settings' ) ? SLW_Email_Settings::get( 'from_name' ) : get_bloginfo( 'name' );
         $signature = class_exists( 'SLW_Email_Settings' ) ? SLW_Email_Settings::get_signature() : '';
 

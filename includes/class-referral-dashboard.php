@@ -21,6 +21,130 @@ class SLW_Referral_Dashboard {
         add_shortcode( 'slw_my_referrals', array( __CLASS__, 'render' ) );
     }
 
+    /**
+     * Admin summary table of all referral activity.
+     * Called from the Customers page Referrals tab.
+     */
+    public static function render_admin_summary() {
+        global $wpdb;
+
+        // Find all users who have referral codes
+        $referrer_ids = $wpdb->get_col(
+            "SELECT user_id FROM {$wpdb->usermeta} WHERE meta_key = 'slw_referral_codes' AND meta_value != ''"
+        );
+
+        if ( empty( $referrer_ids ) ) {
+            echo '<div class="slw-admin-card" style="text-align:center;padding:40px 20px;">';
+            echo '<p style="color:#628393;font-size:15px;">No referral codes have been generated yet. Codes are created automatically after a retail customer completes their first order.</p>';
+            echo '</div>';
+            return;
+        }
+
+        // Gather summary stats
+        $total_referrers  = count( $referrer_ids );
+        $total_codes      = $total_referrers * 3;
+        $total_redeemed   = 0;
+        $total_rewards    = 0;
+
+        $rows = array();
+        foreach ( $referrer_ids as $uid ) {
+            $user = get_userdata( $uid );
+            if ( ! $user ) continue;
+
+            $codes_json   = get_user_meta( $uid, 'slw_referral_codes', true );
+            $conversions  = absint( get_user_meta( $uid, 'slw_referral_conversions', true ) );
+            $rewards_json = get_user_meta( $uid, 'slw_referral_rewards', true );
+            $created      = get_user_meta( $uid, 'slw_referral_codes_created', true );
+
+            $codes   = json_decode( $codes_json, true );
+            $rewards = json_decode( $rewards_json ?: '[]', true );
+
+            if ( ! is_array( $codes ) ) continue;
+
+            $total_redeemed += $conversions;
+            $total_rewards  += count( $rewards );
+
+            $rows[] = array(
+                'user_id'     => $uid,
+                'name'        => trim( $user->first_name . ' ' . $user->last_name ) ?: $user->display_name,
+                'email'       => $user->user_email,
+                'codes'       => $codes,
+                'conversions' => $conversions,
+                'rewards'     => count( $rewards ),
+                'created'     => $created,
+            );
+        }
+
+        // Sort by most recent first
+        usort( $rows, function( $a, $b ) {
+            return strtotime( $b['created'] ?: '2000-01-01' ) - strtotime( $a['created'] ?: '2000-01-01' );
+        });
+
+        ?>
+        <!-- Summary Stats -->
+        <div class="slw-admin-stats" style="max-width:800px;margin-bottom:20px;">
+            <div class="slw-admin-stats__card slw-admin-stats__card--teal">
+                <span class="slw-admin-stats__number"><?php echo esc_html( $total_referrers ); ?></span>
+                <span class="slw-admin-stats__label">Referrers</span>
+            </div>
+            <div class="slw-admin-stats__card slw-admin-stats__card--green">
+                <span class="slw-admin-stats__number"><?php echo esc_html( $total_redeemed ); ?>/<?php echo esc_html( $total_codes ); ?></span>
+                <span class="slw-admin-stats__label">Codes Redeemed</span>
+            </div>
+            <div class="slw-admin-stats__card slw-admin-stats__card--gold">
+                <span class="slw-admin-stats__number"><?php echo esc_html( $total_rewards ); ?></span>
+                <span class="slw-admin-stats__label">Rewards Earned</span>
+            </div>
+        </div>
+
+        <!-- Referral Table -->
+        <div class="slw-admin-card" style="padding:0;">
+            <table class="wp-list-table widefat striped">
+                <thead>
+                    <tr>
+                        <th>Customer</th>
+                        <th>Referral Codes</th>
+                        <th>Redeemed</th>
+                        <th>Rewards Earned</th>
+                        <th>Generated</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ( $rows as $row ) : ?>
+                    <tr>
+                        <td>
+                            <strong><?php echo esc_html( $row['name'] ); ?></strong><br>
+                            <span style="color:#628393;font-size:12px;"><?php echo esc_html( $row['email'] ); ?></span>
+                        </td>
+                        <td>
+                            <?php foreach ( $row['codes'] as $code ) :
+                                $coupon_id = wc_get_coupon_id_by_code( $code );
+                                $redeemed  = $coupon_id ? get_post_meta( $coupon_id, 'slw_redeemed_by_name', true ) : '';
+                            ?>
+                                <code style="display:inline-block;margin:2px 4px 2px 0;padding:2px 6px;background:<?php echo $redeemed ? '#e8f5e9' : '#f0f0f0'; ?>;border-radius:3px;font-size:12px;">
+                                    <?php echo esc_html( $code ); ?>
+                                </code>
+                                <?php if ( $redeemed ) : ?>
+                                    <span style="color:#2e7d32;font-size:11px;">&#10004;</span>
+                                <?php endif; ?>
+                            <?php endforeach; ?>
+                        </td>
+                        <td>
+                            <strong><?php echo esc_html( $row['conversions'] ); ?></strong>/3
+                            <?php if ( $row['conversions'] >= 3 ) : ?>
+                                <span style="color:#D4AF37;font-weight:700;font-size:12px;"> All used</span>
+                            <?php endif; ?>
+                        </td>
+                        <td><?php echo esc_html( $row['rewards'] ); ?></td>
+                        <td><?php echo $row['created'] ? esc_html( date( 'M j, Y', strtotime( $row['created'] ) ) ) : '&mdash;'; ?></td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+        <?php
+    }
+
     public static function render( $atts = array() ) {
         if ( ! is_user_logged_in() ) {
             return '<div style="text-align:center;padding:40px 20px;">'

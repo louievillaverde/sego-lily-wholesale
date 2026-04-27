@@ -24,7 +24,7 @@ class SLW_Analytics {
      */
     public static function render_page() {
         $tab = sanitize_text_field( $_GET['tab'] ?? 'funnels' );
-        $clarity_id = get_option( 'slw_clarity_project_id', 'wggeipzv3y' );
+        $clarity_id = get_option( 'slw_clarity_project_id', '' );
         ?>
         <div class="wrap slw-admin-dashboard">
             <h1 class="slw-admin-dashboard__title">Analytics</h1>
@@ -261,21 +261,27 @@ class SLW_Analytics {
             </div>
         </div>
 
-        <!-- Clarity Heatmap Embed -->
+        <!-- Clarity Dashboard Link -->
         <?php if ( $clarity_id ) : ?>
-        <div class="slw-analytics-section" style="padding:0;overflow:hidden;">
-            <div style="padding:20px 28px 12px;">
-                <h2 style="font-size:18px;margin:0 0 4px;">Heatmap &amp; Session Recordings</h2>
-                <p style="color:#628393;font-size:13px;margin:0;">
-                    Powered by Microsoft Clarity ·
-                    <a href="https://clarity.microsoft.com/projects/view/<?php echo esc_attr( $clarity_id ); ?>/dashboard" target="_blank" style="color:#386174;">Open full dashboard &rarr;</a>
-                </p>
+        <div class="slw-analytics-section">
+            <h2 style="font-size:18px;margin:0 0 4px;">Heatmap &amp; Session Recordings</h2>
+            <p style="color:#628393;font-size:13px;margin:0 0 20px;">
+                Powered by Microsoft Clarity. View heatmaps, session recordings, and scroll depth for this page.
+            </p>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;">
+                <a href="https://clarity.microsoft.com/projects/view/<?php echo esc_attr( $clarity_id ); ?>/dashboard" target="_blank" class="button button-primary" style="display:inline-flex;align-items:center;gap:6px;">
+                    <span class="dashicons dashicons-chart-area" style="font-size:16px;width:16px;height:16px;line-height:16px;"></span>
+                    Open Clarity Dashboard
+                </a>
+                <a href="https://clarity.microsoft.com/projects/view/<?php echo esc_attr( $clarity_id ); ?>/heatmaps?date=Last%207%20days&filter=url%3A<?php echo rawurlencode( '/' . $selected_page['slug'] . '/' ); ?>" target="_blank" class="button" style="display:inline-flex;align-items:center;gap:6px;">
+                    <span class="dashicons dashicons-visibility" style="font-size:16px;width:16px;height:16px;line-height:16px;"></span>
+                    View Heatmap for <?php echo esc_html( $selected_page['title'] ); ?>
+                </a>
+                <a href="https://clarity.microsoft.com/projects/view/<?php echo esc_attr( $clarity_id ); ?>/recordings?date=Last%207%20days&filter=url%3A<?php echo rawurlencode( '/' . $selected_page['slug'] . '/' ); ?>" target="_blank" class="button" style="display:inline-flex;align-items:center;gap:6px;">
+                    <span class="dashicons dashicons-controls-play" style="font-size:16px;width:16px;height:16px;line-height:16px;"></span>
+                    Session Recordings
+                </a>
             </div>
-            <iframe
-                src="https://clarity.microsoft.com/projects/view/<?php echo esc_attr( $clarity_id ); ?>/heatmaps?filter=url%3A<?php echo rawurlencode( '/' . $selected_page['slug'] . '/' ); ?>"
-                style="width:100%;height:700px;border:none;border-top:1px solid #dde8ed;"
-                loading="lazy"
-            ></iframe>
         </div>
         <?php else : ?>
         <div class="slw-analytics-section">

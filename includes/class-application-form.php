@@ -586,7 +586,14 @@ class SLW_Application_Form {
         $body .= "Questions? Reply to this email or reach out at {$reply_email}.\n\n";
         $body .= "Welcome to the family,\n" . SLW_Email_Settings::get_signature();
 
-        wp_mail( $app->email, $subject, $body, SLW_Email_Settings::get_headers() );
+        $headers = SLW_Email_Settings::get_headers();
+        if ( class_exists( 'SLW_Email_Sequences' ) && method_exists( 'SLW_Email_Sequences', 'build_branded_email' ) ) {
+            $html_body = SLW_Email_Sequences::build_branded_email( $subject, nl2br( $body ) );
+            $headers[] = 'Content-Type: text/html; charset=UTF-8';
+            wp_mail( $app->email, $subject, $html_body, $headers );
+        } else {
+            wp_mail( $app->email, $subject, $body, $headers );
+        }
 
         // Fire AIOS webhook for Mautic onboarding sequence
         SLW_Webhooks::fire( 'wholesale-approved', array(

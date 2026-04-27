@@ -667,6 +667,8 @@ p.description,
 	background: #fff;
 	border-radius: 8px;
 	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+	padding: 24px 28px;
+	overflow: hidden;
 	border-left: 4px solid #386174;
 	transition: box-shadow 0.15s ease;
 }
