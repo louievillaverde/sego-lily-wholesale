@@ -177,32 +177,15 @@ $products = $all_products; // keep for empty check
                         $parent_case_pack = class_exists( 'SLW_Product_Minimums' ) ? SLW_Product_Minimums::get_case_pack_size( $product->get_id() ) : 0;
                         $parent_min_qty   = class_exists( 'SLW_Product_Minimums' ) ? SLW_Product_Minimums::get_product_minimum( $product->get_id() ) : 0;
 
+                        // Deduplicate variations: for subscription products, multiple variations
+                        // may exist for the same scent/size but different billing periods. We only
+                        // want one row per unique product option. Build labels first, then render
+                        // only the first variation for each unique label.
+                        $seen_labels = array();
+
                         foreach ( $variations as $var_data ) :
                             $variation = wc_get_product( $var_data['variation_id'] );
                             if ( ! $variation || ! $variation->is_in_stock() ) continue;
-
-                            // Skip variations that are purely subscription billing options.
-                            // Only skip if the variation's attributes are ALL subscription-related
-                            // (billing period, signup fee, etc.) with no real product attributes
-                            // like scent or size. If it has real attrs, keep it.
-                            $var_attrs_raw = $var_data['attributes'] ?? array();
-                            $real_attr_count = 0;
-                            $sub_attr_count = 0;
-                            foreach ( $var_attrs_raw as $attr_key => $attr_val ) {
-                                if ( ! $attr_val ) continue;
-                                $key_lower = strtolower( $attr_key );
-                                if ( strpos( $key_lower, 'subscription' ) !== false
-                                    || strpos( $key_lower, 'billing' ) !== false
-                                    || strpos( $key_lower, 'sign-up' ) !== false
-                                    || strpos( $key_lower, 'signup' ) !== false
-                                    || strpos( $key_lower, 'purchase' ) !== false ) {
-                                    $sub_attr_count++;
-                                } else {
-                                    $real_attr_count++;
-                                }
-                            }
-                            // Skip only if ALL attributes are subscription-related (no real product attrs)
-                            if ( $sub_attr_count > 0 && $real_attr_count === 0 ) continue;
 
                             // Variation image or fall back to parent
                             $var_image = $var_data['image']['thumb_src'] ?? '';
@@ -210,25 +193,33 @@ $products = $all_products; // keep for empty check
                                 $var_image = $parent_image;
                             }
 
-                            // Build variation name from attributes (skip subscription-related attrs)
+                            // Build variation label from ALL attributes
                             $var_attrs = $var_data['attributes'] ?? array();
                             $var_label_parts = array();
                             foreach ( $var_attrs as $attr_key => $attr_val ) {
                                 if ( ! $attr_val ) continue;
-                                $key_lower = strtolower( $attr_key );
-                                // Skip subscription/purchase-type attributes from the label
-                                if ( strpos( $key_lower, 'subscription' ) !== false
-                                    || strpos( $key_lower, 'billing' ) !== false
-                                    || strpos( $key_lower, 'purchase' ) !== false
-                                    || strpos( $key_lower, 'sign-up' ) !== false
-                                    || strpos( $key_lower, 'signup' ) !== false ) {
-                                    continue;
-                                }
                                 $taxonomy = str_replace( 'attribute_', '', $attr_key );
                                 $term = get_term_by( 'slug', $attr_val, $taxonomy );
-                                $var_label_parts[] = $term ? $term->name : ucfirst( $attr_val );
+                                $term_name = $term ? $term->name : ucfirst( $attr_val );
+
+                                // Skip generic subscription labels from display
+                                $name_lower = strtolower( $term_name );
+                                if ( in_array( $name_lower, array(
+                                    'one-time purchase', 'one time purchase', 'monthly',
+                                    'yearly', 'weekly', 'every 2 weeks', 'every 3 months',
+                                    'every 6 months', 'subscribe', 'subscription',
+                                ), true ) ) {
+                                    continue;
+                                }
+
+                                $var_label_parts[] = $term_name;
                             }
                             $var_label = ! empty( $var_label_parts ) ? implode( ' / ', $var_label_parts ) : $variation->get_name();
+
+                            // Deduplicate: skip if we've already rendered this label
+                            $label_key = strtolower( trim( $var_label ) );
+                            if ( isset( $seen_labels[ $label_key ] ) ) continue;
+                            $seen_labels[ $label_key ] = true;
 
                             // Variation-level or parent-level minimums
                             $v_case_pack = class_exists( 'SLW_Product_Minimums' ) ? SLW_Product_Minimums::get_case_pack_size( $variation->get_id() ) : 0;
