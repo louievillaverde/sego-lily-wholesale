@@ -75,14 +75,20 @@ class SLW_PDF_Linesheet {
 	 */
 	private static function get_products_by_category() {
 		$args = array(
-			'status' => 'publish',
-			'limit'  => -1,
+			'status'  => 'publish',
+			'limit'   => -1,
 			'orderby' => 'title',
 			'order'   => 'ASC',
-			'type'    => array( 'simple', 'variable' ),
 		);
 
 		$products = wc_get_products( $args );
+
+		// Include simple, variable, subscription, variable-subscription
+		$products = array_filter( $products, function( $p ) {
+			return $p->is_type( 'simple' ) || $p->is_type( 'variable' )
+				|| $p->is_type( 'subscription' ) || $p->is_type( 'variable-subscription' );
+		} );
+
 		$grouped  = array();
 
 		// We need to temporarily disable the wholesale price filter to get retail prices
