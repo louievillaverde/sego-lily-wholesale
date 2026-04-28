@@ -295,10 +295,10 @@ class SLW_Pricing_Page {
             'order'   => 'ASC',
         ) );
 
-        // Filter to simple + variable only, exclude subscriptions
+        // Filter to orderable product types (includes subscription types)
         $all = array_filter( $all, function( $p ) {
-            if ( $p->is_type( 'subscription' ) || $p->is_type( 'variable-subscription' ) ) return false;
-            return $p->is_type( 'simple' ) || $p->is_type( 'variable' );
+            return $p->is_type( 'simple' ) || $p->is_type( 'variable' )
+                || $p->is_type( 'subscription' ) || $p->is_type( 'variable-subscription' );
         } );
         $all = array_values( $all );
 

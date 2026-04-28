@@ -24,10 +24,12 @@ $all_products = wc_get_products( array(
     'order'   => 'ASC',
 ));
 
-// Filter to simple + variable only, exclude subscriptions
+// Filter to orderable product types (includes subscription types since
+// Holly's products are set up as subscriptions on the retail side but
+// should be treated as one-time purchases for wholesale)
 $all_products = array_filter( $all_products, function( $p ) {
-    if ( $p->is_type( 'subscription' ) || $p->is_type( 'variable-subscription' ) ) return false;
-    return $p->is_type( 'simple' ) || $p->is_type( 'variable' );
+    return $p->is_type( 'simple' ) || $p->is_type( 'variable' )
+        || $p->is_type( 'subscription' ) || $p->is_type( 'variable-subscription' );
 } );
 $all_products = array_values( $all_products );
 
@@ -163,11 +165,8 @@ $products = $all_products; // keep for empty check
             <tbody>
                 <?php foreach ( $cat_products as $product ) :
 
-                    // Skip subscription products entirely for wholesale
-                    if ( $product->is_type( 'subscription' ) || $product->is_type( 'variable-subscription' ) ) continue;
-
-                    // Variable products: render each variation as its own row
-                    if ( $product->is_type( 'variable' ) ) :
+                    // Variable + variable-subscription: render each variation as its own row
+                    if ( $product->is_type( 'variable' ) || $product->is_type( 'variable-subscription' ) ) :
                         $variations = $product->get_available_variations();
                         $parent_image = wp_get_attachment_image_url( $product->get_image_id(), 'thumbnail' );
                         if ( ! $parent_image ) {
