@@ -33,6 +33,8 @@ class SLW_Settings {
         'slw_order_form_categories'         => array( 'sanitize' => 'array',               'default' => array() ),
         // Analytics
         'slw_clarity_project_id'            => array( 'sanitize' => 'sanitize_text_field', 'default' => '' ),
+        // Order Form
+        'slw_new_arrivals_days'             => array( 'sanitize' => 'absint',             'default' => 30 ),
         // Store Notice
         'slw_store_notice_enabled'          => array( 'sanitize' => 'rest_sanitize_boolean','default' => false ),
         'slw_store_notice_text'             => array( 'sanitize' => 'wp_kses_post',        'default' => '' ),
@@ -190,6 +192,19 @@ class SLW_Settings {
                                    value="<?php echo esc_attr( get_option( 'slw_clarity_project_id', '' ) ); ?>"
                                    class="regular-text" placeholder="e.g. wggeipzv3y" />
                             <p class="description">Your Microsoft Clarity project ID. Find it at <a href="https://clarity.microsoft.com" target="_blank">clarity.microsoft.com</a> under your project settings. Used on the Analytics &rarr; Page Intelligence tab.</p>
+                        </td>
+                    </tr>
+                </table>
+
+                <h2 class="title">Order Form</h2>
+                <table class="form-table">
+                    <tr>
+                        <th scope="row"><label for="slw_new_arrivals_days">New Arrivals (days)</label></th>
+                        <td>
+                            <input type="number" id="slw_new_arrivals_days" name="slw_new_arrivals_days"
+                                   value="<?php echo esc_attr( get_option( 'slw_new_arrivals_days', 30 ) ); ?>"
+                                   min="0" max="365" step="1" style="width:80px;" />
+                            <p class="description">Products published within this many days appear in the "New Arrivals" section on the order form. Set to 0 to hide the section.</p>
                         </td>
                     </tr>
                 </table>

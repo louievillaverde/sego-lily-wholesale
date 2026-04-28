@@ -76,8 +76,13 @@ $products = $all_products; // keep for empty check
     <div class="slw-order-form-header">
         <h2>Wholesale Order Form</h2>
         <p>Hey <?php echo esc_html( $first_name ); ?>! Set your quantities and add items to your cart. All prices shown are your wholesale rate.</p>
-        <?php if ( ! $has_ordered ) : ?>
+        <?php if ( ! $has_ordered && $minimum > 0 ) : ?>
             <p class="slw-minimum-note">Your first order has a $<?php echo number_format( $minimum, 0 ); ?> minimum.</p>
+        <?php elseif ( $has_ordered ) :
+            $reorder_min = (float) slw_get_option( 'reorder_minimum', 0 );
+            if ( $reorder_min > 0 ) : ?>
+            <p class="slw-minimum-note">Reorder minimum: $<?php echo number_format( $reorder_min, 0 ); ?></p>
+            <?php endif; ?>
         <?php endif; ?>
     </div>
 

@@ -732,11 +732,14 @@ class SLW_Email_Sequences {
                                         <?php endforeach; ?>
                                     </select>
                                     <button type="button" class="button" id="slw-nl-load-tpl">Load</button>
-                                    <button type="button" class="button" id="slw-nl-save-tpl">Save Current as Template</button>
-                                    <button type="button" class="button" id="slw-nl-undo-tpl" style="display:none;" title="Undo last save">&#8630; Undo</button>
-                                    <button type="button" class="button" id="slw-nl-delete-tpl" style="color:#c62828;">Delete Template</button>
+                                    <button type="button" class="button" id="slw-nl-delete-tpl" style="color:#c62828;">Delete</button>
                                 </div>
-                                <p class="description" style="margin-top:6px;">Load a template to pre-fill the subject and body, or save your current draft as a new reusable template.</p>
+                                <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
+                                    <input type="text" id="slw-nl-tpl-name" style="width:220px;padding:4px 8px;" placeholder="Template name..." />
+                                    <button type="button" class="button" id="slw-nl-save-tpl">Save as Template</button>
+                                    <button type="button" class="button" id="slw-nl-undo-tpl" style="display:none;" title="Undo last save">&#8630; Undo</button>
+                                </div>
+                                <p class="description" style="margin-top:6px;">Load a saved template, or name and save your current draft as a new one.</p>
                             </td>
                         </tr>
                         <tr>
@@ -1296,10 +1299,25 @@ class SLW_Email_Sequences {
                 }
             });
 
+            // Auto-fill template name when loading
+            $('#slw-nl-load-tpl').on('click', function() {
+                var sel = document.getElementById('slw-nl-template');
+                var opt = sel.options[sel.selectedIndex];
+                if (opt && opt.value && opt.value !== '__blank') {
+                    $('#slw-nl-tpl-name').val(opt.text.trim());
+                } else {
+                    $('#slw-nl-tpl-name').val('');
+                }
+            });
+
             // Template save
             $('#slw-nl-save-tpl').on('click', function() {
-                var name = prompt('Template name:');
-                if (!name || !name.trim()) return;
+                var name = $('#slw-nl-tpl-name').val().trim();
+                if (!name) {
+                    alert('Enter a template name first.');
+                    $('#slw-nl-tpl-name').focus();
+                    return;
+                }
                 var subject = $('#slw-nl-subject').val().trim();
                 var body = '';
                 if (typeof tinyMCE !== 'undefined' && tinyMCE.get('slw_nl_body')) {

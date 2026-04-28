@@ -359,20 +359,20 @@ class SLW_Pricing_Page {
                     <td style="padding:10px 12px;" colspan="2">
                         <div style="display:flex;align-items:center;gap:8px;">
                             <span style="font-weight:600;color:#386174;font-size:13px;white-space:nowrap;">Add product:</span>
-                            <input type="number" name="slw_new_product_id" value="" min="1" step="1" style="width:100px;padding:6px 10px;" placeholder="Product ID" />
+                            <input type="number" name="slw_new_product_id" value="" min="1" step="1" style="width:120px;padding:4px 8px;" placeholder="Product ID" />
                         </div>
                     </td>
                     <td style="padding:10px 12px;">
                         <div style="display:flex;align-items:center;gap:4px;">
                             <span style="color:#628393;">$</span>
-                            <input type="number" name="slw_new_product_price" value="" step="0.01" min="0" style="width:100px;padding:6px 10px;" placeholder="Price" />
+                            <input type="number" name="slw_new_product_price" value="" step="0.01" min="0" style="width:90px;padding:4px 8px;" placeholder="Price" />
                         </div>
                     </td>
                     <td style="padding:10px 12px;">
-                        <input type="number" name="slw_new_product_min" value="" step="1" min="0" style="width:80px;padding:6px 10px;" placeholder="Min" />
+                        <input type="number" name="slw_new_product_min" value="" step="1" min="0" style="width:70px;padding:4px 8px;" placeholder="Min" />
                     </td>
                     <td style="padding:10px 12px;">
-                        <input type="number" name="slw_new_product_case" value="" step="1" min="0" style="width:80px;padding:6px 10px;" placeholder="Case" />
+                        <input type="number" name="slw_new_product_case" value="" step="1" min="0" style="width:70px;padding:4px 8px;" placeholder="Case" />
                     </td>
                 </tr>
             </tbody>
