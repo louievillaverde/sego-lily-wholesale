@@ -59,6 +59,8 @@ class SLW_Wholesale_Role {
         add_filter( 'wcsatt_product_subscription_schemes', array( __CLASS__, 'hide_subscription_schemes' ), 999, 2 );
         add_filter( 'woocommerce_subscriptions_product_price_string', array( __CLASS__, 'hide_subscription_price_string' ), 999, 2 );
         add_filter( 'woocommerce_subscription_price_string', array( __CLASS__, 'hide_subscription_price_string' ), 999, 2 );
+        add_filter( 'woocommerce_is_subscription', array( __CLASS__, 'disable_subscription_behavior' ), 999, 3 );
+        add_filter( 'wcs_is_subscription', array( __CLASS__, 'disable_subscription_behavior' ), 999, 3 );
         add_action( 'wp_enqueue_scripts', array( __CLASS__, 'hide_subscription_css' ) );
 
         // Redirect "Return to shop" to wholesale order form for wholesale users
@@ -386,7 +388,14 @@ class SLW_Wholesale_Role {
         }
 
         // 1. Per-product override (highest priority)
+        // Check the product itself, then fall back to parent for variations
         $override = $product->get_meta( '_slw_wholesale_price' );
+        if ( $override === '' || ! is_numeric( $override ) ) {
+            $parent_id = $product->get_parent_id();
+            if ( $parent_id ) {
+                $override = get_post_meta( $parent_id, '_slw_wholesale_price', true );
+            }
+        }
         if ( $override !== '' && is_numeric( $override ) && (float) $override >= 0 ) {
             return round( (float) $override, 2 );
         }
@@ -461,6 +470,19 @@ class SLW_Wholesale_Role {
             return '<span class="slw-wholesale-label">Wholesale: </span>' . $price_html;
         }
         return $price_html;
+    }
+
+    /**
+     * Tell WooCommerce Subscriptions that a product is NOT a subscription
+     * for wholesale users. This prevents the subscription add-to-cart form,
+     * recurring billing, and "sign up" buttons from rendering. Products
+     * are treated as one-time purchases.
+     */
+    public static function disable_subscription_behavior( $is_subscription, $product_id = 0, $product = null ) {
+        if ( slw_is_wholesale_context() ) {
+            return false;
+        }
+        return $is_subscription;
     }
 
     /**
