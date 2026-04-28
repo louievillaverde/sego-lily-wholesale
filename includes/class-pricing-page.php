@@ -313,14 +313,14 @@ class SLW_Pricing_Page {
         $base_url = admin_url( 'admin.php?page=slw-pricing' );
         ?>
         <p style="color:#888;margin-bottom:8px;">Showing page <?php echo esc_html( $paged ); ?> of <?php echo esc_html( $total_pages ); ?> (<?php echo esc_html( $total_products ); ?> products)</p>
-        <table class="widefat fixed striped" style="max-width:900px;">
+        <table class="widefat striped" style="border-collapse:collapse;">
             <thead>
                 <tr>
-                    <th style="width:30%;">Product Name</th>
-                    <th style="width:15%;">SKU</th>
-                    <th style="width:20%;">Wholesale Price ($)</th>
-                    <th style="width:15%;">Min Qty</th>
-                    <th style="width:20%;">Case Pack Size</th>
+                    <th style="text-align:left;padding:10px 12px;">Product</th>
+                    <th style="text-align:left;padding:10px 12px;width:100px;">SKU</th>
+                    <th style="text-align:left;padding:10px 12px;width:140px;">Wholesale Price</th>
+                    <th style="text-align:left;padding:10px 12px;width:100px;">Min Qty</th>
+                    <th style="text-align:left;padding:10px 12px;width:120px;">Case Pack</th>
                 </tr>
             </thead>
             <tbody>
@@ -334,36 +334,44 @@ class SLW_Pricing_Page {
                     $case_pack       = get_post_meta( $pid, '_slw_case_pack_size', true );
                 ?>
                 <tr>
-                    <td>
+                    <td style="padding:8px 12px;">
                         <a href="<?php echo esc_url( admin_url( 'post.php?post=' . $pid . '&action=edit' ) ); ?>" style="color:#386174;text-decoration:none;font-weight:500;"><?php echo esc_html( $title ); ?></a>
                     </td>
-                    <td><?php echo esc_html( $product->get_sku() ?: '—' ); ?></td>
-                    <td>
-                        <input type="number" name="slw_product_price[<?php echo $pid; ?>]" value="<?php echo esc_attr( $wholesale_price ); ?>" step="0.01" min="0" style="width:80px;" />
+                    <td style="padding:8px 12px;color:#628393;font-size:13px;"><?php echo esc_html( $product->get_sku() ?: '' ); ?></td>
+                    <td style="padding:8px 12px;">
+                        <div style="display:flex;align-items:center;gap:4px;">
+                            <span style="color:#628393;">$</span>
+                            <input type="number" name="slw_product_price[<?php echo $pid; ?>]" value="<?php echo esc_attr( $wholesale_price ); ?>" step="0.01" min="0" style="width:90px;padding:4px 8px;" placeholder="Global %" />
+                        </div>
                     </td>
-                    <td>
-                        <input type="number" name="slw_product_min[<?php echo $pid; ?>]" value="<?php echo esc_attr( $min_qty ); ?>" step="1" min="0" style="width:60px;" />
+                    <td style="padding:8px 12px;">
+                        <input type="number" name="slw_product_min[<?php echo $pid; ?>]" value="<?php echo esc_attr( $min_qty ); ?>" step="1" min="0" style="width:70px;padding:4px 8px;" placeholder="None" />
                     </td>
-                    <td>
-                        <input type="number" name="slw_product_case[<?php echo $pid; ?>]" value="<?php echo esc_attr( $case_pack ); ?>" step="1" min="0" style="width:60px;" />
+                    <td style="padding:8px 12px;">
+                        <input type="number" name="slw_product_case[<?php echo $pid; ?>]" value="<?php echo esc_attr( $case_pack ); ?>" step="1" min="0" style="width:70px;padding:4px 8px;" placeholder="None" />
                     </td>
                 </tr>
                 <?php endforeach; ?>
 
                 <!-- Add Product row -->
-                <tr style="background:#f0f8f0;">
-                    <td colspan="2">
-                        <label style="font-weight:500;color:#386174;">Add override by Product ID:</label>
-                        <input type="number" name="slw_new_product_id" value="" min="1" step="1" style="width:80px;margin-left:6px;" placeholder="ID" />
+                <tr style="background:#f6faf6;border-top:2px solid #e0ddd8;">
+                    <td style="padding:10px 12px;" colspan="2">
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <span style="font-weight:600;color:#386174;font-size:13px;">Add product:</span>
+                            <input type="number" name="slw_new_product_id" value="" min="1" step="1" style="width:80px;padding:4px 8px;" placeholder="Product ID" />
+                        </div>
                     </td>
-                    <td>
-                        <input type="number" name="slw_new_product_price" value="" step="0.01" min="0" style="width:80px;" placeholder="Price" />
+                    <td style="padding:10px 12px;">
+                        <div style="display:flex;align-items:center;gap:4px;">
+                            <span style="color:#628393;">$</span>
+                            <input type="number" name="slw_new_product_price" value="" step="0.01" min="0" style="width:90px;padding:4px 8px;" placeholder="Price" />
+                        </div>
                     </td>
-                    <td>
-                        <input type="number" name="slw_new_product_min" value="" step="1" min="0" style="width:60px;" placeholder="Min" />
+                    <td style="padding:10px 12px;">
+                        <input type="number" name="slw_new_product_min" value="" step="1" min="0" style="width:70px;padding:4px 8px;" placeholder="Min" />
                     </td>
-                    <td>
-                        <input type="number" name="slw_new_product_case" value="" step="1" min="0" style="width:60px;" placeholder="Case" />
+                    <td style="padding:10px 12px;">
+                        <input type="number" name="slw_new_product_case" value="" step="1" min="0" style="width:70px;padding:4px 8px;" placeholder="Case" />
                     </td>
                 </tr>
             </tbody>

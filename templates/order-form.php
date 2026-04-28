@@ -22,8 +22,13 @@ $all_products = wc_get_products( array(
     'limit'   => -1,
     'orderby' => 'title',
     'order'   => 'ASC',
-    'type'    => array( 'simple', 'variable' ),
 ));
+
+// Filter to simple + variable only
+$all_products = array_filter( $all_products, function( $p ) {
+    return $p->is_type( 'simple' ) || $p->is_type( 'variable' );
+} );
+$all_products = array_values( $all_products );
 
 // Filter by order form categories if configured
 $allowed_cats = get_option( 'slw_order_form_categories', array() );
