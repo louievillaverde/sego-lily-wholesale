@@ -104,7 +104,7 @@ class SLW_Admin_Dashboard {
                             </a>
                             <span class="slw-funnel__arrow">&rarr;</span>
                             <a href="<?php echo esc_url( admin_url( 'admin.php?page=slw-applications&status=approved' ) ); ?>" class="slw-funnel__stage slw-funnel__stage--teal-3">
-                                <span class="slw-funnel__count"><?php echo esc_html( $funnel['approved_this_month'] ); ?></span>
+                                <span class="slw-funnel__count"><?php echo esc_html( $funnel['approved_apps'] ); ?></span>
                                 <span class="slw-funnel__label">Approved</span>
                             </a>
                             <span class="slw-funnel__arrow">&rarr;</span>
@@ -422,43 +422,30 @@ class SLW_Admin_Dashboard {
             $leads = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$leads_table}" );
         }
 
-        // Pending applications
+        // Applications: pending + approved (all time, not just this month)
         $app_table = $wpdb->prefix . 'slw_applications';
         $pending_apps = 0;
-        $approved_this_month = 0;
+        $approved_apps = 0;
         if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $app_table ) ) === $app_table ) {
             $pending_apps = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$app_table} WHERE status = 'pending'" );
-            $first_of_month = gmdate( 'Y-m-01' );
-            $approved_this_month = (int) $wpdb->get_var( $wpdb->prepare(
-                "SELECT COUNT(*) FROM {$app_table} WHERE status = 'approved' AND reviewed_at >= %s",
-                $first_of_month
-            ) );
+            $approved_apps = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$app_table} WHERE status = 'approved'" );
         }
 
-        // First orders this month: users with first-order-placed meta whose wholesale orders started this month
+        // First orders: wholesale users who have placed at least one order
+        // slw_first_order_placed stores a datetime string (not '1')
         $first_orders = 0;
-        if ( function_exists( 'wc_get_orders' ) ) {
-            $first_of_month = gmdate( 'Y-m-01' );
-            $users_with_first_order = get_users( array(
-                'meta_key'   => 'slw_first_order_placed',
-                'meta_value' => '1',
-                'fields'     => 'ID',
-            ) );
-            if ( ! empty( $users_with_first_order ) ) {
-                foreach ( $users_with_first_order as $uid ) {
-                    $order_date = get_user_meta( $uid, 'slw_first_order_date', true );
-                    if ( $order_date && $order_date >= $first_of_month ) {
-                        $first_orders++;
-                    }
-                }
-            }
-        }
+        $users_with_first_order = get_users( array(
+            'meta_key'     => 'slw_first_order_placed',
+            'meta_compare' => 'EXISTS',
+            'fields'       => 'ID',
+        ) );
+        $first_orders = count( $users_with_first_order );
 
         return array(
-            'leads'               => $leads,
-            'pending_apps'        => $pending_apps,
-            'approved_this_month' => $approved_this_month,
-            'first_orders'        => $first_orders,
+            'leads'         => $leads,
+            'pending_apps'  => $pending_apps,
+            'approved_apps' => $approved_apps,
+            'first_orders'  => $first_orders,
         );
     }
 
