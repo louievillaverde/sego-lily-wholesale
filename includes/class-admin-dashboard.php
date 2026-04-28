@@ -90,8 +90,27 @@ class SLW_Admin_Dashboard {
 
                     <!-- Lead Pipeline (distinct from overview stats — shows conversion flow) -->
                     <div class="slw-admin-card" style="padding:20px 24px;">
-                        <h2 class="slw-admin-card__heading" style="margin-bottom:16px;">Lead Pipeline</h2>
-                        <?php $funnel = self::get_funnel_counts(); ?>
+                        <?php
+                        $pipeline_range = sanitize_key( $_GET['pipeline_range'] ?? 'all' );
+                        $range_options = array(
+                            '7d'  => 'Last 7 days',
+                            '30d' => 'Last 30 days',
+                            '90d' => 'Last 90 days',
+                            'all' => 'All time',
+                        );
+                        $funnel = self::get_funnel_counts( $pipeline_range );
+                        ?>
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+                            <h2 class="slw-admin-card__heading" style="margin:0;">Lead Pipeline</h2>
+                            <div style="display:flex;gap:4px;">
+                                <?php foreach ( $range_options as $key => $label ) : ?>
+                                    <a href="<?php echo esc_url( add_query_arg( 'pipeline_range', $key, admin_url( 'admin.php?page=slw-dashboard' ) ) ); ?>"
+                                       style="padding:4px 12px;font-size:12px;border-radius:4px;text-decoration:none;<?php echo $pipeline_range === $key ? 'background:#386174;color:#F7F6F3;font-weight:600;' : 'background:#f0eeea;color:#628393;'; ?>">
+                                        <?php echo esc_html( $label ); ?>
+                                    </a>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
                         <div class="slw-funnel">
                             <a href="<?php echo esc_url( admin_url( 'admin.php?page=slw-leads' ) ); ?>" class="slw-funnel__stage slw-funnel__stage--teal-1">
                                 <span class="slw-funnel__count"><?php echo esc_html( $funnel['leads'] ); ?></span>
@@ -412,34 +431,64 @@ class SLW_Admin_Dashboard {
     /**
      * Get lightweight funnel counts for the pipeline visualization.
      */
-    private static function get_funnel_counts() {
+    private static function get_funnel_counts( $range = 'all' ) {
         global $wpdb;
+
+        // Calculate date cutoff
+        $date_clause = '';
+        if ( $range === '7d' ) {
+            $cutoff = gmdate( 'Y-m-d H:i:s', strtotime( '-7 days' ) );
+        } elseif ( $range === '30d' ) {
+            $cutoff = gmdate( 'Y-m-d H:i:s', strtotime( '-30 days' ) );
+        } elseif ( $range === '90d' ) {
+            $cutoff = gmdate( 'Y-m-d H:i:s', strtotime( '-90 days' ) );
+        } else {
+            $cutoff = '';
+        }
 
         // Total leads
         $leads_table = $wpdb->prefix . 'slw_leads';
         $leads = 0;
         if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $leads_table ) ) === $leads_table ) {
-            $leads = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$leads_table}" );
+            if ( $cutoff ) {
+                $leads = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$leads_table} WHERE captured_at >= %s", $cutoff ) );
+            } else {
+                $leads = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$leads_table}" );
+            }
         }
 
-        // Applications: pending + approved (all time, not just this month)
+        // Applications
         $app_table = $wpdb->prefix . 'slw_applications';
         $pending_apps = 0;
         $approved_apps = 0;
         if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $app_table ) ) === $app_table ) {
-            $pending_apps = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$app_table} WHERE status = 'pending'" );
-            $approved_apps = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$app_table} WHERE status = 'approved'" );
+            if ( $cutoff ) {
+                $pending_apps = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$app_table} WHERE status = 'pending' AND submitted_at >= %s", $cutoff ) );
+                $approved_apps = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$app_table} WHERE status = 'approved' AND reviewed_at >= %s", $cutoff ) );
+            } else {
+                $pending_apps = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$app_table} WHERE status = 'pending'" );
+                $approved_apps = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$app_table} WHERE status = 'approved'" );
+            }
         }
 
         // First orders: wholesale users who have placed at least one order
-        // slw_first_order_placed stores a datetime string (not '1')
-        $first_orders = 0;
+        // slw_first_order_placed stores a datetime string
         $users_with_first_order = get_users( array(
             'meta_key'     => 'slw_first_order_placed',
             'meta_compare' => 'EXISTS',
             'fields'       => 'ID',
         ) );
-        $first_orders = count( $users_with_first_order );
+        if ( $cutoff ) {
+            $first_orders = 0;
+            foreach ( $users_with_first_order as $uid ) {
+                $order_date = get_user_meta( $uid, 'slw_first_order_placed', true );
+                if ( $order_date && $order_date >= $cutoff ) {
+                    $first_orders++;
+                }
+            }
+        } else {
+            $first_orders = count( $users_with_first_order );
+        }
 
         return array(
             'leads'         => $leads,
