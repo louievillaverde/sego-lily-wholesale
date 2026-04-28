@@ -70,76 +70,40 @@ class SLW_Analytics {
 
         // Gather all the data
         $sources = self::get_source_attribution( $since, $period_days );
-        $funnel  = self::get_funnel_data( $since );
         $ttp     = self::get_time_to_purchase( $since );
 
-        // ── Source Attribution ──
+        // ── Source Attribution — 2×2 Quadrant ──
         ?>
         <div class="slw-analytics-section">
             <h2 style="font-size:18px;margin:0 0 4px;">Source Attribution</h2>
             <p style="color:#628393;font-size:13px;margin:0 0 20px;">Where your leads and revenue come from</p>
 
-            <div class="slw-analytics-channels">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px;">
                 <?php foreach ( $sources as $source ) : ?>
-                <div class="slw-analytics-channel-card">
-                    <div class="slw-analytics-channel-header">
-                        <span class="slw-analytics-channel-name"><?php echo esc_html( $source['label'] ); ?></span>
-                        <span class="slw-analytics-channel-badge" style="background:<?php echo esc_attr( $source['color'] ); ?>;"><?php echo esc_html( $source['leads'] ); ?> leads</span>
-                    </div>
-                    <div class="slw-analytics-channel-stats">
+                <div class="slw-admin-card" style="margin:0;">
+                    <h3 style="font-size:15px;font-weight:700;color:#1c2b2f;margin:0 0 16px;border-bottom:2px solid <?php echo esc_attr( $source['color'] ); ?>;padding-bottom:8px;">
+                        <?php echo esc_html( $source['label'] ); ?>
+                    </h3>
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+                        <div>
+                            <span class="slw-analytics-stat-num"><?php echo esc_html( $source['leads'] ); ?></span>
+                            <span class="slw-analytics-stat-label">Leads</span>
+                        </div>
                         <div>
                             <span class="slw-analytics-stat-num"><?php echo esc_html( $source['purchases'] ); ?></span>
                             <span class="slw-analytics-stat-label">Purchases</span>
                         </div>
                         <div>
-                            <span class="slw-analytics-stat-num"><?php echo $source['revenue'] > 0 ? wp_kses_post( wc_price( $source['revenue'] ) ) : '$0'; ?></span>
-                            <span class="slw-analytics-stat-label">Revenue</span>
-                        </div>
-                        <div>
                             <span class="slw-analytics-stat-num"><?php echo esc_html( $source['conversion_rate'] ); ?>%</span>
-                            <span class="slw-analytics-stat-label">Lead → Purchase</span>
+                            <span class="slw-analytics-stat-label">Conversion</span>
                         </div>
                     </div>
-                    <!-- Visual bar -->
-                    <div class="slw-analytics-bar-bg">
-                        <div class="slw-analytics-bar-fill" style="width:<?php echo esc_attr( $source['bar_pct'] ); ?>%;background:<?php echo esc_attr( $source['color'] ); ?>;"></div>
+                    <?php if ( $source['revenue'] > 0 ) : ?>
+                    <div style="margin-top:12px;">
+                        <span class="slw-analytics-stat-num"><?php echo wp_kses_post( wc_price( $source['revenue'] ) ); ?></span>
+                        <span class="slw-analytics-stat-label">Revenue</span>
                     </div>
-                </div>
-                <?php endforeach; ?>
-            </div>
-        </div>
-
-        <!-- Funnel Drop-off -->
-        <div class="slw-analytics-section">
-            <h2 style="font-size:18px;margin:0 0 4px;">Retail Quiz Funnel</h2>
-            <p style="color:#628393;font-size:13px;margin:0 0 20px;">Where people drop off from quiz to purchase</p>
-
-            <div class="slw-analytics-funnel">
-                <?php
-                $funnel_steps = array(
-                    array( 'label' => 'Quiz Completed', 'count' => $funnel['quiz_completed'], 'color' => '#2C4F5E' ),
-                    array( 'label' => 'Landing Page Visit', 'count' => $funnel['page_visits'], 'color' => '#386174' ),
-                    array( 'label' => 'Email Opened', 'count' => $funnel['emails_opened'], 'color' => '#628393' ),
-                    array( 'label' => 'Add to Cart', 'count' => $funnel['add_to_cart'], 'color' => '#B8892E' ),
-                    array( 'label' => 'Purchase', 'count' => $funnel['purchases'], 'color' => '#2e7d32' ),
-                );
-                $max_count = max( 1, $funnel_steps[0]['count'] );
-                foreach ( $funnel_steps as $i => $step ) :
-                    $pct = round( ( $step['count'] / $max_count ) * 100 );
-                    $drop = $i > 0 && $funnel_steps[ $i - 1 ]['count'] > 0
-                        ? round( ( 1 - $step['count'] / $funnel_steps[ $i - 1 ]['count'] ) * 100 )
-                        : 0;
-                ?>
-                <div class="slw-analytics-funnel-step">
-                    <div class="slw-analytics-funnel-bar" style="width:<?php echo max( $pct, 4 ); ?>%;background:<?php echo esc_attr( $step['color'] ); ?>;">
-                        <span class="slw-analytics-funnel-count"><?php echo esc_html( $step['count'] ); ?></span>
-                    </div>
-                    <div class="slw-analytics-funnel-label">
-                        <?php echo esc_html( $step['label'] ); ?>
-                        <?php if ( $drop > 0 ) : ?>
-                            <span class="slw-analytics-funnel-drop">-<?php echo esc_html( $drop ); ?>% drop</span>
-                        <?php endif; ?>
-                    </div>
+                    <?php endif; ?>
                 </div>
                 <?php endforeach; ?>
             </div>
@@ -166,47 +130,11 @@ class SLW_Analytics {
             </div>
         </div>
 
-        <!-- Skin Concern Breakdown -->
-        <div class="slw-analytics-section">
-            <h2 style="font-size:18px;margin:0 0 4px;">Quiz Answer Breakdown</h2>
-            <p style="color:#628393;font-size:13px;margin:0 0 20px;">What your audience cares about most</p>
-
-            <?php $concerns = self::get_concern_breakdown( $since ); ?>
-            <div class="slw-analytics-breakdown">
-                <?php foreach ( $concerns as $concern ) : ?>
-                <div class="slw-analytics-breakdown-row">
-                    <span class="slw-analytics-breakdown-label"><?php echo esc_html( $concern['label'] ); ?></span>
-                    <div class="slw-analytics-bar-bg" style="flex:1;">
-                        <div class="slw-analytics-bar-fill" style="width:<?php echo esc_attr( $concern['pct'] ); ?>%;background:#2C4F5E;"></div>
-                    </div>
-                    <span class="slw-analytics-breakdown-count"><?php echo esc_html( $concern['count'] ); ?> (<?php echo esc_html( $concern['pct'] ); ?>%)</span>
-                </div>
-                <?php endforeach; ?>
-            </div>
-        </div>
 
         <style>
             .slw-analytics-section { background:#fff; border:1px solid #dde8ed; border-radius:12px; padding:28px; margin-bottom:20px; }
-            .slw-analytics-channels { display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px; }
-            .slw-analytics-channel-card { background:#faf7f2; border:1px solid #dde8ed; border-radius:10px; padding:20px; }
-            .slw-analytics-channel-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; }
-            .slw-analytics-channel-name { font-weight:700; font-size:14px; color:#1c2b2f; }
-            .slw-analytics-channel-badge { font-size:11px; font-weight:700; color:#fff; padding:3px 10px; border-radius:12px; }
-            .slw-analytics-channel-stats { display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; margin-bottom:12px; }
             .slw-analytics-stat-num { display:block; font-size:18px; font-weight:800; color:#2c4f5e; }
             .slw-analytics-stat-label { display:block; font-size:10px; color:#6a8fa0; text-transform:uppercase; letter-spacing:.06em; font-weight:600; }
-            .slw-analytics-bar-bg { background:#eef6fa; border-radius:4px; height:8px; overflow:hidden; }
-            .slw-analytics-bar-fill { height:100%; border-radius:4px; transition:width .3s; min-width:2px; }
-            .slw-analytics-funnel { max-width:600px; }
-            .slw-analytics-funnel-step { display:flex; align-items:center; gap:16px; margin-bottom:8px; }
-            .slw-analytics-funnel-bar { height:36px; border-radius:6px; display:flex; align-items:center; padding:0 12px; min-width:40px; transition:width .3s; }
-            .slw-analytics-funnel-count { color:#fff; font-size:13px; font-weight:800; }
-            .slw-analytics-funnel-label { font-size:13px; font-weight:600; color:#1c2b2f; white-space:nowrap; }
-            .slw-analytics-funnel-drop { font-size:11px; color:#c62828; font-weight:700; margin-left:6px; }
-            .slw-analytics-breakdown { max-width:600px; }
-            .slw-analytics-breakdown-row { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
-            .slw-analytics-breakdown-label { font-size:13px; font-weight:600; color:#1c2b2f; min-width:160px; }
-            .slw-analytics-breakdown-count { font-size:12px; color:#6a8fa0; font-weight:600; white-space:nowrap; min-width:80px; text-align:right; }
         </style>
         <?php
     }
@@ -306,25 +234,20 @@ class SLW_Analytics {
         $apps_table  = $wpdb->prefix . 'slw_applications';
 
         $source_config = array(
-            'retail_booth'    => array( 'label' => 'Trade Show (Retail)', 'color' => '#B8892E' ),
-            'wholesale_booth' => array( 'label' => 'Trade Show (Wholesale)', 'color' => '#D4AF37' ),
             'website'         => array( 'label' => 'Website Application', 'color' => '#2C4F5E' ),
             'shortcode'       => array( 'label' => 'Website Form', 'color' => '#386174' ),
-            'meta_quiz'       => array( 'label' => 'Meta Quiz Ads', 'color' => '#1877F2' ),
+            'wholesale_booth' => array( 'label' => 'Trade Show (Wholesale)', 'color' => '#D4AF37' ),
+            'retail_booth'    => array( 'label' => 'Trade Show (Retail)', 'color' => '#B8892E' ),
         );
 
         $sources = array();
-        $max_leads = 1;
 
         foreach ( $source_config as $source_key => $config ) {
             // Count leads from slw_leads table
-            $lead_count = 0;
-            if ( $source_key !== 'meta_quiz' ) {
-                $lead_count = (int) $wpdb->get_var( $wpdb->prepare(
-                    "SELECT COUNT(*) FROM {$leads_table} WHERE source = %s AND captured_at >= %s",
-                    $source_key, $since
-                ) );
-            }
+            $lead_count = (int) $wpdb->get_var( $wpdb->prepare(
+                "SELECT COUNT(*) FROM {$leads_table} WHERE source = %s AND captured_at >= %s",
+                $source_key, $since
+            ) );
 
             // Count retail booth leads from user meta
             if ( $source_key === 'retail_booth' ) {
@@ -332,16 +255,6 @@ class SLW_Analytics {
                     "SELECT COUNT(*) FROM {$wpdb->usermeta} WHERE meta_key = 'slw_booth_source' AND meta_value = %s",
                     'retail_booth'
                 ) );
-            }
-
-            // Meta quiz leads — count by skin_concern user meta (set by bridge, not booth)
-            if ( $source_key === 'meta_quiz' ) {
-                // Approximate: contacts with skin_concern but no booth_source
-                $lead_count = (int) $wpdb->get_var(
-                    "SELECT COUNT(DISTINCT um1.user_id) FROM {$wpdb->usermeta} um1
-                     WHERE um1.meta_key = 'slw_skin_concern'
-                     AND NOT EXISTS (SELECT 1 FROM {$wpdb->usermeta} um2 WHERE um2.user_id = um1.user_id AND um2.meta_key = 'slw_booth_source')"
-                );
             }
 
             // Count applications from this source
@@ -383,7 +296,6 @@ class SLW_Analytics {
             }
 
             $conversion_rate = $lead_count > 0 ? round( ( $purchases / $lead_count ) * 100, 1 ) : 0;
-            $max_leads = max( $max_leads, $lead_count );
 
             $sources[] = array(
                 'key'             => $source_key,
@@ -393,60 +305,10 @@ class SLW_Analytics {
                 'purchases'       => $purchases,
                 'revenue'         => $revenue,
                 'conversion_rate' => $conversion_rate,
-                'bar_pct'         => 0, // calculated below
             );
         }
 
-        // Calculate bar percentages relative to max
-        foreach ( $sources as &$s ) {
-            $s['bar_pct'] = round( ( $s['leads'] / $max_leads ) * 100 );
-        }
-
-        // Sort by lead count descending
-        usort( $sources, function( $a, $b ) { return $b['leads'] - $a['leads']; } );
-
         return $sources;
-    }
-
-    /**
-     * Get funnel data for retail quiz flow.
-     */
-    private static function get_funnel_data( $since ) {
-        global $wpdb;
-
-        // Quiz completed = users with slw_skin_concern meta
-        $quiz_completed = (int) $wpdb->get_var(
-            "SELECT COUNT(DISTINCT user_id) FROM {$wpdb->usermeta} WHERE meta_key = 'slw_skin_concern'"
-        );
-
-        // Page visits = approximate from quiz results page views (if tracked)
-        // For now, use quiz_completed as proxy (everyone who completes quiz sees the page)
-        $page_visits = $quiz_completed;
-
-        // Emails opened — would need Mautic API data, approximate for now
-        $emails_opened = max( 0, round( $quiz_completed * 0.45 ) ); // Industry avg open rate
-
-        // Add to cart — WooCommerce sessions with items (approximate)
-        $add_to_cart = 0;
-        $purchases   = 0;
-        if ( function_exists( 'wc_get_orders' ) ) {
-            $orders = wc_get_orders( array(
-                'date_after' => $since,
-                'status'     => array( 'completed', 'processing' ),
-                'limit'      => -1,
-                'return'     => 'ids',
-            ) );
-            $purchases = count( $orders );
-            $add_to_cart = max( $purchases, round( $purchases * 1.4 ) ); // ~70% cart completion rate
-        }
-
-        return array(
-            'quiz_completed' => $quiz_completed,
-            'page_visits'    => $page_visits,
-            'emails_opened'  => $emails_opened,
-            'add_to_cart'    => $add_to_cart,
-            'purchases'      => $purchases,
-        );
     }
 
     /**
@@ -490,50 +352,6 @@ class SLW_Analytics {
         $same   = round( ( count( array_filter( $days, function( $d ) { return $d === 0; } ) ) / count( $days ) ) * 100 );
 
         return array( 'avg_days' => $avg, 'median_days' => $median, 'same_day_pct' => $same );
-    }
-
-    /**
-     * Get skin concern breakdown from user meta.
-     */
-    private static function get_concern_breakdown( $since ) {
-        global $wpdb;
-
-        $results = $wpdb->get_results(
-            "SELECT meta_value, COUNT(*) as cnt FROM {$wpdb->usermeta}
-             WHERE meta_key = 'slw_skin_concern' AND meta_value != ''
-             GROUP BY meta_value ORDER BY cnt DESC",
-            ARRAY_A
-        );
-
-        $total = array_sum( array_column( $results, 'cnt' ) );
-        $concerns = array();
-
-        foreach ( $results as $row ) {
-            $concerns[] = array(
-                'label' => $row['meta_value'],
-                'count' => (int) $row['cnt'],
-                'pct'   => $total > 0 ? round( ( $row['cnt'] / $total ) * 100 ) : 0,
-            );
-        }
-
-        // Add frustration breakdown
-        $frustrations = $wpdb->get_results(
-            "SELECT meta_value, COUNT(*) as cnt FROM {$wpdb->usermeta}
-             WHERE meta_key = 'slw_frustration' AND meta_value != ''
-             GROUP BY meta_value ORDER BY cnt DESC",
-            ARRAY_A
-        );
-
-        $f_total = array_sum( array_column( $frustrations, 'cnt' ) );
-        foreach ( $frustrations as $row ) {
-            $concerns[] = array(
-                'label' => $row['meta_value'],
-                'count' => (int) $row['cnt'],
-                'pct'   => $f_total > 0 ? round( ( $row['cnt'] / $f_total ) * 100 ) : 0,
-            );
-        }
-
-        return $concerns;
     }
 
     /**
