@@ -141,5 +141,8 @@ class SLW_Admin_Menu {
 
         // 9. Help (always last)
         add_submenu_page( 'slw-dashboard', 'Help & Resources', 'Help', 'manage_woocommerce', 'slw-docs', array( 'SLW_Docs', 'render_page' ) );
+
+        // Hidden: Preview (accessible via Dashboard links, not in nav)
+        add_submenu_page( null, 'Portal Preview', '', 'manage_woocommerce', 'slw-preview', array( __CLASS__, 'render_preview_page' ) );
     }
 }

@@ -288,19 +288,22 @@ class SLW_Pricing_Page {
         $paged = isset( $_GET['slw_prod_page'] ) ? max( 1, absint( $_GET['slw_prod_page'] ) ) : 1;
         $per_page = 20;
 
-        $results = wc_get_products( array(
-            'status'   => 'publish',
-            'type'     => array( 'simple', 'variable' ),
-            'limit'    => $per_page,
-            'page'     => $paged,
-            'orderby'  => 'title',
-            'order'    => 'ASC',
-            'paginate' => true,
+        $all = wc_get_products( array(
+            'status'  => 'publish',
+            'limit'   => -1,
+            'orderby' => 'title',
+            'order'   => 'ASC',
         ) );
 
-        $products = $results->products;
-        $total_pages = $results->max_num_pages;
-        $total_products = $results->total;
+        // Filter to simple + variable only
+        $all = array_filter( $all, function( $p ) {
+            return $p->is_type( 'simple' ) || $p->is_type( 'variable' );
+        } );
+        $all = array_values( $all );
+
+        $total_products = count( $all );
+        $total_pages = max( 1, ceil( $total_products / $per_page ) );
+        $products = array_slice( $all, ( $paged - 1 ) * $per_page, $per_page );
 
         if ( empty( $products ) ) {
             echo '<p style="color:#888;font-style:italic;">No published products found.</p>';
