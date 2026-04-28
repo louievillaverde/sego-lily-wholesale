@@ -15,9 +15,9 @@ class SLW_Settings {
 
     /** @var array All settings with their sanitize callbacks and defaults */
     private static $fields = array(
-        'slw_discount_percent'              => array( 'sanitize' => 'absint',              'default' => 50 ),
-        'slw_first_order_minimum'           => array( 'sanitize' => 'floatval',            'default' => 300 ),
-        'slw_reorder_minimum'               => array( 'sanitize' => 'floatval',            'default' => 0 ),
+        // Note: slw_discount_percent, slw_first_order_minimum, slw_reorder_minimum
+        // are managed by the Pricing page (class-pricing-page.php). Do NOT add them
+        // here or they'll be overwritten with empty values on every Settings save.
         'slw_webhook_url'                   => array( 'sanitize' => 'esc_url_raw',         'default' => '' ),
         'slw_net30_enabled'                 => array( 'sanitize' => 'rest_sanitize_boolean','default' => false ),
         'slw_wholesale_tax_exempt_default'  => array( 'sanitize' => 'rest_sanitize_boolean','default' => false ),
@@ -27,7 +27,7 @@ class SLW_Settings {
         'slw_booth_retail_code'             => array( 'sanitize' => 'sanitize_text_field',  'default' => 'SEGO15' ),
         'slw_booth_retail_offer'            => array( 'sanitize' => 'sanitize_text_field',  'default' => '15% off your first order' ),
         'slw_booth_retail_url'              => array( 'sanitize' => 'esc_url_raw',          'default' => '' ),
-        'slw_booth_wholesale_heading'       => array( 'sanitize' => 'sanitize_text_field',  'default' => "Welcome! Here's our wholesale price list" ),
+        'slw_booth_wholesale_heading'       => array( 'sanitize' => 'sanitize_text_field',  'default' => 'Welcome! Here is our wholesale price list' ),
         // Product Visibility
         'slw_wholesale_only_categories'     => array( 'sanitize' => 'array',               'default' => array() ),
         'slw_order_form_categories'         => array( 'sanitize' => 'array',               'default' => array() ),
@@ -171,7 +171,7 @@ class SLW_Settings {
                         <th scope="row"><label for="slw_booth_wholesale_heading">Wholesale Incentive Heading</label></th>
                         <td>
                             <input type="text" id="slw_booth_wholesale_heading" name="slw_booth_wholesale_heading"
-                                   value="<?php echo esc_attr( get_option( 'slw_booth_wholesale_heading', "Welcome! Here's our wholesale price list" ) ); ?>"
+                                   value="<?php echo esc_attr( get_option( 'slw_booth_wholesale_heading', 'Welcome! Here is our wholesale price list' ) ); ?>"
                                    class="regular-text" />
                             <p class="description">Heading shown to wholesale booth visitors after they submit.</p>
                         </td>
@@ -260,6 +260,29 @@ class SLW_Settings {
                 <?php submit_button( 'Save Settings' ); ?>
             </form>
         </div>
+
+        <div id="slw-unsaved-bar" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#386174;color:#F7F6F3;padding:12px 24px;text-align:center;font-family:Georgia,'Times New Roman',serif;font-size:14px;z-index:99999;box-shadow:0 -2px 8px rgba(0,0,0,0.15);">
+            You have unsaved changes.
+            <button type="button" onclick="document.querySelector('form [name=slw_settings_save]').closest('form').submit();" style="margin-left:12px;background:#D4AF37;color:#1E2A30;border:none;padding:6px 18px;border-radius:4px;font-weight:600;cursor:pointer;font-family:inherit;">Save Settings</button>
+        </div>
+        <script>
+        (function() {
+            var form = document.querySelector('form');
+            if (!form) return;
+            var bar = document.getElementById('slw-unsaved-bar');
+            var initial = new FormData(form);
+            function check() {
+                var current = new FormData(form);
+                var changed = false;
+                for (var [key, val] of current.entries()) {
+                    if (initial.get(key) !== val) { changed = true; break; }
+                }
+                bar.style.display = changed ? '' : 'none';
+            }
+            form.addEventListener('input', check);
+            form.addEventListener('change', check);
+        })();
+        </script>
         <?php
     }
 
