@@ -181,22 +181,53 @@ $products = $all_products; // keep for empty check
                             $variation = wc_get_product( $var_data['variation_id'] );
                             if ( ! $variation || ! $variation->is_in_stock() ) continue;
 
+                            // Skip subscription-specific variations for wholesale.
+                            // These have attributes like billing-period, subscription-period,
+                            // or the variation type itself is subscription_variation.
+                            if ( $variation->is_type( 'subscription_variation' ) ) continue;
+                            $var_attrs_raw = $var_data['attributes'] ?? array();
+                            $is_sub_variation = false;
+                            foreach ( $var_attrs_raw as $attr_key => $attr_val ) {
+                                $key_lower = strtolower( $attr_key );
+                                if ( strpos( $key_lower, 'subscription' ) !== false
+                                    || strpos( $key_lower, 'billing' ) !== false
+                                    || strpos( $key_lower, 'sign-up' ) !== false
+                                    || strpos( $key_lower, 'signup' ) !== false ) {
+                                    $is_sub_variation = true;
+                                    break;
+                                }
+                                // Also check the value for common subscription terms
+                                $val_lower = strtolower( $attr_val );
+                                if ( in_array( $val_lower, array( 'monthly', 'yearly', 'weekly', 'every-2-weeks', 'every-3-months', 'every-6-months' ), true ) ) {
+                                    $is_sub_variation = true;
+                                    break;
+                                }
+                            }
+                            if ( $is_sub_variation ) continue;
+
                             // Variation image or fall back to parent
                             $var_image = $var_data['image']['thumb_src'] ?? '';
                             if ( ! $var_image ) {
                                 $var_image = $parent_image;
                             }
 
-                            // Build variation name from attributes
+                            // Build variation name from attributes (skip subscription-related attrs)
                             $var_attrs = $var_data['attributes'] ?? array();
                             $var_label_parts = array();
                             foreach ( $var_attrs as $attr_key => $attr_val ) {
-                                if ( $attr_val ) {
-                                    // Try to get the term name for taxonomy attributes
-                                    $taxonomy = str_replace( 'attribute_', '', $attr_key );
-                                    $term = get_term_by( 'slug', $attr_val, $taxonomy );
-                                    $var_label_parts[] = $term ? $term->name : ucfirst( $attr_val );
+                                if ( ! $attr_val ) continue;
+                                $key_lower = strtolower( $attr_key );
+                                // Skip subscription/purchase-type attributes from the label
+                                if ( strpos( $key_lower, 'subscription' ) !== false
+                                    || strpos( $key_lower, 'billing' ) !== false
+                                    || strpos( $key_lower, 'purchase' ) !== false
+                                    || strpos( $key_lower, 'sign-up' ) !== false
+                                    || strpos( $key_lower, 'signup' ) !== false ) {
+                                    continue;
                                 }
+                                $taxonomy = str_replace( 'attribute_', '', $attr_key );
+                                $term = get_term_by( 'slug', $attr_val, $taxonomy );
+                                $var_label_parts[] = $term ? $term->name : ucfirst( $attr_val );
                             }
                             $var_label = ! empty( $var_label_parts ) ? implode( ' / ', $var_label_parts ) : $variation->get_name();
 
