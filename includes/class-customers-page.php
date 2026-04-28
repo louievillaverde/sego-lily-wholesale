@@ -12,6 +12,41 @@ class SLW_Customers_Page {
 
     public static function init() {
         add_action( 'admin_init', array( __CLASS__, 'maybe_export_csv' ) );
+        add_action( 'wp_ajax_slw_deactivate_wholesale', array( __CLASS__, 'ajax_deactivate_wholesale' ) );
+    }
+
+    /**
+     * AJAX: deactivate a wholesale customer (remove role + Mautic tag).
+     */
+    public static function ajax_deactivate_wholesale() {
+        check_ajax_referer( 'slw_customers_nonce', 'nonce' );
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_send_json_error( 'Permission denied.' );
+        }
+
+        $user_id = absint( $_POST['user_id'] ?? 0 );
+        if ( ! $user_id ) {
+            wp_send_json_error( 'Invalid user.' );
+        }
+
+        $user = get_userdata( $user_id );
+        if ( ! $user || ! slw_is_wholesale_user( $user_id ) ) {
+            wp_send_json_error( 'User is not a wholesale customer.' );
+        }
+
+        $user->remove_role( 'wholesale_customer' );
+
+        // Remove Mautic tag so they can re-enter if reactivated
+        if ( class_exists( 'SLW_Webhooks' ) ) {
+            SLW_Webhooks::remove_mautic_tag( $user->user_email, 'wholesale-approved' );
+        }
+
+        // Audit log
+        if ( class_exists( 'SLW_Audit_Log' ) ) {
+            SLW_Audit_Log::log( 'wholesale_deactivated', sprintf( 'Wholesale access revoked for %s (%s)', $user->display_name, $user->user_email ) );
+        }
+
+        wp_send_json_success( 'Wholesale access removed.' );
     }
 
     /**
@@ -292,8 +327,9 @@ class SLW_Customers_Page {
                                 <td><?php echo $net_terms ? 'NET ' . esc_html( $net_terms ) : '&mdash;'; ?></td>
                                 <td><?php echo esc_html( $order_count ); ?></td>
                                 <td><?php echo $last_order_date; ?></td>
-                                <td>
+                                <td style="white-space:nowrap;">
                                     <a href="<?php echo esc_url( get_edit_user_link( $user_id ) ); ?>" class="button button-small">Edit</a>
+                                    <button type="button" class="button button-small slw-deactivate-btn" data-user-id="<?php echo esc_attr( $user_id ); ?>" data-name="<?php echo esc_attr( $customer->display_name ); ?>" style="color:#c62828;">Deactivate</button>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -338,6 +374,43 @@ class SLW_Customers_Page {
                     </span>
                 </div>
             </div>
-        <?php endif;
+        <?php endif; ?>
+
+        <script>
+        (function() {
+            var nonce = '<?php echo esc_js( wp_create_nonce( 'slw_customers_nonce' ) ); ?>';
+            document.querySelectorAll('.slw-deactivate-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var userId = this.getAttribute('data-user-id');
+                    var name = this.getAttribute('data-name');
+                    if (!confirm('Deactivate wholesale access for ' + name + '? They will lose wholesale pricing and portal access.')) return;
+                    var row = this.closest('tr');
+                    btn.disabled = true;
+                    btn.textContent = 'Removing...';
+                    var formData = new FormData();
+                    formData.append('action', 'slw_deactivate_wholesale');
+                    formData.append('nonce', nonce);
+                    formData.append('user_id', userId);
+                    var xhr = new XMLHttpRequest();
+                    xhr.open('POST', ajaxurl);
+                    xhr.onload = function() {
+                        var resp;
+                        try { resp = JSON.parse(xhr.responseText); } catch(e) { resp = null; }
+                        if (resp && resp.success) {
+                            row.style.opacity = '0.4';
+                            btn.textContent = 'Deactivated';
+                            btn.style.color = '#999';
+                        } else {
+                            btn.disabled = false;
+                            btn.textContent = 'Deactivate';
+                            alert('Could not deactivate: ' + (resp && resp.data ? resp.data : 'Unknown error'));
+                        }
+                    };
+                    xhr.send(formData);
+                });
+            });
+        })();
+        </script>
+        <?php
     }
 }
