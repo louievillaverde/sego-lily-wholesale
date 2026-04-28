@@ -177,23 +177,21 @@ $products = $all_products; // keep for empty check
                         $parent_case_pack = class_exists( 'SLW_Product_Minimums' ) ? SLW_Product_Minimums::get_case_pack_size( $product->get_id() ) : 0;
                         $parent_min_qty   = class_exists( 'SLW_Product_Minimums' ) ? SLW_Product_Minimums::get_product_minimum( $product->get_id() ) : 0;
 
-                        // Deduplicate variations: for subscription products, multiple variations
-                        // may exist for the same scent/size but different billing periods. We only
-                        // want one row per unique product option. Build labels first, then render
-                        // only the first variation for each unique label.
                         $seen_labels = array();
 
                         foreach ( $variations as $var_data ) :
                             $variation = wc_get_product( $var_data['variation_id'] );
                             if ( ! $variation || ! $variation->is_in_stock() ) continue;
 
-                            // Variation image or fall back to parent
-                            $var_image = $var_data['image']['thumb_src'] ?? '';
-                            if ( ! $var_image ) {
-                                $var_image = $parent_image;
-                            }
+                            // WCS stores subscription meta on variations. If this variation
+                            // has a billing period set, it's a recurring subscription option.
+                            // We only want the non-subscription (one-time) variation, OR if
+                            // ALL variations are subscriptions, deduplicate by product attributes.
+                            $sub_period = get_post_meta( $var_data['variation_id'], '_subscription_period', true );
+                            $sub_interval = get_post_meta( $var_data['variation_id'], '_subscription_period_interval', true );
+                            $is_recurring = ( ! empty( $sub_period ) && ! empty( $sub_interval ) );
 
-                            // Build variation label from ALL attributes
+                            // Build label from real product attributes only
                             $var_attrs = $var_data['attributes'] ?? array();
                             $var_label_parts = array();
                             foreach ( $var_attrs as $attr_key => $attr_val ) {
@@ -202,24 +200,55 @@ $products = $all_products; // keep for empty check
                                 $term = get_term_by( 'slug', $attr_val, $taxonomy );
                                 $term_name = $term ? $term->name : ucfirst( $attr_val );
 
-                                // Skip generic subscription labels from display
+                                // Skip any value that looks like a billing interval
                                 $name_lower = strtolower( $term_name );
-                                if ( in_array( $name_lower, array(
-                                    'one-time purchase', 'one time purchase', 'monthly',
-                                    'yearly', 'weekly', 'every 2 weeks', 'every 3 months',
-                                    'every 6 months', 'subscribe', 'subscription',
-                                ), true ) ) {
+                                if ( preg_match( '/\d+\s*\/\s*mo|\d+\s*month|monthly|yearly|weekly|every\s*\d|one.?time|subscribe|subscription/i', $name_lower ) ) {
                                     continue;
                                 }
 
                                 $var_label_parts[] = $term_name;
                             }
                             $var_label = ! empty( $var_label_parts ) ? implode( ' / ', $var_label_parts ) : $variation->get_name();
-
-                            // Deduplicate: skip if we've already rendered this label
                             $label_key = strtolower( trim( $var_label ) );
+
+                            // Skip recurring variations when we already have this product option
+                            if ( $is_recurring && isset( $seen_labels[ $label_key ] ) ) continue;
+
+                            // If this is recurring but first time seeing this label, only allow
+                            // it if there's no non-recurring version (otherwise prefer non-recurring)
+                            if ( $is_recurring && ! isset( $seen_labels[ $label_key ] ) ) {
+                                // Check if a non-recurring variation with same label exists
+                                $has_nonrecurring = false;
+                                foreach ( $variations as $check ) {
+                                    $check_period = get_post_meta( $check['variation_id'], '_subscription_period', true );
+                                    $check_interval = get_post_meta( $check['variation_id'], '_subscription_period_interval', true );
+                                    if ( ! empty( $check_period ) && ! empty( $check_interval ) ) continue;
+                                    // This is a non-recurring variation, check if same label
+                                    $check_parts = array();
+                                    foreach ( ($check['attributes'] ?? array()) as $ck => $cv ) {
+                                        if ( ! $cv ) continue;
+                                        $ct = str_replace( 'attribute_', '', $ck );
+                                        $cterm = get_term_by( 'slug', $cv, $ct );
+                                        $cn = $cterm ? $cterm->name : ucfirst( $cv );
+                                        if ( preg_match( '/\d+\s*\/\s*mo|\d+\s*month|monthly|yearly|weekly|every\s*\d|one.?time|subscribe|subscription/i', strtolower( $cn ) ) ) continue;
+                                        $check_parts[] = $cn;
+                                    }
+                                    $check_label = strtolower( trim( implode( ' / ', $check_parts ) ) );
+                                    if ( $check_label === $label_key ) {
+                                        $has_nonrecurring = true;
+                                        break;
+                                    }
+                                }
+                                if ( $has_nonrecurring ) continue; // skip this recurring one, non-recurring will render
+                            }
+
                             if ( isset( $seen_labels[ $label_key ] ) ) continue;
                             $seen_labels[ $label_key ] = true;
+
+                            $var_image = $var_data['image']['thumb_src'] ?? '';
+                            if ( ! $var_image ) {
+                                $var_image = $parent_image;
+                            }
 
                             // Variation-level or parent-level minimums
                             $v_case_pack = class_exists( 'SLW_Product_Minimums' ) ? SLW_Product_Minimums::get_case_pack_size( $variation->get_id() ) : 0;
