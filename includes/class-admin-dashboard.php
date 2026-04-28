@@ -283,9 +283,7 @@ class SLW_Admin_Dashboard {
                         <ul class="slw-admin-resources">
                             <li><a href="<?php echo esc_url( admin_url( 'admin.php?page=slw-docs' ) ); ?>"><span class="dashicons dashicons-book"></span> Help &amp; Docs</a></li>
                             <li><a href="mailto:support@leadpiranha.com"><span class="dashicons dashicons-sos"></span> Contact Support</a></li>
-                            <li><a href="<?php echo esc_url( admin_url( 'admin.php?page=slw-preview' ) ); ?>"><span class="dashicons dashicons-visibility"></span> Preview Portal (admin)</a></li>
-                            <li><a href="<?php echo esc_url( home_url( '/wholesale-portal?slw_preview=1' ) ); ?>" target="_blank"><span class="dashicons dashicons-dashboard"></span> Preview Portal (live site)</a></li>
-                            <li><a href="<?php echo esc_url( home_url( '/wholesale-order?slw_preview=1' ) ); ?>" target="_blank"><span class="dashicons dashicons-store"></span> Preview Order Form</a></li>
+                            <li><a href="<?php echo esc_url( admin_url( 'admin.php?page=slw-preview' ) ); ?>"><span class="dashicons dashicons-visibility"></span> Preview Portal</a></li>
                         </ul>
                         <div class="slw-whats-new">
                             <h4 class="slw-whats-new__title">What's New in v<?php echo esc_html( SLW_VERSION ); ?></h4>
