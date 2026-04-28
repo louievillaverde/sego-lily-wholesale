@@ -269,7 +269,18 @@ class SLW_Product_Minimums {
 	 */
 	public static function get_product_minimum( $product_id ) {
 		$min = get_post_meta( $product_id, '_slw_minimum_qty', true );
-		return ( $min !== '' && is_numeric( $min ) && (int) $min > 0 ) ? (int) $min : 0;
+		if ( $min !== '' && is_numeric( $min ) && (int) $min > 0 ) {
+			return (int) $min;
+		}
+		// Fall back to parent product for variations
+		$product = wc_get_product( $product_id );
+		if ( $product && $product->get_parent_id() ) {
+			$parent_min = get_post_meta( $product->get_parent_id(), '_slw_minimum_qty', true );
+			if ( $parent_min !== '' && is_numeric( $parent_min ) && (int) $parent_min > 0 ) {
+				return (int) $parent_min;
+			}
+		}
+		return 0;
 	}
 
 	/**
@@ -280,6 +291,17 @@ class SLW_Product_Minimums {
 	 */
 	public static function get_case_pack_size( $product_id ) {
 		$size = get_post_meta( $product_id, '_slw_case_pack_size', true );
-		return ( $size !== '' && is_numeric( $size ) && (int) $size > 0 ) ? (int) $size : 0;
+		if ( $size !== '' && is_numeric( $size ) && (int) $size > 0 ) {
+			return (int) $size;
+		}
+		// Fall back to parent product for variations
+		$product = wc_get_product( $product_id );
+		if ( $product && $product->get_parent_id() ) {
+			$parent_size = get_post_meta( $product->get_parent_id(), '_slw_case_pack_size', true );
+			if ( $parent_size !== '' && is_numeric( $parent_size ) && (int) $parent_size > 0 ) {
+				return (int) $parent_size;
+			}
+		}
+		return 0;
 	}
 }
