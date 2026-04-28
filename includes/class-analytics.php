@@ -80,27 +80,27 @@ class SLW_Analytics {
 
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px;">
                 <?php foreach ( $sources as $source ) : ?>
-                <div class="slw-admin-card" style="margin:0;">
-                    <h3 style="font-size:15px;font-weight:700;color:#1c2b2f;margin:0 0 16px;border-bottom:2px solid <?php echo esc_attr( $source['color'] ); ?>;padding-bottom:8px;">
+                <div style="background:#fff;border-radius:10px;border-left:5px solid <?php echo esc_attr( $source['color'] ); ?>;box-shadow:0 2px 8px rgba(0,0,0,0.08);padding:24px 28px;">
+                    <h3 style="font-size:16px;font-weight:700;color:#1E2A30;margin:0 0 20px;font-family:Georgia,'Times New Roman',serif;">
                         <?php echo esc_html( $source['label'] ); ?>
                     </h3>
-                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
-                        <div>
-                            <span class="slw-analytics-stat-num"><?php echo esc_html( $source['leads'] ); ?></span>
+                    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
+                        <div style="background:#f8fafb;border-radius:8px;padding:14px 12px;text-align:center;">
+                            <span style="display:block;font-size:28px;font-weight:800;color:<?php echo esc_attr( $source['color'] ); ?>;line-height:1.2;"><?php echo esc_html( $source['leads'] ); ?></span>
                             <span class="slw-analytics-stat-label">Leads</span>
                         </div>
-                        <div>
-                            <span class="slw-analytics-stat-num"><?php echo esc_html( $source['purchases'] ); ?></span>
+                        <div style="background:#f8fafb;border-radius:8px;padding:14px 12px;text-align:center;">
+                            <span style="display:block;font-size:28px;font-weight:800;color:<?php echo esc_attr( $source['color'] ); ?>;line-height:1.2;"><?php echo esc_html( $source['purchases'] ); ?></span>
                             <span class="slw-analytics-stat-label">Purchases</span>
                         </div>
-                        <div>
-                            <span class="slw-analytics-stat-num"><?php echo esc_html( $source['conversion_rate'] ); ?>%</span>
+                        <div style="background:#f8fafb;border-radius:8px;padding:14px 12px;text-align:center;">
+                            <span style="display:block;font-size:28px;font-weight:800;color:<?php echo esc_attr( $source['color'] ); ?>;line-height:1.2;"><?php echo esc_html( $source['conversion_rate'] ); ?>%</span>
                             <span class="slw-analytics-stat-label">Conversion</span>
                         </div>
                     </div>
                     <?php if ( $source['revenue'] > 0 ) : ?>
-                    <div style="margin-top:12px;">
-                        <span class="slw-analytics-stat-num"><?php echo wp_kses_post( wc_price( $source['revenue'] ) ); ?></span>
+                    <div style="margin-top:16px;background:#f8fafb;border-radius:8px;padding:14px 16px;text-align:center;">
+                        <span style="display:block;font-size:28px;font-weight:800;color:<?php echo esc_attr( $source['color'] ); ?>;line-height:1.2;"><?php echo wp_kses_post( wc_price( $source['revenue'] ) ); ?></span>
                         <span class="slw-analytics-stat-label">Revenue</span>
                     </div>
                     <?php endif; ?>
