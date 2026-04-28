@@ -24,8 +24,9 @@ $all_products = wc_get_products( array(
     'order'   => 'ASC',
 ));
 
-// Filter to simple + variable only
+// Filter to simple + variable only, exclude subscriptions
 $all_products = array_filter( $all_products, function( $p ) {
+    if ( $p->is_type( 'subscription' ) || $p->is_type( 'variable-subscription' ) ) return false;
     return $p->is_type( 'simple' ) || $p->is_type( 'variable' );
 } );
 $all_products = array_values( $all_products );
@@ -161,6 +162,9 @@ $products = $all_products; // keep for empty check
             </thead>
             <tbody>
                 <?php foreach ( $cat_products as $product ) :
+
+                    // Skip subscription products entirely for wholesale
+                    if ( $product->is_type( 'subscription' ) || $product->is_type( 'variable-subscription' ) ) continue;
 
                     // Variable products: render each variation as its own row
                     if ( $product->is_type( 'variable' ) ) :

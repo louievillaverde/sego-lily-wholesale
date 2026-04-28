@@ -398,11 +398,19 @@ class SLW_Wholesale_Role {
             return round( (float) $resolved, 2 );
         }
 
-        // 3. Fall back to global percentage discount
+        // 3. Fall back to global percentage discount.
+        // Use the regular price as the base to avoid discounting a subscription
+        // or sale price that WCS/other plugins may have injected.
+        $base_price = (float) $price;
+        $regular = $product->get_regular_price();
+        if ( $regular !== '' && is_numeric( $regular ) && (float) $regular > 0 ) {
+            $base_price = (float) $regular;
+        }
+
         $discount = (float) slw_get_option( 'discount_percent', 50 );
         $multiplier = 1 - ( $discount / 100 );
 
-        return round( (float) $price * $multiplier, 2 );
+        return round( $base_price * $multiplier, 2 );
     }
 
     /**

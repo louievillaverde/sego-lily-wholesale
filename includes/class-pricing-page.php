@@ -295,8 +295,9 @@ class SLW_Pricing_Page {
             'order'   => 'ASC',
         ) );
 
-        // Filter to simple + variable only
+        // Filter to simple + variable only, exclude subscriptions
         $all = array_filter( $all, function( $p ) {
+            if ( $p->is_type( 'subscription' ) || $p->is_type( 'variable-subscription' ) ) return false;
             return $p->is_type( 'simple' ) || $p->is_type( 'variable' );
         } );
         $all = array_values( $all );

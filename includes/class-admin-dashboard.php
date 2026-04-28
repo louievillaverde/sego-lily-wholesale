@@ -118,7 +118,7 @@ class SLW_Admin_Dashboard {
                             </a>
                             <span class="slw-funnel__arrow">&rarr;</span>
                             <a href="<?php echo esc_url( admin_url( 'admin.php?page=slw-applications&status=pending' ) ); ?>" class="slw-funnel__stage slw-funnel__stage--teal-2">
-                                <span class="slw-funnel__count"><?php echo esc_html( $funnel['pending_apps'] ); ?></span>
+                                <span class="slw-funnel__count"><?php echo esc_html( $funnel['total_applied'] ); ?></span>
                                 <span class="slw-funnel__label">Applied</span>
                             </a>
                             <span class="slw-funnel__arrow">&rarr;</span>
@@ -457,16 +457,16 @@ class SLW_Admin_Dashboard {
             }
         }
 
-        // Applications
+        // Applications: total applied (all statuses) + approved only
         $app_table = $wpdb->prefix . 'slw_applications';
-        $pending_apps = 0;
+        $total_applied = 0;
         $approved_apps = 0;
         if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $app_table ) ) === $app_table ) {
             if ( $cutoff ) {
-                $pending_apps = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$app_table} WHERE status = 'pending' AND submitted_at >= %s", $cutoff ) );
+                $total_applied = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$app_table} WHERE submitted_at >= %s", $cutoff ) );
                 $approved_apps = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$app_table} WHERE status = 'approved' AND reviewed_at >= %s", $cutoff ) );
             } else {
-                $pending_apps = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$app_table} WHERE status = 'pending'" );
+                $total_applied = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$app_table}" );
                 $approved_apps = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$app_table} WHERE status = 'approved'" );
             }
         }
@@ -492,7 +492,7 @@ class SLW_Admin_Dashboard {
 
         return array(
             'leads'         => $leads,
-            'pending_apps'  => $pending_apps,
+            'total_applied' => $total_applied,
             'approved_apps' => $approved_apps,
             'first_orders'  => $first_orders,
         );
