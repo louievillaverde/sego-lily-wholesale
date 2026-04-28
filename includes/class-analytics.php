@@ -69,9 +69,52 @@ class SLW_Analytics {
         <?php
 
         // Gather all the data
-        $sources = self::get_source_attribution( $since, $period_days );
-        $ttp     = self::get_time_to_purchase( $since );
+        $sources   = self::get_source_attribution( $since, $period_days );
+        $ttp       = self::get_time_to_purchase( $since );
+        $wholesale = self::get_wholesale_metrics( $since );
 
+        // ── Wholesale Performance Overview ──
+        ?>
+        <div class="slw-analytics-section">
+            <h2 style="font-size:18px;margin:0 0 4px;">Wholesale Performance</h2>
+            <p style="color:#628393;font-size:13px;margin:0 0 20px;">Key metrics for your wholesale operation</p>
+
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px;">
+                <div style="background:#f8fafb;border-radius:8px;padding:18px 16px;text-align:center;border-left:4px solid #386174;">
+                    <span style="display:block;font-size:32px;font-weight:800;color:#386174;line-height:1.2;"><?php echo esc_html( $wholesale['active_accounts'] ); ?></span>
+                    <span class="slw-analytics-stat-label">Active Accounts</span>
+                </div>
+                <div style="background:#f8fafb;border-radius:8px;padding:18px 16px;text-align:center;border-left:4px solid #2e7d32;">
+                    <span style="display:block;font-size:32px;font-weight:800;color:#2e7d32;line-height:1.2;"><?php echo wp_kses_post( wc_price( $wholesale['total_revenue'] ) ); ?></span>
+                    <span class="slw-analytics-stat-label">Wholesale Revenue</span>
+                </div>
+                <div style="background:#f8fafb;border-radius:8px;padding:18px 16px;text-align:center;border-left:4px solid #D4AF37;">
+                    <span style="display:block;font-size:32px;font-weight:800;color:#D4AF37;line-height:1.2;"><?php echo wp_kses_post( wc_price( $wholesale['avg_order_value'] ) ); ?></span>
+                    <span class="slw-analytics-stat-label">Avg Order Value</span>
+                </div>
+                <div style="background:#f8fafb;border-radius:8px;padding:18px 16px;text-align:center;border-left:4px solid #1E2A30;">
+                    <span style="display:block;font-size:32px;font-weight:800;color:#1E2A30;line-height:1.2;"><?php echo esc_html( $wholesale['reorder_rate'] ); ?>%</span>
+                    <span class="slw-analytics-stat-label">Reorder Rate</span>
+                </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
+                <div style="background:#f8fafb;border-radius:8px;padding:14px 16px;text-align:center;">
+                    <span style="display:block;font-size:24px;font-weight:800;color:#386174;line-height:1.2;"><?php echo esc_html( $wholesale['orders_count'] ); ?></span>
+                    <span class="slw-analytics-stat-label">Orders (period)</span>
+                </div>
+                <div style="background:#f8fafb;border-radius:8px;padding:14px 16px;text-align:center;">
+                    <span style="display:block;font-size:24px;font-weight:800;color:#386174;line-height:1.2;"><?php echo esc_html( $wholesale['net30_outstanding'] ); ?></span>
+                    <span class="slw-analytics-stat-label">NET 30 Outstanding</span>
+                </div>
+                <div style="background:#f8fafb;border-radius:8px;padding:14px 16px;text-align:center;">
+                    <span style="display:block;font-size:24px;font-weight:800;color:#386174;line-height:1.2;"><?php echo esc_html( $wholesale['top_product'] ); ?></span>
+                    <span class="slw-analytics-stat-label">Top Product</span>
+                </div>
+            </div>
+        </div>
+
+        <?php
         // ── Source Attribution — 2×2 Quadrant ──
         ?>
         <div class="slw-analytics-section">
@@ -352,6 +395,94 @@ class SLW_Analytics {
         $same   = round( ( count( array_filter( $days, function( $d ) { return $d === 0; } ) ) / count( $days ) ) * 100 );
 
         return array( 'avg_days' => $avg, 'median_days' => $median, 'same_day_pct' => $same );
+    }
+
+    /**
+     * Get wholesale-specific business metrics.
+     */
+    private static function get_wholesale_metrics( $since ) {
+        // Active wholesale accounts
+        $wholesale_users = get_users( array( 'role' => 'wholesale_customer', 'fields' => 'ID' ) );
+        $active_accounts = count( $wholesale_users );
+
+        // Wholesale orders in period
+        $orders = array();
+        $total_revenue = 0;
+        $order_totals = array();
+
+        if ( ! empty( $wholesale_users ) && function_exists( 'wc_get_orders' ) ) {
+            $order_ids = wc_get_orders( array(
+                'customer_id' => $wholesale_users,
+                'date_after'  => $since,
+                'status'      => array( 'wc-processing', 'wc-completed' ),
+                'limit'       => -1,
+                'return'      => 'ids',
+            ) );
+
+            foreach ( $order_ids as $oid ) {
+                $order = wc_get_order( $oid );
+                if ( ! $order ) continue;
+                $total = (float) $order->get_total();
+                $total_revenue += $total;
+                $order_totals[] = $total;
+                $orders[] = $order;
+            }
+        }
+
+        $orders_count = count( $orders );
+        $avg_order_value = $orders_count > 0 ? $total_revenue / $orders_count : 0;
+
+        // Reorder rate: % of wholesale users with more than 1 order
+        $reorder_count = 0;
+        foreach ( $wholesale_users as $uid ) {
+            $user_orders = wc_get_orders( array(
+                'customer_id' => $uid,
+                'status'      => array( 'wc-processing', 'wc-completed' ),
+                'limit'       => 2,
+                'return'      => 'ids',
+            ) );
+            if ( count( $user_orders ) > 1 ) {
+                $reorder_count++;
+            }
+        }
+        $reorder_rate = $active_accounts > 0 ? round( ( $reorder_count / $active_accounts ) * 100 ) : 0;
+
+        // NET 30 outstanding (unpaid orders with net terms)
+        $net30_outstanding = 0;
+        if ( function_exists( 'wc_get_orders' ) ) {
+            $net_orders = wc_get_orders( array(
+                'status'     => 'wc-processing',
+                'meta_key'   => '_slw_net_terms_days',
+                'limit'      => -1,
+                'return'     => 'ids',
+            ) );
+            $net30_outstanding = count( $net_orders );
+        }
+
+        // Top product by quantity across wholesale orders in period
+        $product_counts = array();
+        foreach ( $orders as $order ) {
+            foreach ( $order->get_items() as $item ) {
+                $name = $item->get_name();
+                $product_counts[ $name ] = ( $product_counts[ $name ] ?? 0 ) + $item->get_quantity();
+            }
+        }
+        arsort( $product_counts );
+        $top_product = ! empty( $product_counts ) ? key( $product_counts ) : 'N/A';
+        // Shorten long names
+        if ( strlen( $top_product ) > 25 ) {
+            $top_product = substr( $top_product, 0, 22 ) . '...';
+        }
+
+        return array(
+            'active_accounts'    => $active_accounts,
+            'total_revenue'      => $total_revenue,
+            'avg_order_value'    => $avg_order_value,
+            'orders_count'       => $orders_count,
+            'reorder_rate'       => $reorder_rate,
+            'net30_outstanding'  => $net30_outstanding,
+            'top_product'        => $top_product,
+        );
     }
 
     /**
