@@ -38,6 +38,66 @@ class SLW_Webhooks {
         if ( ! empty( $data['email'] ) ) {
             self::tag_mautic_contact( $data['email'], $event, $data );
         }
+
+        // Step 3: For wholesale-approved, send the first onboarding email
+        // immediately via Mautic API (don't wait for cron to process the campaign)
+        if ( $event === 'wholesale-approved' && ! empty( $data['email'] ) ) {
+            self::send_mautic_onboarding_email( $data['email'] );
+        }
+    }
+
+    /**
+     * Send the first onboarding email immediately via Mautic API.
+     * This bypasses the campaign cron queue so the new wholesale partner
+     * gets the Welcome Kit email right alongside the WP approval email.
+     *
+     * Email ID 15 = "Wholesale 01 - Welcome Kit"
+     */
+    private static function send_mautic_onboarding_email( $email ) {
+        $base_url      = rtrim( get_option( 'slw_mautic_url', '' ), '/' );
+        $client_id     = get_option( 'slw_mautic_client_id', '' );
+        $client_secret = get_option( 'slw_mautic_client_secret', '' );
+
+        if ( empty( $base_url ) || empty( $client_id ) || empty( $client_secret ) ) {
+            return;
+        }
+
+        $token = self::get_mautic_token( $base_url, $client_id, $client_secret );
+        if ( ! $token ) {
+            return;
+        }
+
+        $headers = array(
+            'Authorization' => 'Bearer ' . $token,
+            'Accept'        => 'application/json',
+            'User-Agent'    => self::USER_AGENT,
+        );
+
+        // Find the contact by email
+        $search = wp_remote_get( $base_url . '/api/contacts?search=' . rawurlencode( $email ) . '&limit=1', array(
+            'timeout' => 10,
+            'headers' => $headers,
+        ) );
+
+        if ( is_wp_error( $search ) ) return;
+
+        $body = json_decode( wp_remote_retrieve_body( $search ), true );
+        $contacts = $body['contacts'] ?? array();
+        if ( empty( $contacts ) ) return;
+
+        $contact_id = array_key_first( $contacts );
+
+        // Send email 15 (Welcome Kit) to this contact
+        $onboarding_email_id = absint( get_option( 'slw_onboarding_email_id', 15 ) );
+        $result = wp_remote_post( $base_url . '/api/emails/' . $onboarding_email_id . '/contact/' . $contact_id . '/send', array(
+            'timeout' => 10,
+            'headers' => $headers,
+        ) );
+
+        if ( ! is_wp_error( $result ) ) {
+            $code = wp_remote_retrieve_response_code( $result );
+            self::log_mautic( 'onboarding-email-sent', $email, $code >= 200 && $code < 300 ? 'success' : 'failed', 'Email ' . $onboarding_email_id . ' HTTP ' . $code );
+        }
     }
 
     /**
