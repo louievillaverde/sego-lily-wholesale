@@ -181,29 +181,28 @@ $products = $all_products; // keep for empty check
                             $variation = wc_get_product( $var_data['variation_id'] );
                             if ( ! $variation || ! $variation->is_in_stock() ) continue;
 
-                            // Skip subscription-specific variations for wholesale.
-                            // These have attributes like billing-period, subscription-period,
-                            // or the variation type itself is subscription_variation.
-                            if ( $variation->is_type( 'subscription_variation' ) ) continue;
+                            // Skip variations that are purely subscription billing options.
+                            // Only skip if the variation's attributes are ALL subscription-related
+                            // (billing period, signup fee, etc.) with no real product attributes
+                            // like scent or size. If it has real attrs, keep it.
                             $var_attrs_raw = $var_data['attributes'] ?? array();
-                            $is_sub_variation = false;
+                            $real_attr_count = 0;
+                            $sub_attr_count = 0;
                             foreach ( $var_attrs_raw as $attr_key => $attr_val ) {
+                                if ( ! $attr_val ) continue;
                                 $key_lower = strtolower( $attr_key );
                                 if ( strpos( $key_lower, 'subscription' ) !== false
                                     || strpos( $key_lower, 'billing' ) !== false
                                     || strpos( $key_lower, 'sign-up' ) !== false
-                                    || strpos( $key_lower, 'signup' ) !== false ) {
-                                    $is_sub_variation = true;
-                                    break;
-                                }
-                                // Also check the value for common subscription terms
-                                $val_lower = strtolower( $attr_val );
-                                if ( in_array( $val_lower, array( 'monthly', 'yearly', 'weekly', 'every-2-weeks', 'every-3-months', 'every-6-months' ), true ) ) {
-                                    $is_sub_variation = true;
-                                    break;
+                                    || strpos( $key_lower, 'signup' ) !== false
+                                    || strpos( $key_lower, 'purchase' ) !== false ) {
+                                    $sub_attr_count++;
+                                } else {
+                                    $real_attr_count++;
                                 }
                             }
-                            if ( $is_sub_variation ) continue;
+                            // Skip only if ALL attributes are subscription-related (no real product attrs)
+                            if ( $sub_attr_count > 0 && $real_attr_count === 0 ) continue;
 
                             // Variation image or fall back to parent
                             $var_image = $var_data['image']['thumb_src'] ?? '';
