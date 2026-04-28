@@ -342,6 +342,12 @@ class SLW_Wholesale_Role {
             $user->add_role( 'wholesale_customer' );
         } elseif ( ! $should_be_wholesale && $is_currently ) {
             $user->remove_role( 'wholesale_customer' );
+
+            // Remove the wholesale-approved tag in Mautic so they can
+            // re-enter the segment/campaign if reactivated later
+            if ( class_exists( 'SLW_Webhooks' ) ) {
+                SLW_Webhooks::remove_mautic_tag( $user->user_email, 'wholesale-approved' );
+            }
         }
 
         update_user_meta( $user_id, 'slw_resale_cert_verified', ! empty( $_POST['slw_resale_cert_verified'] ) ? '1' : '0' );
