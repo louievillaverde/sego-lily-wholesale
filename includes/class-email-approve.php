@@ -261,11 +261,15 @@ class SLW_Email_Approve {
             'Email'     => $app->email,
             'Phone'     => $app->phone ?: '—',
         );
+        if ( ! empty( $app->website ) ) {
+            $fields['Business Website'] = $app->website;
+        }
         if ( ! empty( $app->business_type ) ) {
             $fields['Business Type'] = $app->business_type;
         }
         if ( ! empty( $app->ein ) ) {
-            $fields['EIN'] = $app->ein;
+            // EIN is stored encrypted; decrypt for display
+            $fields['EIN'] = class_exists( 'SLW_Encryption' ) ? SLW_Encryption::decrypt( $app->ein ) : $app->ein;
         }
         // Add booth quiz data if present
         if ( ! empty( $extra_data['skincare_experience'] ) ) {

@@ -64,11 +64,12 @@ class SLW_Customers_Page {
         header( 'Content-Disposition: attachment; filename=wholesale-customers-' . date( 'Y-m-d' ) . '.csv' );
 
         $out = fopen( 'php://output', 'w' );
-        fputcsv( $out, array( 'Name', 'Email', 'Business Name', 'Tier', 'NET Terms', 'Phone' ) );
+        fputcsv( $out, array( 'Name', 'Email', 'Business Name', 'Tier', 'NET Terms', 'Phone', 'Address', 'EIN' ) );
 
         foreach ( $users as $user ) {
             $tier = class_exists( 'SLW_Tiers' ) ? SLW_Tiers::get_user_tier( $user->ID ) : 'standard';
             $net = class_exists( 'SLW_Gateway_Net30' ) ? SLW_Gateway_Net30::get_user_net_terms( $user->ID ) : 0;
+            $ein = class_exists( 'SLW_Customer_Portal' ) ? SLW_Customer_Portal::get_user_ein( $user->ID ) : '';
             fputcsv( $out, array(
                 $user->first_name . ' ' . $user->last_name,
                 $user->user_email,
@@ -76,10 +77,38 @@ class SLW_Customers_Page {
                 ucfirst( $tier ),
                 $net > 0 ? 'NET ' . $net : 'None',
                 get_user_meta( $user->ID, 'billing_phone', true ),
+                self::format_user_address( $user->ID ),
+                $ein,
             ) );
         }
         fclose( $out );
         exit;
+    }
+
+    /**
+     * Build a single-line address summary from a user's billing fields.
+     * Falls back to slw_business_address (legacy) when WC fields are empty.
+     */
+    public static function format_user_address( $user_id ) {
+        $line1 = trim( (string) get_user_meta( $user_id, 'billing_address_1', true ) );
+        $line2 = trim( (string) get_user_meta( $user_id, 'billing_address_2', true ) );
+        $city  = trim( (string) get_user_meta( $user_id, 'billing_city', true ) );
+        $state = trim( (string) get_user_meta( $user_id, 'billing_state', true ) );
+        $zip   = trim( (string) get_user_meta( $user_id, 'billing_postcode', true ) );
+
+        $parts = array_filter( array( $line1, $line2 ) );
+        $locality_parts = array_filter( array( $city, trim( $state . ' ' . $zip ) ) );
+        if ( $locality_parts ) {
+            $parts[] = implode( ', ', $locality_parts );
+        }
+
+        $address = implode( ', ', $parts );
+        if ( $address ) {
+            return $address;
+        }
+
+        // Legacy fallback for customers added before WC billing fields were captured
+        return trim( (string) get_user_meta( $user_id, 'slw_business_address', true ) );
     }
 
     /**
@@ -266,13 +295,15 @@ class SLW_Customers_Page {
                         <th>NET Terms</th>
                         <th>Orders</th>
                         <th>Last Order</th>
+                        <th>Address</th>
+                        <th>EIN</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if ( empty( $customers ) ) : ?>
                         <tr>
-                            <td colspan="8" style="text-align: center; padding: 24px; color: #628393;">
+                            <td colspan="10" style="text-align: center; padding: 24px; color: #628393;">
                                 <?php echo $search ? 'No customers match your search.' : 'No wholesale customers found.'; ?>
                             </td>
                         </tr>
@@ -319,6 +350,10 @@ class SLW_Customers_Page {
                                 ? $last_orders[ $user_id ]->date_i18n( get_option( 'date_format' ) )
                                 : '&mdash;';
                             ?>
+                            <?php
+                            $address_str = self::format_user_address( $user_id );
+                            $customer_ein = class_exists( 'SLW_Customer_Portal' ) ? SLW_Customer_Portal::get_user_ein( $user_id ) : '';
+                            ?>
                             <tr>
                                 <td><strong><?php echo esc_html( $full_name ); ?></strong></td>
                                 <td><?php echo esc_html( $business_name ?: '&mdash;' ); ?></td>
@@ -327,6 +362,14 @@ class SLW_Customers_Page {
                                 <td><?php echo $net_terms ? 'NET ' . esc_html( $net_terms ) : '&mdash;'; ?></td>
                                 <td><?php echo esc_html( $order_count ); ?></td>
                                 <td><?php echo $last_order_date; ?></td>
+                                <td style="font-size:12px;color:#628393;max-width:200px;"><?php echo $address_str ? esc_html( $address_str ) : '&mdash;'; ?></td>
+                                <td style="font-size:12px;"><?php
+                                    if ( $customer_ein ) {
+                                        echo esc_html( $customer_ein );
+                                    } else {
+                                        echo '<span style="color:#c62828;font-weight:600;" title="No EIN on file">&mdash; missing</span>';
+                                    }
+                                ?></td>
                                 <td style="white-space:nowrap;">
                                     <a href="<?php echo esc_url( get_edit_user_link( $user_id ) ); ?>" class="button button-small">Edit</a>
                                     <button type="button" class="button button-small slw-deactivate-btn" data-user-id="<?php echo esc_attr( $user_id ); ?>" data-name="<?php echo esc_attr( $customer->display_name ); ?>" style="color:#c62828;">Deactivate</button>

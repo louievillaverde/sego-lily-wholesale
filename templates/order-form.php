@@ -89,6 +89,85 @@ $products = $all_products; // keep for empty check
     <div id="slw-order-message" class="slw-notice" style="display:none;" tabindex="-1"></div>
 
     <?php
+    // ── Most Ordered: customer's top reorder candidates ──
+    // Pulls completed/processing orders for this customer, tallies quantity
+    // by product (or variation), and renders a quick-reorder grid above the
+    // category sections. Reduces "I meant honey, not rosewood" mistakes.
+    $most_ordered_ids = array();
+    $past_orders = wc_get_orders( array(
+        'customer_id' => $user->ID,
+        'limit'       => 30,
+        'status'      => array( 'wc-processing', 'wc-completed', 'wc-on-hold' ),
+        'return'      => 'objects',
+    ) );
+    if ( ! empty( $past_orders ) ) {
+        $tally = array();
+        foreach ( $past_orders as $past_order ) {
+            foreach ( $past_order->get_items() as $line ) {
+                $pid = $line->get_variation_id() ?: $line->get_product_id();
+                if ( ! $pid ) continue;
+                $tally[ $pid ] = ( $tally[ $pid ] ?? 0 ) + (int) $line->get_quantity();
+            }
+        }
+        arsort( $tally, SORT_NUMERIC );
+        $most_ordered_ids = array_slice( array_keys( $tally ), 0, 6, true );
+    }
+    if ( ! empty( $most_ordered_ids ) ) :
+    ?>
+    <div class="slw-most-ordered">
+        <div class="slw-new-arrivals-header" style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;">
+            <h3 style="margin:0;">Your Most Ordered</h3>
+            <span style="font-size:12px;color:#628393;">Quick reorder</span>
+        </div>
+        <div class="slw-new-arrivals-grid">
+            <?php foreach ( $most_ordered_ids as $mo_id ) :
+                $mo_product = wc_get_product( $mo_id );
+                if ( ! $mo_product || ! $mo_product->is_in_stock() ) continue;
+
+                // For variations, surface the variation directly so the right
+                // scent gets reordered, not the parent.
+                $is_var = $mo_product->is_type( 'variation' );
+                $mo_parent = $is_var ? wc_get_product( $mo_product->get_parent_id() ) : $mo_product;
+
+                $mo_image = wp_get_attachment_image_url( $mo_product->get_image_id(), 'thumbnail' );
+                if ( ! $mo_image && $mo_parent ) {
+                    $mo_image = wp_get_attachment_image_url( $mo_parent->get_image_id(), 'thumbnail' );
+                }
+                if ( ! $mo_image ) {
+                    $mo_image = wc_placeholder_img_src( 'thumbnail' );
+                }
+
+                $mo_label = $mo_product->get_name();
+                $mo_price = wc_price( $mo_product->get_price() );
+
+                // Same case-pack/min logic the regular grid uses
+                $mo_lookup_id  = $is_var ? $mo_product->get_parent_id() : $mo_product->get_id();
+                $mo_case_pack  = class_exists( 'SLW_Product_Minimums' ) ? SLW_Product_Minimums::get_case_pack_size( $mo_lookup_id ) : 0;
+                $mo_default    = $mo_case_pack > 0 ? $mo_case_pack : 1;
+            ?>
+            <div class="slw-new-arrival-card">
+                <div class="slw-new-arrival-image">
+                    <img src="<?php echo esc_url( $mo_image ); ?>" alt="<?php echo esc_attr( $mo_label ); ?>" />
+                </div>
+                <div class="slw-new-arrival-info">
+                    <h4><?php echo esc_html( $mo_label ); ?></h4>
+                    <div class="slw-new-arrival-price"><?php echo $mo_price; ?></div>
+                    <div class="slw-new-arrival-actions">
+                        <input type="number" class="slw-mo-qty-input" min="1" max="999" value="<?php echo esc_attr( $mo_default ); ?>"
+                               data-product-id="<?php echo esc_attr( $is_var ? $mo_product->get_parent_id() : $mo_product->get_id() ); ?>"
+                               data-variation-id="<?php echo esc_attr( $is_var ? $mo_product->get_id() : '' ); ?>" />
+                        <button type="button" class="slw-btn slw-btn-small slw-btn-primary slw-mo-add-btn"
+                                data-product-id="<?php echo esc_attr( $is_var ? $mo_product->get_parent_id() : $mo_product->get_id() ); ?>"
+                                data-variation-id="<?php echo esc_attr( $is_var ? $mo_product->get_id() : '' ); ?>">Reorder</button>
+                    </div>
+                </div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <?php
     // New Arrivals section
     $new_arrivals = class_exists( 'SLW_New_Arrivals' ) ? SLW_New_Arrivals::get_products() : array();
     if ( ! empty( $new_arrivals ) ) :
@@ -143,12 +222,35 @@ $products = $all_products; // keep for empty check
 
     <?php foreach ( $grouped as $category_name => $cat_products ) :
         $cat_slug = sanitize_title( $category_name );
+
+        // Look up the category's term_id by walking the first product's terms.
+        $cat_term_id = 0;
+        foreach ( $cat_products as $cp ) {
+            $cp_terms = get_the_terms( $cp->get_id(), 'product_cat' );
+            if ( $cp_terms && ! is_wp_error( $cp_terms ) ) {
+                foreach ( $cp_terms as $cp_term ) {
+                    if ( $cp_term->name === $category_name ) {
+                        $cat_term_id = $cp_term->term_id;
+                        break 2;
+                    }
+                }
+            }
+        }
+        $category_min_qty = ( $cat_term_id && class_exists( 'SLW_Category_Minimums' ) )
+            ? SLW_Category_Minimums::get_category_minimum( $cat_term_id )
+            : 0;
     ?>
-    <div class="slw-category-section" data-category="<?php echo esc_attr( $cat_slug ); ?>">
+    <div class="slw-category-section" data-category="<?php echo esc_attr( $cat_slug ); ?>" data-category-min="<?php echo esc_attr( $category_min_qty ); ?>" data-category-term="<?php echo esc_attr( $cat_term_id ); ?>">
         <div class="slw-category-header" style="display:flex;justify-content:space-between;align-items:center;background:#386174;color:#F7F6F3;padding:14px 20px;border-radius:8px 8px 0 0;margin-top:20px;cursor:pointer;" data-category="<?php echo esc_attr( $cat_slug ); ?>">
             <div>
                 <h3 style="margin:0;font-size:18px;color:#F7F6F3;font-family:Georgia,'Times New Roman',serif;"><?php echo esc_html( $category_name ); ?></h3>
-                <span style="font-size:13px;opacity:0.8;"><?php echo esc_html( count( $cat_products ) ); ?> product<?php echo count( $cat_products ) !== 1 ? 's' : ''; ?></span>
+                <span style="font-size:13px;opacity:0.8;">
+                    <?php echo esc_html( count( $cat_products ) ); ?> product<?php echo count( $cat_products ) !== 1 ? 's' : ''; ?>
+                    <?php if ( $category_min_qty > 0 ) : ?>
+                        &middot; Minimum <?php echo esc_html( $category_min_qty ); ?> units (mix &amp; match)
+                        <span class="slw-cat-progress" data-category="<?php echo esc_attr( $cat_slug ); ?>" style="margin-left:8px;font-weight:600;">0 / <?php echo esc_html( $category_min_qty ); ?></span>
+                    <?php endif; ?>
+                </span>
             </div>
             <div style="display:flex;align-items:center;gap:12px;">
                 <button type="button" class="slw-btn slw-btn-small slw-add-category" data-category="<?php echo esc_attr( $cat_slug ); ?>" style="background:#D4AF37;color:#1E2A30;border:none;font-weight:700;" onclick="event.stopPropagation();">Add <?php echo esc_html( $category_name ); ?> to Cart</button>
@@ -268,6 +370,17 @@ $products = $all_products; // keep for empty check
                                 $v_min_input = $v_min_qty;
                             }
 
+                            // When a category-wide min is set, the customer can mix scents
+                            // freely — relax the per-row min so they aren't forced to enter
+                            // the full minimum on a single SKU.
+                            if ( $category_min_qty > 0 ) {
+                                $v_min_input = 0;
+                                $v_default   = 0;
+                                if ( $v_case_pack <= 0 ) {
+                                    $v_step = 1;
+                                }
+                            }
+
                             $v_price_html = wc_price( $variation->get_price() );
                 ?>
                 <tr data-product-id="<?php echo esc_attr( $product->get_id() ); ?>" data-variation-id="<?php echo esc_attr( $variation->get_id() ); ?>" data-category="<?php echo esc_attr( $cat_slug ); ?>" id="slw-product-<?php echo esc_attr( $variation->get_id() ); ?>">
@@ -277,7 +390,7 @@ $products = $all_products; // keep for empty check
                     <td class="slw-col-product">
                         <strong><?php echo esc_html( $product->get_name() ); ?></strong>
                         <br><span class="slw-product-meta"><?php echo esc_html( $var_label ); ?></span>
-                        <?php if ( $v_case_pack > 0 ) : ?>
+                        <?php if ( $v_case_pack > 0 && class_exists( 'SLW_Product_Minimums' ) && SLW_Product_Minimums::case_packs_enabled() ) : ?>
                             <br><span class="slw-case-pack-label">Case of <?php echo esc_html( $v_case_pack ); ?></span>
                         <?php endif; ?>
                         <?php if ( $variation->get_sku() ) : ?>
@@ -316,6 +429,15 @@ $products = $all_products; // keep for empty check
                         if ( $min_qty > $min_input ) {
                             $min_input = $min_qty;
                         }
+
+                        // Category min set: let customer split quantities across products.
+                        if ( $category_min_qty > 0 ) {
+                            $min_input   = 0;
+                            $default_qty = 0;
+                            if ( $case_pack <= 0 ) {
+                                $step = 1;
+                            }
+                        }
                 ?>
                 <tr data-product-id="<?php echo esc_attr( $product->get_id() ); ?>" data-category="<?php echo esc_attr( $cat_slug ); ?>" id="slw-product-<?php echo esc_attr( $product->get_id() ); ?>">
                     <td class="slw-col-image">
@@ -323,7 +445,7 @@ $products = $all_products; // keep for empty check
                     </td>
                     <td class="slw-col-product">
                         <strong><?php echo esc_html( $product->get_name() ); ?></strong>
-                        <?php if ( $case_pack > 0 ) : ?>
+                        <?php if ( $case_pack > 0 && class_exists( 'SLW_Product_Minimums' ) && SLW_Product_Minimums::case_packs_enabled() ) : ?>
                             <br><span class="slw-case-pack-label">Case of <?php echo esc_html( $case_pack ); ?></span>
                         <?php endif; ?>
                         <?php if ( $product->get_sku() ) : ?>
@@ -551,6 +673,26 @@ $products = $all_products; // keep for empty check
         });
     });
 
+    // Most Ordered: quick reorder buttons (variations supported)
+    document.querySelectorAll('.slw-mo-add-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var productId = this.getAttribute('data-product-id');
+            var varId = this.getAttribute('data-variation-id');
+            var selector = varId
+                ? '.slw-mo-qty-input[data-variation-id="' + varId + '"]'
+                : '.slw-mo-qty-input[data-product-id="' + productId + '"]:not([data-variation-id])';
+            var input = document.querySelector(selector);
+            if (!input) return;
+            var qty = parseInt(input.value) || 1;
+            if (qty < 1) { qty = 1; input.value = 1; }
+            var item = { product_id: productId, quantity: qty };
+            if (varId) {
+                item.variation_id = varId;
+            }
+            addToCart([item], this, 'Reorder');
+        });
+    });
+
     // New Arrivals: individual "Add to Cart" buttons
     document.querySelectorAll('.slw-na-add-btn').forEach(function(btn) {
         btn.addEventListener('click', function() {
@@ -741,6 +883,30 @@ $products = $all_products; // keep for empty check
             }
         });
     });
+
+    // Live category-minimum progress: sum quantities inside each category section
+    // and update the "X / Y" badge in the category header.
+    function updateCategoryProgress() {
+        document.querySelectorAll('.slw-category-section').forEach(function(section) {
+            var min = parseInt(section.getAttribute('data-category-min')) || 0;
+            if (min <= 0) return;
+            var slug = section.getAttribute('data-category');
+            var total = 0;
+            section.querySelectorAll('.slw-qty-input').forEach(function(input) {
+                total += parseInt(input.value) || 0;
+            });
+            var badge = document.querySelector('.slw-cat-progress[data-category="' + slug + '"]');
+            if (badge) {
+                badge.textContent = total + ' / ' + min;
+                badge.style.color = (total >= min) ? '#a3d977' : '#FFD27F';
+            }
+        });
+    }
+    document.querySelectorAll('.slw-qty-input').forEach(function(input) {
+        input.addEventListener('input', updateCategoryProgress);
+        input.addEventListener('change', updateCategoryProgress);
+    });
+    updateCategoryProgress();
 
     // Dismiss store notice
     var dismissBtn = document.querySelector('.slw-notice-dismiss');

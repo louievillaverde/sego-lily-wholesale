@@ -20,6 +20,7 @@ class SLW_Lead_Capture {
         add_action( 'wp_ajax_slw_export_leads_csv', array( __CLASS__, 'ajax_export_csv' ) );
         add_action( 'wp_ajax_slw_bulk_leads_action', array( __CLASS__, 'ajax_bulk_action' ) );
         add_action( 'admin_post_slw_manual_add_lead', array( __CLASS__, 'handle_manual_add_lead' ) );
+        add_action( 'admin_post_slw_set_active_event', array( __CLASS__, 'handle_set_active_event' ) );
     }
 
     // ------------------------------------------------------------------
@@ -40,6 +41,8 @@ class SLW_Lead_Capture {
             email VARCHAR(255) NOT NULL,
             business_name VARCHAR(255) DEFAULT '',
             phone VARCHAR(50) DEFAULT '',
+            address TEXT DEFAULT '',
+            ein VARCHAR(255) DEFAULT '',
             how_heard TEXT DEFAULT '',
             source VARCHAR(50) DEFAULT 'shortcode',
             status VARCHAR(20) DEFAULT 'new',
@@ -92,6 +95,15 @@ class SLW_Lead_Capture {
         // Read source + event from URL params (for QR code tracking)
         $url_source = sanitize_text_field( $_GET['source'] ?? '' );
         $url_event  = sanitize_text_field( $_GET['event'] ?? '' );
+
+        // Fall back to the admin-set "active event" so iPad-direct fills (where
+        // the URL has no ?event= query param) still tag the right trade show.
+        if ( $url_event === '' ) {
+            $active_event = trim( (string) get_option( 'slw_active_event', '' ) );
+            if ( $active_event !== '' ) {
+                $url_event = $active_event;
+            }
+        }
         $source_val = $url_source ? $url_source : 'website';
 
         ob_start();
@@ -203,11 +215,24 @@ class SLW_Lead_Capture {
         $url_source = sanitize_text_field( $_GET['source'] ?? '' );
         $url_event  = sanitize_text_field( $_GET['event'] ?? '' );
 
+        // Fall back to the admin-set "active event" so iPad-direct fills (where
+        // the URL has no ?event= query param) still tag the right trade show.
+        if ( $url_event === '' ) {
+            $active_event = trim( (string) get_option( 'slw_active_event', '' ) );
+            if ( $active_event !== '' ) {
+                $url_event = $active_event;
+            }
+        }
+
         // Pull booth settings
         $retail_code    = esc_attr( get_option( 'slw_booth_retail_code', 'SEGO15' ) );
         $retail_offer   = esc_html( get_option( 'slw_booth_retail_offer', '15% off your first order' ) );
         $retail_url     = esc_url( get_option( 'slw_booth_retail_url', home_url( '/shop-all' ) ) );
         $wholesale_head = esc_html( get_option( 'slw_booth_wholesale_heading', "Welcome! Here's our wholesale price list" ) );
+        $wholesale_offer = esc_html( get_option( 'slw_booth_wholesale_offer', 'Free shipping if you order at the show' ) );
+        // Lazy-create the free-shipping coupon on first booth render so the
+        // thank-you screen always has a working code to show.
+        $wholesale_code  = esc_attr( self::ensure_wholesale_freeship_coupon() );
         $linesheet_url  = esc_url( home_url( '/wholesale-portal' ) );
         $apply_url      = esc_url( home_url( '/wholesale-partners' ) );
 
@@ -616,7 +641,7 @@ class SLW_Lead_Capture {
                     <button type="button" class="slw-booth__back-btn" data-back-q="w2">&larr; Back</button>
                 </div>
                 <div class="slw-booth__question" data-q="w4">
-                    <h2 class="slw-booth__title">What draws you to tallow skincare?</h2>
+                    <h2 class="slw-booth__title">What draws you to tallow butter?</h2>
                     <div class="slw-booth__pills slw-booth__pills--advance" data-next-q="w5" data-field="tallow_interest">
                         <button type="button" class="slw-booth__pill" data-value="Customers asking for it">Customers asking for it</button>
                         <button type="button" class="slw-booth__pill" data-value="Clean ingredient trend">Clean ingredient trend</button>
@@ -654,9 +679,13 @@ class SLW_Lead_Capture {
             <!-- ============ STEP 3b: Wholesale Incentive ============ -->
             <div class="slw-booth__step" data-step="3b">
                 <p class="slw-booth__thanks">Thanks, <span id="slw-booth-w-thanksname"></span>!</p>
-                <h2 class="slw-booth__incentive-heading"><?php echo $retail_offer; ?></h2>
+                <h2 class="slw-booth__incentive-heading"><?php echo $wholesale_offer; ?></h2>
                 <div class="slw-booth__code-badge" style="font-size:22px;padding:16px 24px;">Show this screen to Holly</div>
-                <p style="text-align:center;color:#628393;font-size:14px;margin:12px 0 0;">Code <strong><?php echo $retail_code; ?></strong> — try it for yourself first</p>
+                <?php if ( $wholesale_code !== '' ) : ?>
+                    <p style="text-align:center;color:#628393;font-size:14px;margin:12px 0 0;">Use code <strong><?php echo $wholesale_code; ?></strong> at checkout</p>
+                <?php else : ?>
+                    <p style="text-align:center;color:#628393;font-size:14px;margin:12px 0 0;">Place your order at the show to unlock the bonus.</p>
+                <?php endif; ?>
                 <div style="margin-top:24px;padding:20px;background:#F7F6F3;border-radius:8px;text-align:center;">
                     <p style="color:#386174;font-size:15px;font-weight:600;margin:0 0 6px;">Check your inbox</p>
                     <p style="color:#628393;font-size:14px;margin:0;">Your wholesale catalog + pricing is on the way. Holly will review your info and follow up personally.</p>
@@ -957,6 +986,8 @@ class SLW_Lead_Capture {
         $business_type = sanitize_text_field( wp_unslash( $_POST['business_type'] ?? '' ) );
         $phone         = sanitize_text_field( wp_unslash( $_POST['phone'] ?? '' ) );
         $how_heard     = sanitize_text_field( wp_unslash( $_POST['how_heard'] ?? '' ) );
+        $address       = sanitize_textarea_field( wp_unslash( $_POST['address'] ?? '' ) );
+        $ein_plain     = sanitize_text_field( wp_unslash( $_POST['ein'] ?? '' ) );
         $product_count       = sanitize_text_field( wp_unslash( $_POST['product_count'] ?? '' ) );
         $frustration         = sanitize_text_field( wp_unslash( $_POST['frustration'] ?? '' ) );
         $skincare_experience = sanitize_text_field( wp_unslash( $_POST['skincare_experience'] ?? '' ) );
@@ -1056,17 +1087,20 @@ class SLW_Lead_Capture {
         }
 
         // ── Wholesale leads go to the leads table ──
+        $ein_encrypted = $ein_plain && class_exists( 'SLW_Encryption' ) ? SLW_Encryption::encrypt( $ein_plain ) : $ein_plain;
         $wpdb->insert( $table, array(
             'name'          => $name,
             'email'         => $email,
             'business_name' => $business_name,
             'phone'         => $phone,
+            'address'       => $address,
+            'ein'           => $ein_encrypted,
             'how_heard'     => $how_heard,
             'source'        => $source,
             'status'        => 'new',
             'captured_at'   => current_time( 'mysql' ),
             'notes'         => $notes,
-        ), array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s' ) );
+        ), array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s' ) );
 
         // Also create an application record for booth wholesale leads
         // so Holly can approve/deny them through the same system
@@ -1236,15 +1270,20 @@ class SLW_Lead_Capture {
         header( 'Content-Disposition: attachment; filename=wholesale-leads-' . gmdate( 'Y-m-d' ) . '.csv' );
 
         $output = fopen( 'php://output', 'w' );
-        fputcsv( $output, array( 'ID', 'Name', 'Email', 'Business', 'Phone', 'How Heard', 'Source', 'Status', 'Captured', 'Notes' ) );
+        fputcsv( $output, array( 'ID', 'Name', 'Email', 'Business', 'Phone', 'Address', 'EIN', 'How Heard', 'Source', 'Status', 'Captured', 'Notes' ) );
 
         foreach ( $leads as $lead ) {
+            $csv_ein = ! empty( $lead->ein ) && class_exists( 'SLW_Encryption' )
+                ? SLW_Encryption::decrypt( $lead->ein )
+                : ( $lead->ein ?? '' );
             fputcsv( $output, array(
                 $lead->id,
                 $lead->name,
                 $lead->email,
                 $lead->business_name,
                 $lead->phone,
+                $lead->address ?? '',
+                $csv_ein,
                 $lead->how_heard,
                 $lead->source,
                 $lead->status,
@@ -1272,6 +1311,8 @@ class SLW_Lead_Capture {
         $email         = sanitize_email( wp_unslash( $_POST['email'] ?? '' ) );
         $business_name = sanitize_text_field( wp_unslash( $_POST['business_name'] ?? '' ) );
         $phone         = sanitize_text_field( wp_unslash( $_POST['phone'] ?? '' ) );
+        $address       = sanitize_textarea_field( wp_unslash( $_POST['address'] ?? '' ) );
+        $ein_plain     = sanitize_text_field( wp_unslash( $_POST['ein'] ?? '' ) );
         $source        = sanitize_text_field( wp_unslash( $_POST['source'] ?? 'manual' ) );
         $event_name    = sanitize_text_field( wp_unslash( $_POST['event_name'] ?? '' ) );
         $notes         = sanitize_textarea_field( wp_unslash( $_POST['notes'] ?? '' ) );
@@ -1309,17 +1350,20 @@ class SLW_Lead_Capture {
             exit;
         }
 
+        $ein_encrypted = $ein_plain && class_exists( 'SLW_Encryption' ) ? SLW_Encryption::encrypt( $ein_plain ) : $ein_plain;
         $wpdb->insert( $table, array(
             'name'          => $name,
             'email'         => $email,
             'business_name' => $business_name,
             'phone'         => $phone,
+            'address'       => $address,
+            'ein'           => $ein_encrypted,
             'how_heard'     => $how_heard,
             'source'        => $source,
             'status'        => 'new',
             'captured_at'   => current_time( 'mysql' ),
             'notes'         => $notes,
-        ), array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s' ) );
+        ), array( '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s' ) );
 
         // Fire webhook
         if ( class_exists( 'SLW_Webhooks' ) ) {
@@ -1327,6 +1371,7 @@ class SLW_Lead_Capture {
                 'email'         => $email,
                 'name'          => $name,
                 'business_name' => $business_name,
+                'address'       => $address,
                 'source'        => $source,
             ) );
         }
@@ -1449,6 +1494,14 @@ class SLW_Lead_Capture {
                                 <label>Phone</label>
                                 <input type="tel" name="phone" />
                             </div>
+                            <div class="slw-quick-add-form__field slw-quick-add-form__field--full">
+                                <label>Address</label>
+                                <input type="text" name="address" placeholder="Street, city, state, zip" />
+                            </div>
+                            <div class="slw-quick-add-form__field">
+                                <label>EIN / Resale Cert</label>
+                                <input type="text" name="ein" placeholder="XX-XXXXXXX" />
+                            </div>
                             <div class="slw-quick-add-form__field">
                                 <label>Source</label>
                                 <select name="source" id="slw-manual-source">
@@ -1520,6 +1573,8 @@ class SLW_Lead_Capture {
                             <th>Email</th>
                             <th>Business</th>
                             <th>Phone</th>
+                            <th>Address</th>
+                            <th>EIN</th>
                             <th>Source</th>
                             <th>Status</th>
                             <th>Captured</th>
@@ -1528,15 +1583,21 @@ class SLW_Lead_Capture {
                     </thead>
                     <tbody>
                         <?php if ( empty( $leads ) ) : ?>
-                            <tr><td colspan="9" class="slw-lead-table__empty">No leads found.</td></tr>
+                            <tr><td colspan="11" class="slw-lead-table__empty">No leads found.</td></tr>
                         <?php else : ?>
-                            <?php foreach ( $leads as $lead ) : ?>
+                            <?php foreach ( $leads as $lead ) :
+                                $lead_ein_plain = ! empty( $lead->ein ) && class_exists( 'SLW_Encryption' )
+                                    ? SLW_Encryption::decrypt( $lead->ein )
+                                    : ( $lead->ein ?? '' );
+                            ?>
                                 <tr>
                                     <td class="slw-lead-table__check"><input type="checkbox" class="slw-lead-check" value="<?php echo esc_attr( $lead->id ); ?>" /></td>
                                     <td><strong><?php echo esc_html( $lead->name ); ?></strong></td>
                                     <td><a href="mailto:<?php echo esc_attr( $lead->email ); ?>"><?php echo esc_html( $lead->email ); ?></a></td>
                                     <td><?php echo esc_html( $lead->business_name ); ?></td>
                                     <td><?php echo esc_html( $lead->phone ); ?></td>
+                                    <td style="font-size:12px;color:#628393;max-width:200px;"><?php echo ! empty( $lead->address ) ? esc_html( $lead->address ) : '&mdash;'; ?></td>
+                                    <td style="font-size:12px;"><?php echo $lead_ein_plain ? esc_html( $lead_ein_plain ) : '&mdash;'; ?></td>
                                     <td><?php echo self::get_source_badge( $lead->source ); ?></td>
                                     <td><span class="slw-lead-status slw-lead-status--<?php echo esc_attr( $lead->status ); ?>"><?php echo esc_html( ucfirst( $lead->status ) ); ?></span></td>
                                     <td><?php echo esc_html( human_time_diff( strtotime( $lead->captured_at ) ) . ' ago' ); ?></td>
@@ -1623,9 +1684,20 @@ class SLW_Lead_Capture {
     // ------------------------------------------------------------------
 
     private static function render_trade_show_tools() {
+        $active_event = get_option( 'slw_active_event', '' );
         $lead_page_url = home_url( '/wholesale-leads' );
         $default_url   = $lead_page_url . '?source=trade_show';
+        if ( $active_event ) {
+            $default_url = add_query_arg( 'event', rawurlencode( $active_event ), $default_url );
+        }
         $qr_api_url    = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' . rawurlencode( $default_url );
+
+        $booth_url = home_url( '/wholesale-booth?source=trade_show' );
+        if ( $active_event ) {
+            $booth_url = add_query_arg( 'event', rawurlencode( $active_event ), $booth_url );
+        }
+
+        $just_set = ! empty( $_GET['slw_event_set'] );
         ?>
         <div class="slw-admin-card slw-trade-show-tools">
             <h2 class="slw-admin-card__heading">
@@ -1634,14 +1706,32 @@ class SLW_Lead_Capture {
             </h2>
             <p class="slw-trade-show-tools__desc">Print this QR code and place it at your trade show booth. Visitors scan it on their phone, fill in their info, and become a lead automatically.</p>
 
+            <?php if ( $just_set ) : ?>
+                <div class="notice notice-success inline" style="margin:0 0 16px;"><p>Active event saved.</p></div>
+            <?php endif; ?>
+
+            <!-- Active Event: persisted server-side so iPad-direct fills tag the show even when the URL has no ?event= param -->
+            <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="background:#FFF8E1;border:1px solid #ffe082;border-radius:6px;padding:12px 16px;margin-bottom:16px;display:flex;flex-wrap:wrap;align-items:center;gap:10px;">
+                <?php wp_nonce_field( 'slw_set_active_event' ); ?>
+                <input type="hidden" name="action" value="slw_set_active_event" />
+                <strong style="color:#5d4037;">Active Trade Show:</strong>
+                <input type="text" name="active_event" value="<?php echo esc_attr( $active_event ); ?>" placeholder="e.g. Montana Craft Fair" style="flex:1;min-width:220px;padding:6px 10px;" />
+                <button type="submit" class="button button-primary">Save Active Event</button>
+                <?php if ( $active_event ) : ?>
+                    <button type="submit" name="active_event" value="" class="button" onclick="return confirm('Clear the active event? Future booth/iPad fills won\'t be tagged with an event until you set a new one.');">Clear</button>
+                <?php endif; ?>
+                <p style="flex-basis:100%;margin:4px 0 0;color:#5d4037;font-size:13px;">Set this once per show. Any lead form filled out without an explicit <code>?event=</code> URL param (including iPad-direct fills) will be tagged with this name.</p>
+            </form>
+
             <div class="slw-trade-show-tools__grid">
                 <div class="slw-trade-show-tools__qr">
                     <img id="slw-qr-image" src="<?php echo esc_url( $qr_api_url ); ?>" alt="Lead Capture QR Code" width="200" height="200" />
                 </div>
                 <div class="slw-trade-show-tools__controls">
                     <div class="slw-quick-add-form__field">
-                        <label for="slw-qr-event-name"><strong>Event Name</strong> <span class="slw-optional">(optional)</span></label>
-                        <input type="text" id="slw-qr-event-name" placeholder="e.g. Montana Craft Fair" />
+                        <label for="slw-qr-event-name"><strong>Event Name (override)</strong> <span class="slw-optional">(optional)</span></label>
+                        <input type="text" id="slw-qr-event-name" value="<?php echo esc_attr( $active_event ); ?>" placeholder="e.g. Montana Craft Fair" />
+                        <p class="description" style="margin-top:4px;">Live updates the QR code + URL below. Save it as Active Event above so iPad-direct fills get tagged too.</p>
                     </div>
 
                     <div class="slw-trade-show-tools__link-box">
@@ -1660,14 +1750,72 @@ class SLW_Lead_Capture {
 
                     <p class="slw-trade-show-tools__booth-link">
                         <strong>Booth Tablet URL:</strong>
-                        <a href="<?php echo esc_url( home_url( '/wholesale-booth?source=trade_show' ) ); ?>" target="_blank">
-                            <?php echo esc_html( home_url( '/wholesale-booth?source=trade_show' ) ); ?>
+                        <a href="<?php echo esc_url( $booth_url ); ?>" target="_blank">
+                            <?php echo esc_html( $booth_url ); ?>
                         </a>
                     </p>
                 </div>
             </div>
         </div>
         <?php
+    }
+
+    /**
+     * Ensure a free-shipping WooCommerce coupon exists for the wholesale booth
+     * bonus. Lazy-creates on first booth wholesale submission so Holly never
+     * has to touch WC → Coupons. Idempotent: returns the existing code if the
+     * setting is already populated.
+     *
+     * @return string The coupon code (empty string if WC isn't loaded).
+     */
+    public static function ensure_wholesale_freeship_coupon() {
+        if ( ! function_exists( 'wc_get_coupon_id_by_code' ) || ! class_exists( 'WC_Coupon' ) ) {
+            return '';
+        }
+
+        $existing = trim( (string) get_option( 'slw_booth_wholesale_code', '' ) );
+        if ( $existing !== '' && wc_get_coupon_id_by_code( $existing ) ) {
+            return $existing;
+        }
+
+        // Use the configured code if Holly set one but the actual coupon went
+        // missing; otherwise generate a sensible default.
+        $code = $existing !== '' ? $existing : 'WHOLESALE-SHOWSHIP';
+
+        // Don't double-create if a coupon with this code already exists.
+        if ( ! wc_get_coupon_id_by_code( $code ) ) {
+            $coupon = new WC_Coupon();
+            $coupon->set_code( $code );
+            $coupon->set_discount_type( 'percent' );
+            $coupon->set_amount( 0 );
+            $coupon->set_free_shipping( true );
+            $coupon->set_individual_use( false );
+            $coupon->set_description( 'Auto-created by Sego Lily Wholesale: free shipping for wholesale customers who complete the booth quiz at a trade show.' );
+            $coupon->save();
+        }
+
+        update_option( 'slw_booth_wholesale_code', $code );
+        return $code;
+    }
+
+    /**
+     * Persist the admin-set "active trade show" name so booth/iPad fills get
+     * tagged with it server-side, even when the URL has no ?event= param.
+     */
+    public static function handle_set_active_event() {
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_die( 'Unauthorized', 403 );
+        }
+        check_admin_referer( 'slw_set_active_event' );
+
+        $value = sanitize_text_field( wp_unslash( $_POST['active_event'] ?? '' ) );
+        update_option( 'slw_active_event', $value );
+
+        wp_safe_redirect( add_query_arg(
+            array( 'tab' => 'leads', 'slw_event_set' => '1' ),
+            admin_url( 'admin.php?page=slw-customers' )
+        ) );
+        exit;
     }
 
     // ------------------------------------------------------------------
@@ -1809,6 +1957,13 @@ Holly";
                             <tr><th>Email</th><td><a href="mailto:<?php echo esc_attr( $lead->email ); ?>"><?php echo esc_html( $lead->email ); ?></a></td></tr>
                             <tr><th>Business</th><td><?php echo esc_html( $lead->business_name ); ?></td></tr>
                             <tr><th>Phone</th><td><?php echo esc_html( $lead->phone ?: '—' ); ?></td></tr>
+                            <tr><th>Address</th><td><?php echo ! empty( $lead->address ) ? nl2br( esc_html( $lead->address ) ) : '—'; ?></td></tr>
+                            <tr><th>EIN</th><td><?php
+                                $detail_ein = ! empty( $lead->ein ) && class_exists( 'SLW_Encryption' )
+                                    ? SLW_Encryption::decrypt( $lead->ein )
+                                    : ( $lead->ein ?? '' );
+                                echo $detail_ein ? esc_html( $detail_ein ) : '—';
+                            ?></td></tr>
                             <tr><th>How Heard</th><td><?php echo esc_html( $lead->how_heard ?: '—' ); ?></td></tr>
                             <tr><th>Source</th><td><?php echo esc_html( ucfirst( $lead->source ) ); ?></td></tr>
                             <tr><th>Captured</th><td><?php echo esc_html( date_i18n( 'M j, Y g:i a', strtotime( $lead->captured_at ) ) ); ?></td></tr>

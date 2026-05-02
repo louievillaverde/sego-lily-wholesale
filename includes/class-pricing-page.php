@@ -139,10 +139,15 @@ class SLW_Pricing_Page {
                     </ul>
                 </div>
 
-                <!-- Section 3: Per-Product Overrides (editable) -->
+                <!-- Section 3: Category Minimums -->
+                <?php if ( class_exists( 'SLW_Category_Minimums' ) ) {
+                    SLW_Category_Minimums::render_admin_section();
+                } ?>
+
+                <!-- Section 4: Per-Product Overrides (editable) -->
                 <div class="slw-admin-card" style="padding:20px 24px;margin-bottom:24px;">
                     <h2 class="slw-admin-card__heading" style="margin-bottom:16px;">Per-Product Overrides</h2>
-                    <p style="color:#628393;margin-bottom:16px;">Set custom wholesale pricing, minimum quantities, and case pack sizes per product. Changes here are saved along with the rest of the pricing settings.</p>
+                    <p style="color:#628393;margin-bottom:16px;">Set custom wholesale pricing, minimum quantities, and case pack sizes per product. <strong>Tip:</strong> if you only want a category-wide minimum (e.g. 6 in Ageless mixable across scents), use Category Minimums above and leave per-product Min Qty blank — products inside the category will use the category rule.</p>
 
                     <?php self::render_product_overrides_table(); ?>
                 </div>
@@ -174,6 +179,46 @@ class SLW_Pricing_Page {
                 if (e.target.classList.contains('slw-remove-tier')) {
                     e.target.closest('tr').remove();
                 }
+            });
+
+            // Dirty-state guard for the per-product Overrides table. Pagination
+            // and tab navigation use GET requests, which would drop any unsaved
+            // values from the visible page. Track dirty state and warn before nav.
+            var pricingForm = document.querySelector('form[method="post"]');
+            var isDirty = false;
+            if (pricingForm) {
+                pricingForm.addEventListener('input', function() { isDirty = true; });
+                pricingForm.addEventListener('change', function() { isDirty = true; });
+                pricingForm.addEventListener('submit', function() { isDirty = false; });
+            }
+            window.addEventListener('beforeunload', function(e) {
+                if (isDirty) {
+                    e.preventDefault();
+                    e.returnValue = '';
+                }
+            });
+            // Pagination links: confirm + auto-save before navigating away.
+            document.querySelectorAll('a[href*="slw_prod_page="]').forEach(function(link) {
+                link.addEventListener('click', function(e) {
+                    if (!isDirty || !pricingForm) return;
+                    var saveFirst = confirm(
+                        'You have unsaved changes on this page. Save before navigating?\n\n' +
+                        'OK = Save, then go to next page.\n' +
+                        'Cancel = Stay here.'
+                    );
+                    if (saveFirst) {
+                        e.preventDefault();
+                        // Inject the target page so the form post lands on the right page.
+                        var hidden = document.createElement('input');
+                        hidden.type = 'hidden';
+                        hidden.name = 'slw_redirect_to';
+                        hidden.value = link.href;
+                        pricingForm.appendChild(hidden);
+                        pricingForm.submit();
+                    } else {
+                        e.preventDefault();
+                    }
+                });
             });
         })();
         </script>
@@ -237,6 +282,11 @@ class SLW_Pricing_Page {
 
         update_option( 'slw_wholesale_tiers', $tiers );
 
+        // Save category minimums
+        if ( class_exists( 'SLW_Category_Minimums' ) ) {
+            SLW_Category_Minimums::save_from_post();
+        }
+
         // Save per-product overrides
         if ( isset( $_POST['slw_product_price'] ) && is_array( $_POST['slw_product_price'] ) ) {
             foreach ( $_POST['slw_product_price'] as $pid => $price ) {
@@ -276,8 +326,12 @@ class SLW_Pricing_Page {
             }
         }
 
-        // Redirect back with success flag
-        wp_redirect( add_query_arg( 'slw_pricing_saved', '1', wp_get_referer() ? wp_get_referer() : admin_url( 'admin.php?page=slw-pricing' ) ) );
+        // Redirect back with success flag — honor an explicit redirect target
+        // (set by the pagination guard so save-then-navigate lands on the next page).
+        $target = ! empty( $_POST['slw_redirect_to'] )
+            ? esc_url_raw( wp_unslash( $_POST['slw_redirect_to'] ) )
+            : ( wp_get_referer() ?: admin_url( 'admin.php?page=slw-pricing' ) );
+        wp_safe_redirect( add_query_arg( 'slw_pricing_saved', '1', $target ) );
         exit;
     }
 
@@ -312,6 +366,7 @@ class SLW_Pricing_Page {
         }
 
         $base_url = admin_url( 'admin.php?page=slw-pricing' );
+        $case_packs_on = class_exists( 'SLW_Product_Minimums' ) ? SLW_Product_Minimums::case_packs_enabled() : false;
         ?>
         <p style="color:#888;margin-bottom:8px;">Showing page <?php echo esc_html( $paged ); ?> of <?php echo esc_html( $total_pages ); ?> (<?php echo esc_html( $total_products ); ?> products)</p>
         <table class="widefat striped" style="border-collapse:collapse;">
@@ -321,7 +376,9 @@ class SLW_Pricing_Page {
                     <th style="text-align:left;padding:10px 12px;width:100px;">SKU</th>
                     <th style="text-align:left;padding:10px 12px;width:140px;">Wholesale Price</th>
                     <th style="text-align:left;padding:10px 12px;width:100px;">Min Qty</th>
-                    <th style="text-align:left;padding:10px 12px;width:120px;">Case Pack</th>
+                    <?php if ( $case_packs_on ) : ?>
+                        <th style="text-align:left;padding:10px 12px;width:120px;">Case Pack</th>
+                    <?php endif; ?>
                 </tr>
             </thead>
             <tbody>
@@ -348,9 +405,11 @@ class SLW_Pricing_Page {
                     <td style="padding:8px 12px;">
                         <input type="number" name="slw_product_min[<?php echo $pid; ?>]" value="<?php echo esc_attr( $min_qty ); ?>" step="1" min="0" style="width:70px;padding:4px 8px;" placeholder="None" />
                     </td>
+                    <?php if ( $case_packs_on ) : ?>
                     <td style="padding:8px 12px;">
                         <input type="number" name="slw_product_case[<?php echo $pid; ?>]" value="<?php echo esc_attr( $case_pack ); ?>" step="1" min="0" style="width:70px;padding:4px 8px;" placeholder="None" />
                     </td>
+                    <?php endif; ?>
                 </tr>
                 <?php endforeach; ?>
 
@@ -371,9 +430,11 @@ class SLW_Pricing_Page {
                     <td style="padding:10px 12px;">
                         <input type="number" name="slw_new_product_min" value="" step="1" min="0" style="width:70px;padding:4px 8px;" placeholder="Min" />
                     </td>
+                    <?php if ( $case_packs_on ) : ?>
                     <td style="padding:10px 12px;">
                         <input type="number" name="slw_new_product_case" value="" step="1" min="0" style="width:70px;padding:4px 8px;" placeholder="Case" />
                     </td>
+                    <?php endif; ?>
                 </tr>
             </tbody>
         </table>

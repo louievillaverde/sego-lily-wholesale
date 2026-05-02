@@ -291,6 +291,7 @@ class SLW_Wholesale_Role {
         }
         $net_terms = absint( $net_terms );
         $resale_number = SLW_Encryption::decrypt( get_user_meta( $user->ID, 'slw_resale_certificate_number', true ) );
+        $ein_number    = SLW_Encryption::decrypt( get_user_meta( $user->ID, 'slw_ein', true ) );
         ?>
         <h2>Wholesale Portal</h2>
         <table class="form-table">
@@ -312,6 +313,13 @@ class SLW_Wholesale_Role {
                 <th><label for="slw_resale_certificate_number">Resale Certificate Number</label></th>
                 <td>
                     <input type="text" id="slw_resale_certificate_number" name="slw_resale_certificate_number" value="<?php echo esc_attr( $resale_number ); ?>" class="regular-text" />
+                </td>
+            </tr>
+            <tr>
+                <th><label for="slw_ein">EIN Number</label></th>
+                <td>
+                    <input type="text" id="slw_ein" name="slw_ein" value="<?php echo esc_attr( $ein_number ); ?>" class="regular-text" placeholder="XX-XXXXXXX" />
+                    <p class="description">Federal EIN. Stored encrypted at rest. Customer can also edit this from their wholesale portal account tab.</p>
                 </td>
             </tr>
             <tr>
@@ -362,6 +370,10 @@ class SLW_Wholesale_Role {
         update_user_meta( $user_id, 'slw_net30_approved', $net_terms > 0 ? '1' : '0' );
 
         update_user_meta( $user_id, 'slw_resale_certificate_number', SLW_Encryption::encrypt( sanitize_text_field( $_POST['slw_resale_certificate_number'] ?? '' ) ) );
+
+        // EIN — keep encrypted to match the application/portal flow
+        $ein_input = sanitize_text_field( wp_unslash( $_POST['slw_ein'] ?? '' ) );
+        update_user_meta( $user_id, 'slw_ein', $ein_input === '' ? '' : SLW_Encryption::encrypt( $ein_input ) );
 
         // Audit log: wholesale status change
         if ( $should_be_wholesale && ! $is_currently ) {

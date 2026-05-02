@@ -15,13 +15,10 @@ class SLW_Product_Minimums {
 	public static function init() {
 		// Product edit field (after the existing wholesale price fields)
 		add_action( 'woocommerce_product_options_general_product_data', array( __CLASS__, 'add_minimum_qty_field' ), 20 );
-		add_action( 'woocommerce_product_options_general_product_data', array( __CLASS__, 'add_case_pack_field' ), 21 );
 		add_action( 'woocommerce_admin_process_product_object', array( __CLASS__, 'save_minimum_qty_field' ) );
-		add_action( 'woocommerce_admin_process_product_object', array( __CLASS__, 'save_case_pack_field' ) );
 
-		// Cart enforcement
+		// Cart enforcement (per-product min always on; case-pack gated)
 		add_action( 'woocommerce_check_cart_items', array( __CLASS__, 'enforce_minimums' ) );
-		add_action( 'woocommerce_check_cart_items', array( __CLASS__, 'enforce_case_packs' ) );
 
 		// Quantity input min attribute on product pages
 		add_filter( 'woocommerce_quantity_input_args', array( __CLASS__, 'quantity_input_args' ), 999, 2 );
@@ -30,8 +27,25 @@ class SLW_Product_Minimums {
 		// modules can read, and hook into the product query args
 		add_filter( 'slw_order_form_product_data', array( __CLASS__, 'add_minimum_to_order_form' ), 10, 2 );
 
-		// Frontend product page: show case pack + minimum info for wholesale users
+		// Frontend product page: show min info for wholesale users (case pack
+		// label is gated inside the renderer)
 		add_action( 'woocommerce_single_product_summary', array( __CLASS__, 'display_case_pack_on_product_page' ), 25 );
+
+		// Case-pack-only hooks: only register when the feature is enabled.
+		if ( self::case_packs_enabled() ) {
+			add_action( 'woocommerce_product_options_general_product_data', array( __CLASS__, 'add_case_pack_field' ), 21 );
+			add_action( 'woocommerce_admin_process_product_object', array( __CLASS__, 'save_case_pack_field' ) );
+			add_action( 'woocommerce_check_cart_items', array( __CLASS__, 'enforce_case_packs' ) );
+		}
+	}
+
+	/**
+	 * Whether the per-product case-pack feature is enabled site-wide.
+	 * Default: off — most products don't need case packs and the field
+	 * created confusion. Toggled in Wholesale → Settings → Order Form.
+	 */
+	public static function case_packs_enabled() {
+		return (bool) get_option( 'slw_case_packs_enabled', false );
 	}
 
 	// ── Product Edit Field ────────────────────────────────────────────────
@@ -207,17 +221,17 @@ class SLW_Product_Minimums {
 			}
 		}
 
-		// Case pack step
-		$case_size = self::get_case_pack_size( $lookup_id );
-		if ( $case_size > 0 ) {
-			$args['step'] = $case_size;
-			// Default value should be the case pack size (not 1)
-			if ( ! isset( $args['input_value'] ) || (int) $args['input_value'] < $case_size ) {
-				$args['input_value'] = $case_size;
-			}
-			// Ensure min_value is at least case_size
-			if ( ! isset( $args['min_value'] ) || (int) $args['min_value'] < $case_size ) {
-				$args['min_value'] = $case_size;
+		// Case pack step (only when enabled)
+		if ( self::case_packs_enabled() ) {
+			$case_size = self::get_case_pack_size( $lookup_id );
+			if ( $case_size > 0 ) {
+				$args['step'] = $case_size;
+				if ( ! isset( $args['input_value'] ) || (int) $args['input_value'] < $case_size ) {
+					$args['input_value'] = $case_size;
+				}
+				if ( ! isset( $args['min_value'] ) || (int) $args['min_value'] < $case_size ) {
+					$args['min_value'] = $case_size;
+				}
 			}
 		}
 
@@ -241,8 +255,8 @@ class SLW_Product_Minimums {
 		}
 
 		$product_id = $product->get_id();
-		$case_pack  = self::get_case_pack_size( $product_id );
 		$min_qty    = self::get_product_minimum( $product_id );
+		$case_pack  = self::case_packs_enabled() ? self::get_case_pack_size( $product_id ) : 0;
 
 		if ( $case_pack <= 0 && $min_qty <= 0 ) {
 			return;

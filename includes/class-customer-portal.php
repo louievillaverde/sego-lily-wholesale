@@ -20,6 +20,7 @@ class SLW_Customer_Portal {
         'orders'     => 'Order Form',
         'invoices'   => 'Invoices',
         'account'    => 'Account',
+        'assets'     => 'Assets',
         'rfq'        => 'Request a Quote',
         'price-list' => 'Price List',
         'help'       => 'Help / Contact',
@@ -27,6 +28,48 @@ class SLW_Customer_Portal {
 
     public static function init() {
         add_shortcode( 'wholesale_portal', array( __CLASS__, 'render' ) );
+        add_action( 'admin_post_slw_save_ein', array( __CLASS__, 'handle_save_ein' ) );
+    }
+
+    /**
+     * Handle the customer-side EIN update form submission.
+     * Encrypts before storing so the same field is portable between
+     * application records and user_meta.
+     */
+    public static function handle_save_ein() {
+        if ( ! is_user_logged_in() ) {
+            wp_die( 'You must be logged in.', 'Unauthorized', array( 'response' => 401 ) );
+        }
+        check_admin_referer( 'slw_save_ein' );
+
+        $user_id = get_current_user_id();
+        if ( ! slw_is_wholesale_user( $user_id ) ) {
+            wp_die( 'Wholesale customers only.', 'Unauthorized', array( 'response' => 403 ) );
+        }
+
+        $ein = sanitize_text_field( wp_unslash( $_POST['slw_ein'] ?? '' ) );
+        if ( $ein === '' ) {
+            // Empty submit clears the value.
+            update_user_meta( $user_id, 'slw_ein', '' );
+        } else {
+            update_user_meta( $user_id, 'slw_ein', SLW_Encryption::encrypt( $ein ) );
+        }
+
+        $redirect = wp_get_referer() ?: home_url( '/wholesale-portal/?tab=account' );
+        $redirect = add_query_arg( 'slw_ein_saved', '1', $redirect );
+        wp_safe_redirect( $redirect );
+        exit;
+    }
+
+    /**
+     * Decrypt and return the current user's EIN. Empty string if unset.
+     */
+    public static function get_user_ein( $user_id ) {
+        $stored = get_user_meta( $user_id, 'slw_ein', true );
+        if ( ! $stored ) {
+            return '';
+        }
+        return class_exists( 'SLW_Encryption' ) ? SLW_Encryption::decrypt( $stored ) : $stored;
     }
 
     /**
@@ -136,6 +179,9 @@ class SLW_Customer_Portal {
                         break;
                     case 'account':
                         self::render_account_tab();
+                        break;
+                    case 'assets':
+                        self::render_assets_tab();
                         break;
                     case 'rfq':
                         self::render_rfq_tab();
@@ -281,9 +327,19 @@ class SLW_Customer_Portal {
         $edit_address_url = wc_get_account_endpoint_url( 'edit-address' );
         $business_name    = get_user_meta( $user->ID, 'slw_business_name', true );
         $net30_approved   = get_user_meta( $user->ID, 'slw_net30_approved', true ) === '1';
+        $ein              = self::get_user_ein( $user->ID );
+        $ein_just_saved   = ! empty( $_GET['slw_ein_saved'] );
         ?>
         <div class="slw-account-tab">
             <h3>Account Settings</h3>
+
+            <?php if ( $ein_just_saved ) : ?>
+                <div class="slw-notice slw-notice-success" style="margin-bottom:16px;">EIN saved.</div>
+            <?php elseif ( empty( $ein ) ) : ?>
+                <div class="slw-notice slw-notice-warning" style="margin-bottom:16px;">
+                    <strong>Action needed:</strong> please add your EIN / Resale Certificate number below. We need it on file before your first order.
+                </div>
+            <?php endif; ?>
 
             <div class="slw-dashboard-grid">
                 <div class="slw-dashboard-card">
@@ -341,7 +397,86 @@ class SLW_Customer_Portal {
                         <a href="<?php echo esc_url( $edit_account_url ); ?>" class="slw-btn slw-btn-secondary">Change Password</a>
                     </div>
                 </div>
+
+                <div class="slw-dashboard-card">
+                    <h4>EIN / Resale Certificate</h4>
+                    <p>Required for tax-exempt wholesale ordering. Stored encrypted at rest.</p>
+                    <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+                        <?php wp_nonce_field( 'slw_save_ein' ); ?>
+                        <input type="hidden" name="action" value="slw_save_ein" />
+                        <label for="slw-ein-input" style="display:block;margin-bottom:6px;font-weight:600;">EIN Number</label>
+                        <input type="text" id="slw-ein-input" name="slw_ein"
+                               value="<?php echo esc_attr( $ein ); ?>"
+                               placeholder="XX-XXXXXXX"
+                               style="width:100%;padding:8px;margin-bottom:12px;" />
+                        <button type="submit" class="slw-btn slw-btn-primary">Save EIN</button>
+                    </form>
+                </div>
             </div>
+        </div>
+        <?php
+    }
+
+    /**
+     * Assets tab — onboarding materials (images, PDFs, video links, etc.).
+     */
+    private static function render_assets_tab() {
+        $user = wp_get_current_user();
+        $assets = class_exists( 'SLW_Customer_Assets' )
+            ? SLW_Customer_Assets::get_assets_for_user( $user->ID )
+            : array();
+
+        $type_icons = array(
+            'image' => '&#128247;', // camera
+            'pdf'   => '&#128196;', // doc
+            'video' => '&#127909;', // film
+            'link'  => '&#128279;', // link
+        );
+        $type_labels = array(
+            'image' => 'Image',
+            'pdf'   => 'PDF',
+            'video' => 'Video',
+            'link'  => 'Link',
+        );
+        ?>
+        <div class="slw-assets-tab">
+            <h3>Brand Assets &amp; Resources</h3>
+            <p>Logos, product photos, shelf talkers, and marketing materials for your retail displays. Need something specific that's not here? <a href="?tab=help">Just ask</a>.</p>
+
+            <?php if ( empty( $assets ) ) : ?>
+                <div class="slw-notice slw-notice-info" style="margin-top:16px;">
+                    No assets available yet — we'll add them shortly. In the meantime, reach out via the Help tab and we'll send what you need by email.
+                </div>
+            <?php else : ?>
+                <div class="slw-dashboard-grid" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr));">
+                    <?php foreach ( $assets as $asset ) :
+                        $type  = $asset['type'] ?? 'link';
+                        $icon  = $type_icons[ $type ] ?? $type_icons['link'];
+                        $label = $type_labels[ $type ] ?? $type_labels['link'];
+                        $thumb = $asset['thumbnail'] ?? '';
+                    ?>
+                        <div class="slw-dashboard-card slw-asset-card" style="display:flex;flex-direction:column;gap:8px;">
+                            <?php if ( $thumb ) : ?>
+                                <div class="slw-asset-card__thumb" style="width:100%;aspect-ratio:16/10;background:#f0eee9 url('<?php echo esc_url( $thumb ); ?>') center/cover no-repeat;border-radius:6px;"></div>
+                            <?php else : ?>
+                                <div class="slw-asset-card__thumb" style="width:100%;aspect-ratio:16/10;background:#F7F6F3;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:42px;color:#386174;">
+                                    <?php echo $icon; ?>
+                                </div>
+                            <?php endif; ?>
+                            <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:#628393;font-weight:600;"><?php echo esc_html( $label ); ?></div>
+                            <h4 style="margin:0;font-size:16px;"><?php echo esc_html( $asset['title'] ?? '' ); ?></h4>
+                            <?php if ( ! empty( $asset['description'] ) ) : ?>
+                                <p style="margin:0;font-size:13px;color:#628393;line-height:1.45;"><?php echo esc_html( $asset['description'] ); ?></p>
+                            <?php endif; ?>
+                            <div style="margin-top:auto;padding-top:8px;">
+                                <a href="<?php echo esc_url( $asset['url'] ?? '#' ); ?>" target="_blank" rel="noopener" class="slw-btn slw-btn-small slw-btn-primary">
+                                    <?php echo $type === 'video' || $type === 'link' ? 'Open' : 'Download'; ?>
+                                </a>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
         </div>
         <?php
     }
@@ -428,8 +563,8 @@ class SLW_Customer_Portal {
 
                 <div class="slw-dashboard-card slw-dashboard-card-wide">
                     <h4>Brand Assets</h4>
-                    <p>Need high-resolution logos, product photos, shelf talkers, or marketing materials for your retail displays?</p>
-                    <p>Email <a href="mailto:<?php echo esc_attr( $contact_email ); ?>"><?php echo esc_html( $contact_label ); ?></a> and we will send them over promptly.</p>
+                    <p>High-resolution logos, product photos, shelf talkers, and marketing materials live on the <a href="?tab=assets">Assets tab</a>.</p>
+                    <p>Need something that isn't there? Email <a href="mailto:<?php echo esc_attr( $contact_email ); ?>"><?php echo esc_html( $contact_label ); ?></a> and we'll add it.</p>
                 </div>
             </div>
         </div>

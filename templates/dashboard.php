@@ -14,6 +14,8 @@ $first_name    = $user->first_name ?: $user->display_name;
 $business_name = get_user_meta( $user->ID, 'slw_business_name', true );
 $has_ordered   = get_user_meta( $user->ID, 'slw_first_order_placed', true );
 $net30_approved = get_user_meta( $user->ID, 'slw_net30_approved', true ) === '1';
+$customer_ein  = class_exists( 'SLW_Customer_Portal' ) ? SLW_Customer_Portal::get_user_ein( $user->ID ) : '';
+$ein_missing   = empty( $customer_ein );
 
 // Pagination
 $current_page = isset( $_GET['slw_page'] ) ? absint( $_GET['slw_page'] ) : 1;
@@ -34,6 +36,19 @@ if ( ! is_array( $saved_carts ) ) {
 ?>
 
 <div class="slw-dashboard-wrap">
+
+	<?php if ( $ein_missing ) :
+		// Direct customers to the Account tab where they can enter their EIN.
+		// Prefer the unified portal page when it exists; fall back to the legacy dashboard.
+		$ein_account_url = home_url( '/wholesale-portal/?tab=account' );
+	?>
+		<div class="slw-notice slw-notice-warning slw-ein-missing-notice" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+			<div>
+				<strong>EIN required.</strong> Please add your EIN / Resale Certificate number before placing your first order.
+			</div>
+			<a href="<?php echo esc_url( $ein_account_url ); ?>" class="slw-btn slw-btn-small slw-btn-primary">Add EIN</a>
+		</div>
+	<?php endif; ?>
 
 	<?php if ( get_option( 'slw_store_notice_enabled' ) && get_option( 'slw_store_notice_text' ) ) : ?>
 		<?php

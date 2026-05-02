@@ -51,6 +51,10 @@ class SLW_Tier_Settings {
 				</div>
 			<?php endif; ?>
 
+			<div class="notice notice-warning inline" style="margin:12px 0 16px;">
+				<p><strong>Tier slugs and display names are locked by default.</strong> Renaming them will break automation copy (welcome emails, upgrade messages) and reporting that references the old name. Use the <em>Unlock</em> button only if you are sure.</p>
+			</div>
+
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 				<?php wp_nonce_field( 'slw_save_tiers' ); ?>
 				<input type="hidden" name="action" value="slw_save_tiers" />
@@ -71,12 +75,12 @@ class SLW_Tier_Settings {
 						$index = 0;
 						foreach ( $tiers as $slug => $tier ) :
 						?>
-						<tr class="slw-tier-row">
+						<tr class="slw-tier-row" data-existing="1">
 							<td>
-								<input type="text" name="tiers[<?php echo $index; ?>][slug]" value="<?php echo esc_attr( $slug ); ?>" class="regular-text" style="width:100%;" pattern="[a-z0-9_]+" title="Lowercase letters, numbers, underscores only" required />
+								<input type="text" name="tiers[<?php echo $index; ?>][slug]" value="<?php echo esc_attr( $slug ); ?>" class="regular-text slw-tier-locked" style="width:100%;" pattern="[a-z0-9_]+" title="Lowercase letters, numbers, underscores only" required readonly />
 							</td>
 							<td>
-								<input type="text" name="tiers[<?php echo $index; ?>][name]" value="<?php echo esc_attr( $tier['name'] ); ?>" class="regular-text" style="width:100%;" required />
+								<input type="text" name="tiers[<?php echo $index; ?>][name]" value="<?php echo esc_attr( $tier['name'] ); ?>" class="regular-text slw-tier-locked" style="width:100%;" required readonly />
 							</td>
 							<td>
 								<input type="number" name="tiers[<?php echo $index; ?>][discount]" value="<?php echo esc_attr( $tier['discount'] ); ?>" min="0" max="99" step="0.5" style="width:100%;" required />
@@ -87,9 +91,10 @@ class SLW_Tier_Settings {
 							<td>
 								<input type="number" name="tiers[<?php echo $index; ?>][spend_threshold]" value="<?php echo esc_attr( $tier['spend_threshold'] ?? 0 ); ?>" min="0" step="1" style="width:100%;" />
 							</td>
-							<td>
+							<td style="white-space:nowrap;">
+								<button type="button" class="button button-small slw-tier-unlock" title="Unlock slug + name">Unlock</button>
 								<?php if ( $slug !== 'standard' ) : ?>
-									<button type="button" class="button slw-remove-tier" title="Remove tier">&times;</button>
+									<button type="button" class="button slw-remove-tier" title="Remove tier" style="margin-left:4px;">&times;</button>
 								<?php endif; ?>
 							</td>
 						</tr>
@@ -127,6 +132,7 @@ class SLW_Tier_Settings {
 				var idx = rows.length;
 				var tr = document.createElement('tr');
 				tr.className = 'slw-tier-row';
+				// New rows are editable from creation — only existing tiers are locked.
 				tr.innerHTML = '<td><input type="text" name="tiers[' + idx + '][slug]" value="" class="regular-text" style="width:100%;" pattern="[a-z0-9_]+" title="Lowercase letters, numbers, underscores only" required /></td>'
 					+ '<td><input type="text" name="tiers[' + idx + '][name]" value="" class="regular-text" style="width:100%;" required /></td>'
 					+ '<td><input type="number" name="tiers[' + idx + '][discount]" value="50" min="0" max="99" step="0.5" style="width:100%;" required /></td>'
@@ -139,6 +145,22 @@ class SLW_Tier_Settings {
 			tbody.addEventListener('click', function(e) {
 				if (e.target.classList.contains('slw-remove-tier')) {
 					e.target.closest('tr').remove();
+					return;
+				}
+				if (e.target.classList.contains('slw-tier-unlock')) {
+					var row = e.target.closest('tr');
+					var locked = row.querySelectorAll('.slw-tier-locked');
+					if (!locked.length) return;
+					var answer = window.prompt('Renaming tier slugs or display names will break automation copy and reporting. Type RESET to enable editing.');
+					if (answer === 'RESET') {
+						locked.forEach(function(input) {
+							input.removeAttribute('readonly');
+							input.classList.remove('slw-tier-locked');
+							input.style.background = '#fff8e1';
+						});
+						e.target.disabled = true;
+						e.target.textContent = 'Unlocked';
+					}
 				}
 			});
 		})();

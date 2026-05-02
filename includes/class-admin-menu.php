@@ -113,6 +113,11 @@ class SLW_Admin_Menu {
             add_submenu_page( 'slw-dashboard', 'Wholesale Customers', 'Customers', 'manage_woocommerce', 'slw-customers', array( 'SLW_Customers_Page', 'render_page' ) );
         }
 
+        // 5b. Customer Assets (default library + per-customer overrides)
+        if ( class_exists( 'SLW_Customer_Assets' ) ) {
+            add_submenu_page( 'slw-dashboard', 'Customer Assets', 'Assets', 'manage_woocommerce', 'slw-assets', array( 'SLW_Customer_Assets', 'render_admin_page' ) );
+        }
+
         // 6. Sequences (email campaigns + newsletters) — with failure count badge
         if ( class_exists( 'SLW_Email_Sequences' ) ) {
             $seq_label = 'Sequences';

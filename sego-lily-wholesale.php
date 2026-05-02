@@ -3,7 +3,7 @@
  * Plugin Name:       Wholesale Portal
  * Plugin URI:        https://github.com/louievillaverde/sego-lily-wholesale
  * Description:       All-in-one B2B wholesale portal for WooCommerce. Customer portal, tiered pricing, application workflow, PDF invoices, email sequences with multi-provider support, NET payment terms, lead capture, trade show tools, and automated order reminders. Built by Lead Piranha.
- * Version:           4.5.5
+ * Version:           4.6.0
  * Author:            Lead Piranha
  * Author URI:        https://leadpiranha.com
  * Requires at least: 6.0
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SLW_VERSION', '4.5.5' );
+define( 'SLW_VERSION', '4.6.0' );
 define( 'SLW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SLW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -85,6 +85,7 @@ add_action( 'plugins_loaded', function() {
     require_once SLW_PLUGIN_DIR . 'includes/class-tiers.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-tier-settings.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-product-minimums.php';
+    require_once SLW_PLUGIN_DIR . 'includes/class-category-minimums.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-customer-groups.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-invoice-settings.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-pdf-invoices.php';
@@ -93,6 +94,7 @@ add_action( 'plugins_loaded', function() {
     require_once SLW_PLUGIN_DIR . 'includes/class-reminders.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-rfq.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-customer-portal.php';
+    require_once SLW_PLUGIN_DIR . 'includes/class-customer-assets.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-quiz-results.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-email-approve.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-wholesale-activate.php';
@@ -134,6 +136,7 @@ add_action( 'plugins_loaded', function() {
     SLW_Tiers::init();
     SLW_Tier_Settings::init();
     SLW_Product_Minimums::init();
+    SLW_Category_Minimums::init();
     SLW_Customer_Groups::init();
     SLW_Invoice_Settings::init();
     SLW_PDF_Invoices::init();
@@ -142,6 +145,7 @@ add_action( 'plugins_loaded', function() {
     SLW_Reminders::init();
     SLW_RFQ::init();
     SLW_Customer_Portal::init();
+    SLW_Customer_Assets::init();
     SLW_Quiz_Results::init();
     SLW_Email_Approve::init();
     SLW_Wholesale_Activate::init();
@@ -280,6 +284,8 @@ register_activation_hook( __FILE__, function() {
         email VARCHAR(255) NOT NULL,
         business_name VARCHAR(255) DEFAULT '',
         phone VARCHAR(50) DEFAULT '',
+        address TEXT DEFAULT '',
+        ein VARCHAR(255) DEFAULT '',
         how_heard TEXT DEFAULT '',
         source VARCHAR(50) DEFAULT 'shortcode',
         status VARCHAR(20) DEFAULT 'new',
@@ -382,6 +388,8 @@ add_action( 'admin_init', function() {
             email VARCHAR(255) NOT NULL,
             business_name VARCHAR(255) DEFAULT '',
             phone VARCHAR(50) DEFAULT '',
+            address TEXT DEFAULT '',
+            ein VARCHAR(255) DEFAULT '',
             how_heard TEXT DEFAULT '',
             source VARCHAR(50) DEFAULT 'shortcode',
             status VARCHAR(20) DEFAULT 'new',
@@ -391,6 +399,56 @@ add_action( 'admin_init', function() {
             KEY status (status),
             KEY email (email)
         ) {$charset_collate};" );
+    } else {
+        // One-time column migrations for existing installs.
+        if ( ! get_option( 'slw_leads_address_migrated' ) ) {
+            $col = $wpdb->get_var( $wpdb->prepare(
+                "SHOW COLUMNS FROM {$leads_table} LIKE %s",
+                'address'
+            ) );
+            if ( ! $col ) {
+                $wpdb->query( "ALTER TABLE {$leads_table} ADD COLUMN address TEXT DEFAULT '' AFTER phone" );
+            }
+            update_option( 'slw_leads_address_migrated', 1 );
+        }
+        if ( ! get_option( 'slw_leads_ein_migrated' ) ) {
+            $col = $wpdb->get_var( $wpdb->prepare(
+                "SHOW COLUMNS FROM {$leads_table} LIKE %s",
+                'ein'
+            ) );
+            if ( ! $col ) {
+                $wpdb->query( "ALTER TABLE {$leads_table} ADD COLUMN ein VARCHAR(255) DEFAULT '' AFTER address" );
+            }
+            update_option( 'slw_leads_ein_migrated', 1 );
+        }
+    }
+
+    // ── 1b. Product category housekeeping ──
+    // One-shot rename + create. Gated by option so it doesn't trample
+    // future admin-side renames. Only touches taxonomy terms — products
+    // remain assigned correctly because we update the existing term in place.
+    if ( ! get_option( 'slw_product_cat_migrated_v1' ) ) {
+        if ( taxonomy_exists( 'product_cat' ) ) {
+            // Rename "Tallow Skincare" → "Tallow Butter" if the old term exists
+            // and the new one doesn't already.
+            $old_term = get_term_by( 'name', 'Tallow Skincare', 'product_cat' );
+            $new_term = get_term_by( 'name', 'Tallow Butter', 'product_cat' );
+            if ( $old_term && ! is_wp_error( $old_term ) && ! $new_term ) {
+                wp_update_term( $old_term->term_id, 'product_cat', array(
+                    'name' => 'Tallow Butter',
+                    'slug' => 'tallow-butter',
+                ) );
+            }
+
+            // Ensure a "Lip Balm" category exists. Holly still has to assign
+            // her lip balm products to it manually — we don't try to guess
+            // which products are lip balms.
+            $lip_balm = get_term_by( 'name', 'Lip Balm', 'product_cat' );
+            if ( ! $lip_balm ) {
+                wp_insert_term( 'Lip Balm', 'product_cat', array( 'slug' => 'lip-balm' ) );
+            }
+        }
+        update_option( 'slw_product_cat_migrated_v1', 1 );
     }
 
     // ── 2. Role: create if missing ──

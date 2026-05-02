@@ -28,6 +28,8 @@ class SLW_Settings {
         'slw_booth_retail_offer'            => array( 'sanitize' => 'sanitize_text_field',  'default' => '15% off your first order' ),
         'slw_booth_retail_url'              => array( 'sanitize' => 'esc_url_raw',          'default' => '' ),
         'slw_booth_wholesale_heading'       => array( 'sanitize' => 'sanitize_text_field',  'default' => 'Welcome! Here is our wholesale price list' ),
+        'slw_booth_wholesale_offer'         => array( 'sanitize' => 'sanitize_text_field',  'default' => 'Free shipping if you order at the show' ),
+        'slw_booth_wholesale_code'          => array( 'sanitize' => 'sanitize_text_field',  'default' => '' ),
         // Product Visibility
         'slw_wholesale_only_categories'     => array( 'sanitize' => 'array',               'default' => array() ),
         'slw_order_form_categories'         => array( 'sanitize' => 'array',               'default' => array() ),
@@ -35,6 +37,7 @@ class SLW_Settings {
         'slw_clarity_project_id'            => array( 'sanitize' => 'sanitize_text_field', 'default' => '' ),
         // Order Form
         'slw_new_arrivals_days'             => array( 'sanitize' => 'absint',             'default' => 30 ),
+        'slw_case_packs_enabled'            => array( 'sanitize' => 'rest_sanitize_boolean', 'default' => false ),
         // Store Notice
         'slw_store_notice_enabled'          => array( 'sanitize' => 'rest_sanitize_boolean','default' => false ),
         'slw_store_notice_text'             => array( 'sanitize' => 'wp_kses_post',        'default' => '' ),
@@ -67,24 +70,47 @@ class SLW_Settings {
         // Handle form submission
         if ( isset( $_POST['slw_settings_save'] ) && check_admin_referer( 'slw_settings_nonce' ) ) {
             foreach ( self::$fields as $key => $config ) {
+                // wp_unslash ALL string-y inputs before sanitizing. WordPress auto-escapes
+                // $_POST so apostrophes arrive as \'. Without unslash, the backslash gets
+                // persisted and shows up in the rendered field as literal text
+                // (e.g. "Welcome! Here\'s our wholesale price list").
+                $raw = $_POST[ $key ] ?? '';
                 if ( $config['sanitize'] === 'array' ) {
-                    $value = isset( $_POST[ $key ] ) ? self::sanitize_method_array( $_POST[ $key ] ) : array();
+                    $value = isset( $_POST[ $key ] ) ? self::sanitize_method_array( wp_unslash( (array) $_POST[ $key ] ) ) : array();
                 } elseif ( $config['sanitize'] === 'rest_sanitize_boolean' ) {
                     $value = ! empty( $_POST[ $key ] );
                 } elseif ( $config['sanitize'] === 'absint' ) {
-                    $value = absint( $_POST[ $key ] ?? $config['default'] );
+                    $value = absint( $raw ?: $config['default'] );
                 } elseif ( $config['sanitize'] === 'floatval' ) {
-                    $value = floatval( $_POST[ $key ] ?? $config['default'] );
+                    $value = floatval( $raw ?: $config['default'] );
                 } elseif ( $config['sanitize'] === 'esc_url_raw' ) {
-                    $value = esc_url_raw( $_POST[ $key ] ?? '' );
+                    $value = esc_url_raw( wp_unslash( $raw ) );
                 } elseif ( $config['sanitize'] === 'wp_kses_post' ) {
-                    $value = wp_kses_post( $_POST[ $key ] ?? '' );
+                    $value = wp_kses_post( wp_unslash( $raw ) );
                 } else {
-                    $value = sanitize_text_field( $_POST[ $key ] ?? '' );
+                    $value = sanitize_text_field( wp_unslash( $raw ) );
                 }
                 update_option( $key, $value );
             }
             $saved = true;
+        }
+
+        // One-time cleanup: strip stale backslashes from text options saved before
+        // the wp_unslash fix above. Targets the known-affected text + html fields.
+        if ( ! get_option( 'slw_settings_unslash_cleanup_done' ) ) {
+            $text_keys = array(
+                'slw_booth_retail_code',
+                'slw_booth_retail_offer',
+                'slw_booth_wholesale_heading',
+                'slw_store_notice_text',
+            );
+            foreach ( $text_keys as $opt_key ) {
+                $current = get_option( $opt_key );
+                if ( is_string( $current ) && strpos( $current, "\\" ) !== false ) {
+                    update_option( $opt_key, stripslashes( $current ) );
+                }
+            }
+            update_option( 'slw_settings_unslash_cleanup_done', 1 );
         }
 
         ?>
@@ -176,6 +202,24 @@ class SLW_Settings {
                             <p class="description">Heading shown to wholesale booth visitors after they submit.</p>
                         </td>
                     </tr>
+                    <tr>
+                        <th scope="row"><label for="slw_booth_wholesale_offer">Wholesale Bonus Offer</label></th>
+                        <td>
+                            <input type="text" id="slw_booth_wholesale_offer" name="slw_booth_wholesale_offer"
+                                   value="<?php echo esc_attr( get_option( 'slw_booth_wholesale_offer', 'Free shipping if you order at the show' ) ); ?>"
+                                   class="regular-text" />
+                            <p class="description">Incentive headline shown to wholesale booth visitors. Default: "Free shipping if you order at the show"</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="slw_booth_wholesale_code">Wholesale Bonus Code</label></th>
+                        <td>
+                            <input type="text" id="slw_booth_wholesale_code" name="slw_booth_wholesale_code"
+                                   value="<?php echo esc_attr( get_option( 'slw_booth_wholesale_code', '' ) ); ?>"
+                                   class="regular-text" />
+                            <p class="description">Optional WooCommerce coupon code that unlocks the bonus (e.g. a 100% shipping discount you create in WC). Shown to wholesale booth visitors so they can apply it at checkout. Leave blank to show only the offer headline.</p>
+                        </td>
+                    </tr>
                 </table>
 
                 <h2 class="title">Product Visibility</h2>
@@ -205,6 +249,17 @@ class SLW_Settings {
                                    value="<?php echo esc_attr( get_option( 'slw_new_arrivals_days', 30 ) ); ?>"
                                    min="0" max="365" step="1" style="width:80px;" />
                             <p class="description">Products published within this many days appear in the "New Arrivals" section on the order form. Set to 0 to hide the section.</p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="slw_case_packs_enabled">Case Packs</label></th>
+                        <td>
+                            <label>
+                                <input type="checkbox" id="slw_case_packs_enabled" name="slw_case_packs_enabled"
+                                       value="1" <?php checked( get_option( 'slw_case_packs_enabled', false ) ); ?> />
+                                Enable per-product case pack sizes
+                            </label>
+                            <p class="description">Off (default): case pack inputs are hidden in admin and "Case of N" labels are hidden on the order form. Turn on if you have products that must be ordered in fixed multiples (e.g., a case of 6 lip balms that can't be broken).</p>
                         </td>
                     </tr>
                 </table>
