@@ -214,6 +214,7 @@ class SLW_Lead_Capture {
 
         $url_source = sanitize_text_field( $_GET['source'] ?? '' );
         $url_event  = sanitize_text_field( $_GET['event'] ?? '' );
+        $url_path   = sanitize_text_field( $_GET['path'] ?? '' );
 
         // Fall back to the admin-set "active event" so iPad-direct fills (where
         // the URL has no ?event= query param) still tag the right trade show.
@@ -222,6 +223,17 @@ class SLW_Lead_Capture {
             if ( $active_event !== '' ) {
                 $url_event = $active_event;
             }
+        }
+
+        // Server-side initial step selection. ?path=retail or ?path=wholesale
+        // skips the welcome card-picker and lands the visitor directly on the
+        // matching quiz. Used by the Walk-By Retail QR so a customer scanning
+        // from a poster lands straight on the retail quiz.
+        $initial_step = '1';
+        if ( $url_path === 'retail' ) {
+            $initial_step = '2a';
+        } elseif ( $url_path === 'wholesale' ) {
+            $initial_step = '2b';
         }
 
         // Pull booth settings
@@ -543,7 +555,7 @@ class SLW_Lead_Capture {
             </div>
 
             <!-- ============ STEP 1: Interest Selector ============ -->
-            <div class="slw-booth__step slw-booth__step--active" data-step="1">
+            <div class="slw-booth__step<?php echo $initial_step === '1' ? ' slw-booth__step--active' : ''; ?>" data-step="1">
                 <h2 class="slw-booth__title">Welcome to Sego Lily</h2>
                 <p class="slw-booth__subtitle">How can we help you today?</p>
                 <div class="slw-booth__cards">
@@ -565,7 +577,7 @@ class SLW_Lead_Capture {
             </div>
 
             <!-- ============ STEP 2a: Retail Path ============ -->
-            <div class="slw-booth__step" data-step="2a">
+            <div class="slw-booth__step<?php echo $initial_step === '2a' ? ' slw-booth__step--active' : ''; ?>" data-step="2a">
                 <div class="slw-booth__question slw-booth__question--active" data-q="r1">
                     <h2 class="slw-booth__title">What's your name?</h2>
                     <input type="text" class="slw-booth__input" id="slw-booth-r-name" placeholder="First name" autocomplete="given-name" />
@@ -613,7 +625,7 @@ class SLW_Lead_Capture {
             </div>
 
             <!-- ============ STEP 2b: Wholesale Path ============ -->
-            <div class="slw-booth__step" data-step="2b">
+            <div class="slw-booth__step<?php echo $initial_step === '2b' ? ' slw-booth__step--active' : ''; ?>" data-step="2b">
                 <div class="slw-booth__question slw-booth__question--active" data-q="w1">
                     <h2 class="slw-booth__title">What's your name?</h2>
                     <input type="text" class="slw-booth__input" id="slw-booth-w-name" placeholder="First name" autocomplete="given-name" />
@@ -996,7 +1008,7 @@ class SLW_Lead_Capture {
         $event         = sanitize_text_field( wp_unslash( $_POST['event'] ?? '' ) );
 
         // Validate allowed sources
-        $allowed_sources = array( 'website', 'trade_show', 'referral', 'social_media', 'phone_call', 'other', 'shortcode', 'manual', 'retail_booth', 'wholesale_booth' );
+        $allowed_sources = array( 'website', 'trade_show', 'referral', 'social_media', 'phone_call', 'other', 'shortcode', 'manual', 'retail_booth', 'wholesale_booth', 'retail_walkby' );
         if ( ! in_array( $source, $allowed_sources, true ) ) {
             $source = 'website';
         }
@@ -1044,8 +1056,8 @@ class SLW_Lead_Capture {
             $notes = implode( ' | ', $note_parts );
         }
 
-        // ── Retail booth leads go to WooCommerce, not the wholesale leads table ──
-        if ( $source === 'retail_booth' ) {
+        // ── Retail leads (booth quiz + walk-by retail QR) go to WooCommerce, not the wholesale leads table ──
+        if ( $source === 'retail_booth' || $source === 'retail_walkby' ) {
             // Create or find WooCommerce customer
             $existing_user = get_user_by( 'email', $email );
             if ( ! $existing_user ) {
@@ -1644,37 +1656,19 @@ class SLW_Lead_Capture {
             eventField.style.display = this.value === 'trade_show' ? '' : 'none';
         });
 
-        // QR code tools: update QR on event name change
-        (function(){
-            var eventInput = document.getElementById('slw-qr-event-name');
-            if (!eventInput) return;
-            var qrImg = document.getElementById('slw-qr-image');
-            var copyBtn = document.getElementById('slw-copy-link-btn');
-            var downloadLink = document.getElementById('slw-qr-download');
-            var linkDisplay = document.getElementById('slw-qr-link-display');
-            var baseUrl = '<?php echo esc_url( home_url( '/wholesale-leads' ) ); ?>';
-
-            function updateQR() {
-                var event = eventInput.value.trim();
-                var url = baseUrl + '?source=trade_show';
-                if (event) url += '&event=' + encodeURIComponent(event);
-                var qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(url);
-                qrImg.src = qrUrl;
-                downloadLink.href = qrUrl;
-                linkDisplay.textContent = url;
-                copyBtn.setAttribute('data-url', url);
-            }
-
-            eventInput.addEventListener('input', updateQR);
-
-            copyBtn.addEventListener('click', function() {
+        // Copy-link buttons on the Trade Show Tools panel. Supports the
+        // wholesale booth QR and walk-by retail QR with the same handler.
+        document.querySelectorAll('.slw-copy-link-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
                 var url = this.getAttribute('data-url');
-                navigator.clipboard.writeText(url).then(function(){
-                    copyBtn.textContent = 'Copied!';
-                    setTimeout(function(){ copyBtn.textContent = 'Copy Link'; }, 2000);
+                if (!url) return;
+                var orig = btn.innerHTML;
+                navigator.clipboard.writeText(url).then(function() {
+                    btn.textContent = 'Copied!';
+                    setTimeout(function() { btn.innerHTML = orig; }, 2000);
                 });
             });
-        })();
+        });
         </script>
         <?php
     }
@@ -1685,17 +1679,27 @@ class SLW_Lead_Capture {
 
     private static function render_trade_show_tools() {
         $active_event = get_option( 'slw_active_event', '' );
-        $lead_page_url = home_url( '/wholesale-leads' );
-        $default_url   = $lead_page_url . '?source=trade_show';
-        if ( $active_event ) {
-            $default_url = add_query_arg( 'event', rawurlencode( $active_event ), $default_url );
-        }
-        $qr_api_url    = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' . rawurlencode( $default_url );
+        $home         = home_url( '/wholesale-booth' );
 
-        $booth_url = home_url( '/wholesale-booth?source=trade_show' );
-        if ( $active_event ) {
+        // Wholesale booth URL. Lands on the path picker so visitors choose
+        // "I'm a Customer" or "I'm a Business". Holly's primary booth flow.
+        $booth_url = add_query_arg( 'source', 'trade_show', $home );
+        if ( $active_event !== '' ) {
             $booth_url = add_query_arg( 'event', rawurlencode( $active_event ), $booth_url );
         }
+        $booth_qr = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' . rawurlencode( $booth_url );
+
+        // Walk-by retail URL. Skips the path picker via ?path=retail and lands
+        // straight on the retail quiz so a passing customer scanning from a
+        // poster can claim their reward without seeing the wholesale flow.
+        $retail_url = add_query_arg( array(
+            'source' => 'retail_walkby',
+            'path'   => 'retail',
+        ), $home );
+        if ( $active_event !== '' ) {
+            $retail_url = add_query_arg( 'event', rawurlencode( $active_event ), $retail_url );
+        }
+        $retail_qr = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' . rawurlencode( $retail_url );
 
         $just_set = ! empty( $_GET['slw_event_set'] );
         ?>
@@ -1704,56 +1708,85 @@ class SLW_Lead_Capture {
                 <span class="dashicons dashicons-megaphone" style="margin-right:6px;color:#D4AF37;"></span>
                 Trade Show Tools
             </h2>
-            <p class="slw-trade-show-tools__desc">Print this QR code and place it at your trade show booth. Visitors scan it on their phone, fill in their info, and become a lead automatically.</p>
 
             <?php if ( $just_set ) : ?>
                 <div class="notice notice-success inline" style="margin:0 0 16px;"><p>Active event saved.</p></div>
             <?php endif; ?>
 
-            <!-- Active Event: persisted server-side so iPad-direct fills tag the show even when the URL has no ?event= param -->
-            <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="background:#FFF8E1;border:1px solid #ffe082;border-radius:6px;padding:12px 16px;margin-bottom:16px;display:flex;flex-wrap:wrap;align-items:center;gap:10px;">
+            <!-- Active Trade Show. Single source of truth for event tagging. -->
+            <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="background:#FFF8E1;border:1px solid #ffe082;border-radius:6px;padding:14px 18px;margin-bottom:20px;">
                 <?php wp_nonce_field( 'slw_set_active_event' ); ?>
                 <input type="hidden" name="action" value="slw_set_active_event" />
-                <strong style="color:#5d4037;">Active Trade Show:</strong>
-                <input type="text" name="active_event" value="<?php echo esc_attr( $active_event ); ?>" placeholder="e.g. Montana Craft Fair" style="flex:1;min-width:220px;padding:6px 10px;" />
-                <button type="submit" class="button button-primary">Save Active Event</button>
-                <?php if ( $active_event ) : ?>
-                    <button type="submit" name="active_event" value="" class="button" onclick="return confirm('Clear the active event? Future booth/iPad fills won\'t be tagged with an event until you set a new one.');">Clear</button>
-                <?php endif; ?>
-                <p style="flex-basis:100%;margin:4px 0 0;color:#5d4037;font-size:13px;">Set this once per show. Any lead form filled out without an explicit <code>?event=</code> URL param (including iPad-direct fills) will be tagged with this name.</p>
+
+                <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;">
+                    <strong style="color:#5d4037;">Active Trade Show:</strong>
+                    <input type="text" name="active_event" value="<?php echo esc_attr( $active_event ); ?>" placeholder="e.g. Montana Craft Fair" style="flex:1;min-width:240px;padding:6px 10px;" />
+                    <button type="submit" class="button button-primary">Save</button>
+                    <?php if ( $active_event !== '' ) : ?>
+                        <button type="submit" name="active_event" value="" class="button" onclick="return confirm('Clear the active event? Future booth and iPad fills will be tagged without an event name until you set a new one.');">Clear</button>
+                    <?php endif; ?>
+                </div>
+
+                <p style="margin:10px 0 0;color:#5d4037;font-size:13px;line-height:1.5;">
+                    Set this once at the start of each show. Every lead captured during the show (QR scan or iPad direct fill) gets tagged with this name automatically. The event name flows into:
+                </p>
+                <ul style="margin:6px 0 0 22px;padding:0;list-style:disc;color:#5d4037;font-size:13px;line-height:1.5;">
+                    <li>The <em>How Heard</em> field on the lead row in WP admin.</li>
+                    <li>The <code>event</code> property on the <code>lead-captured</code> webhook payload that fires to Mautic.</li>
+                    <li>Any Mautic segment or campaign you've set up to filter on the <code>event</code> field, which then drives tags and follow-up sequences.</li>
+                </ul>
+                <p style="margin:6px 0 0;color:#5d4037;font-size:13px;">Clear the field when the show ends so post-show fills are tagged correctly (or empty).</p>
             </form>
 
-            <div class="slw-trade-show-tools__grid">
+            <!-- Wholesale Booth QR -->
+            <h3 style="margin:0 0 6px;font-size:16px;">Wholesale Booth QR</h3>
+            <p style="color:#628393;margin:0 0 14px;">Print this QR for your booth. Visitors scan, choose between the customer or wholesale path on the welcome screen, and become a lead. The same URL works on the iPad as a tablet kiosk.</p>
+
+            <div class="slw-trade-show-tools__grid" style="margin-bottom:24px;">
                 <div class="slw-trade-show-tools__qr">
-                    <img id="slw-qr-image" src="<?php echo esc_url( $qr_api_url ); ?>" alt="Lead Capture QR Code" width="200" height="200" />
+                    <img src="<?php echo esc_url( $booth_qr ); ?>" alt="Wholesale Booth QR Code" width="200" height="200" />
                 </div>
                 <div class="slw-trade-show-tools__controls">
-                    <div class="slw-quick-add-form__field">
-                        <label for="slw-qr-event-name"><strong>Event Name (override)</strong> <span class="slw-optional">(optional)</span></label>
-                        <input type="text" id="slw-qr-event-name" value="<?php echo esc_attr( $active_event ); ?>" placeholder="e.g. Montana Craft Fair" />
-                        <p class="description" style="margin-top:4px;">Live updates the QR code + URL below. Save it as Active Event above so iPad-direct fills get tagged too.</p>
-                    </div>
-
                     <div class="slw-trade-show-tools__link-box">
-                        <label><strong>Lead Capture URL</strong></label>
-                        <code id="slw-qr-link-display"><?php echo esc_html( $default_url ); ?></code>
+                        <label><strong>Booth URL</strong></label>
+                        <code><?php echo esc_html( $booth_url ); ?></code>
                     </div>
-
                     <div class="slw-trade-show-tools__buttons">
-                        <a id="slw-qr-download" href="<?php echo esc_url( $qr_api_url ); ?>" class="button" download="wholesale-qr-code.png" target="_blank">
-                            <span class="dashicons dashicons-download" style="margin-top:4px;"></span> Download QR Code
+                        <a href="<?php echo esc_url( $booth_qr ); ?>" class="button" download="wholesale-booth-qr.png" target="_blank">
+                            <span class="dashicons dashicons-download" style="margin-top:4px;"></span> Download QR
                         </a>
-                        <button type="button" id="slw-copy-link-btn" class="button" data-url="<?php echo esc_attr( $default_url ); ?>">
+                        <button type="button" class="button slw-copy-link-btn" data-url="<?php echo esc_attr( $booth_url ); ?>">
                             <span class="dashicons dashicons-admin-page" style="margin-top:4px;"></span> Copy Link
                         </button>
                     </div>
-
                     <p class="slw-trade-show-tools__booth-link">
                         <strong>Booth Tablet URL:</strong>
-                        <a href="<?php echo esc_url( $booth_url ); ?>" target="_blank">
-                            <?php echo esc_html( $booth_url ); ?>
-                        </a>
+                        <a href="<?php echo esc_url( $booth_url ); ?>" target="_blank"><?php echo esc_html( $booth_url ); ?></a>
                     </p>
+                </div>
+            </div>
+
+            <!-- Walk-By Retail QR -->
+            <h3 style="margin:0 0 6px;font-size:16px;">Walk-By Retail QR</h3>
+            <p style="color:#628393;margin:0 0 14px;">For retail customers who want to scan and go. Print and post this somewhere the public can see (table tent, booth backdrop, retail floor). Skips the wholesale path picker and lands them straight on the retail quiz so they can claim their reward later, even without your help at the booth.</p>
+
+            <div class="slw-trade-show-tools__grid">
+                <div class="slw-trade-show-tools__qr">
+                    <img src="<?php echo esc_url( $retail_qr ); ?>" alt="Walk-By Retail QR Code" width="200" height="200" />
+                </div>
+                <div class="slw-trade-show-tools__controls">
+                    <div class="slw-trade-show-tools__link-box">
+                        <label><strong>Retail URL</strong></label>
+                        <code><?php echo esc_html( $retail_url ); ?></code>
+                    </div>
+                    <div class="slw-trade-show-tools__buttons">
+                        <a href="<?php echo esc_url( $retail_qr ); ?>" class="button" download="retail-walkby-qr.png" target="_blank">
+                            <span class="dashicons dashicons-download" style="margin-top:4px;"></span> Download QR
+                        </a>
+                        <button type="button" class="button slw-copy-link-btn" data-url="<?php echo esc_attr( $retail_url ); ?>">
+                            <span class="dashicons dashicons-admin-page" style="margin-top:4px;"></span> Copy Link
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
