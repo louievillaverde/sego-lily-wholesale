@@ -1,6 +1,6 @@
 <?php
 /**
- * Email Settings — White-Label Configuration
+ * Email Settings: White-Label Configuration
  *
  * Provides configurable email sender info, reply-to, owner name, and
  * signature so the plugin is fully white-label. All emails sent by the
@@ -178,10 +178,14 @@ class SLW_Email_Settings {
 			<tr>
 				<th scope="row"><label for="slw_email_from_address">From Email Address</label></th>
 				<td>
-					<input type="email" id="slw_email_from_address" name="slw_email_from_address"
-						   value="<?php echo esc_attr( get_option( 'slw_email_from_address', '' ) ); ?>"
-						   class="regular-text"
-						   placeholder="<?php echo esc_attr( get_option( 'admin_email' ) ); ?>" />
+					<span class="slw-locked-field-wrap" style="display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap;">
+						<input type="email" id="slw_email_from_address" name="slw_email_from_address"
+						       value="<?php echo esc_attr( get_option( 'slw_email_from_address', '' ) ); ?>"
+						       class="regular-text slw-locked-field"
+						       placeholder="<?php echo esc_attr( get_option( 'admin_email' ) ); ?>"
+						       data-warning="Changing the From address will tank email deliverability if SPF/DKIM is not set up for the new domain. Welcome emails, application approvals, and trade show follow-ups can land in spam (or bounce). Type RESET to enable editing." readonly />
+						<button type="button" class="button button-small slw-locked-unlock">Unlock</button>
+					</span>
 					<p class="description">Sender email address. Should match your domain's SPF/DKIM for deliverability. Default: admin email.</p>
 				</td>
 			</tr>

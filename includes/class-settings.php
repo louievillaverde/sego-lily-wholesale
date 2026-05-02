@@ -38,6 +38,9 @@ class SLW_Settings {
         // Order Form
         'slw_new_arrivals_days'             => array( 'sanitize' => 'absint',             'default' => 30 ),
         'slw_case_packs_enabled'            => array( 'sanitize' => 'rest_sanitize_boolean', 'default' => false ),
+        // Advanced. The GitHub repo the in-product updater pulls from. Default
+        // is the canonical Lead Piranha repo. Only edit if you know what you're doing.
+        'slw_github_repo'                   => array( 'sanitize' => 'sanitize_text_field', 'default' => 'louievillaverde/sego-lily-wholesale' ),
         // Store Notice
         'slw_store_notice_enabled'          => array( 'sanitize' => 'rest_sanitize_boolean','default' => false ),
         'slw_store_notice_text'             => array( 'sanitize' => 'wp_kses_post',        'default' => '' ),
@@ -47,6 +50,45 @@ class SLW_Settings {
 
     public static function init() {
         // Admin menu is registered centrally by SLW_Admin_Menu
+    }
+
+    /**
+     * Print the inline JS handler that powers the "type RESET to unlock"
+     * pattern for sensitive settings inputs. Reusable across any admin page
+     * that renders <input class="slw-locked-field" data-warning="..." readonly />
+     * paired with a sibling <button class="slw-locked-unlock">Unlock</button>.
+     *
+     * Idempotent: prints at most once per request.
+     */
+    public static function print_lock_handler_script() {
+        static $printed = false;
+        if ( $printed ) {
+            return;
+        }
+        $printed = true;
+        ?>
+        <script>
+        (function() {
+            // Single delegated handler for every locked-field unlock button on the page.
+            document.addEventListener('click', function(e) {
+                if ( ! e.target.classList || ! e.target.classList.contains('slw-locked-unlock') ) return;
+                var wrap = e.target.closest('.slw-locked-field-wrap');
+                if ( ! wrap ) return;
+                var input = wrap.querySelector('.slw-locked-field');
+                if ( ! input ) return;
+                var warning = input.getAttribute('data-warning') || 'Type RESET to enable editing.';
+                var answer = window.prompt(warning);
+                if (answer === 'RESET') {
+                    input.removeAttribute('readonly');
+                    input.classList.remove('slw-locked-field');
+                    input.style.background = '#fff8e1';
+                    e.target.disabled = true;
+                    e.target.textContent = 'Unlocked';
+                }
+            });
+        })();
+        </script>
+        <?php
     }
 
     /**
@@ -133,9 +175,13 @@ class SLW_Settings {
                     <tr>
                         <th scope="row"><label for="slw_webhook_url">Automation Webhook URL</label></th>
                         <td>
-                            <input type="url" id="slw_webhook_url" name="slw_webhook_url"
-                                   value="<?php echo esc_attr( get_option( 'slw_webhook_url', '' ) ); ?>"
-                                   class="regular-text" placeholder="https://your-webhook-url.com/wholesale" />
+                            <span class="slw-locked-field-wrap" style="display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                                <input type="url" id="slw_webhook_url" name="slw_webhook_url"
+                                       value="<?php echo esc_attr( get_option( 'slw_webhook_url', '' ) ); ?>"
+                                       class="regular-text slw-locked-field" placeholder="https://your-webhook-url.com/wholesale"
+                                       data-warning="Changing the webhook URL will silently break the Mautic handoff. Every lead, application approval, and first-order event stops flowing until the new URL is correct. Type RESET to enable editing." readonly />
+                                <button type="button" class="button button-small slw-locked-unlock">Unlock</button>
+                            </span>
                             <p class="description">Webhook endpoint for CRM/email automation. Fires on application approval and first order placed.</p>
                         </td>
                     </tr>
@@ -169,10 +215,14 @@ class SLW_Settings {
                     <tr>
                         <th scope="row"><label for="slw_booth_retail_code">Retail Discount Code</label></th>
                         <td>
-                            <input type="text" id="slw_booth_retail_code" name="slw_booth_retail_code"
-                                   value="<?php echo esc_attr( get_option( 'slw_booth_retail_code', 'SEGO15' ) ); ?>"
-                                   class="regular-text" />
-                            <p class="description">Discount code shown to retail booth visitors. Default: SEGO15</p>
+                            <span class="slw-locked-field-wrap" style="display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                                <input type="text" id="slw_booth_retail_code" name="slw_booth_retail_code"
+                                       value="<?php echo esc_attr( get_option( 'slw_booth_retail_code', 'SEGO15' ) ); ?>"
+                                       class="regular-text slw-locked-field"
+                                       data-warning="Changing the retail discount code will invalidate any active codes already shared with customers. Anyone who got the old code will see it fail at checkout. Type RESET to enable editing." readonly />
+                                <button type="button" class="button button-small slw-locked-unlock">Unlock</button>
+                            </span>
+                            <p class="description">Discount code shown to retail booth visitors. Default: SEGO15. Should match an active WooCommerce coupon.</p>
                         </td>
                     </tr>
                     <tr>
@@ -214,10 +264,14 @@ class SLW_Settings {
                     <tr>
                         <th scope="row"><label for="slw_booth_wholesale_code">Wholesale Bonus Code</label></th>
                         <td>
-                            <input type="text" id="slw_booth_wholesale_code" name="slw_booth_wholesale_code"
-                                   value="<?php echo esc_attr( get_option( 'slw_booth_wholesale_code', '' ) ); ?>"
-                                   class="regular-text" />
-                            <p class="description">Optional WooCommerce coupon code that unlocks the bonus (e.g. a 100% shipping discount you create in WC). Shown to wholesale booth visitors so they can apply it at checkout. Leave blank to show only the offer headline.</p>
+                            <span class="slw-locked-field-wrap" style="display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                                <input type="text" id="slw_booth_wholesale_code" name="slw_booth_wholesale_code"
+                                       value="<?php echo esc_attr( get_option( 'slw_booth_wholesale_code', '' ) ); ?>"
+                                       class="regular-text slw-locked-field"
+                                       data-warning="The wholesale bonus code is bound to the auto-provisioned WooCommerce coupon. Changing this here will create a brand new coupon on the next booth render and any partners holding the old code will see it fail at checkout. Type RESET to enable editing." readonly />
+                                <button type="button" class="button button-small slw-locked-unlock">Unlock</button>
+                            </span>
+                            <p class="description">WooCommerce coupon code shown to wholesale booth visitors so they can apply free shipping at checkout. Auto-provisioned on first booth render. Leave blank to show only the offer headline (the auto-provision will populate this field on the next render).</p>
                         </td>
                     </tr>
                 </table>
@@ -308,6 +362,25 @@ class SLW_Settings {
                     </tr>
                 </table>
 
+                <h2 class="title">Advanced</h2>
+                <p>Settings the average admin should never need to touch. Locked by default.</p>
+                <table class="form-table">
+                    <tr>
+                        <th scope="row"><label for="slw_github_repo">Plugin Update Repo</label></th>
+                        <td>
+                            <span class="slw-locked-field-wrap" style="display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                                <input type="text" id="slw_github_repo" name="slw_github_repo"
+                                       value="<?php echo esc_attr( get_option( 'slw_github_repo', 'louievillaverde/sego-lily-wholesale' ) ); ?>"
+                                       class="regular-text slw-locked-field"
+                                       data-warning="The plugin's in-product updater pulls release info from this GitHub repo. Pointing this at the wrong repo will break update notifications on Wholesale > Updates. Type RESET to enable editing." readonly />
+                                <button type="button" class="button button-small slw-locked-unlock">Unlock</button>
+                                <a href="<?php echo esc_url( 'https://github.com/' . get_option( 'slw_github_repo', 'louievillaverde/sego-lily-wholesale' ) ); ?>" target="_blank" rel="noopener" class="button button-small">Open on GitHub</a>
+                            </span>
+                            <p class="description">GitHub <code>owner/repo</code> the in-product updater watches for new releases. Default: <code>louievillaverde/sego-lily-wholesale</code>.</p>
+                        </td>
+                    </tr>
+                </table>
+
                 <h2 class="title">Shipping Method Restrictions</h2>
                 <p>Select which shipping methods each customer type can see at checkout. Leaving either section empty means that role sees ALL shipping methods (no restrictions).</p>
                 <?php self::render_shipping_restrictions(); ?>
@@ -320,6 +393,7 @@ class SLW_Settings {
             You have unsaved changes.
             <button type="button" onclick="document.querySelector('form [name=slw_settings_save]').closest('form').submit();" style="margin-left:12px;background:#D4AF37;color:#1E2A30;border:none;padding:6px 18px;border-radius:4px;font-weight:600;cursor:pointer;font-family:inherit;">Save Settings</button>
         </div>
+        <?php self::print_lock_handler_script(); ?>
         <script>
         (function() {
             var form = document.querySelector('form');

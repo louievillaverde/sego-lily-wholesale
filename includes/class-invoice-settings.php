@@ -263,6 +263,7 @@ class SLW_Invoice_Settings {
 
 				<?php submit_button( 'Save Invoice Settings' ); ?>
 			</form>
+			<?php if ( class_exists( 'SLW_Settings' ) ) { SLW_Settings::print_lock_handler_script(); } ?>
 
 			<!-- Invoice Preview -->
 			<div class="slw-invoice-preview-card">

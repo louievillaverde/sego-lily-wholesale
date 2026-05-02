@@ -1,6 +1,6 @@
 <?php
 /**
- * Self-Updater — GitHub Release Checker
+ * Self-Updater: GitHub Release Checker
  *
  * Hooks into the native WordPress plugin update system so Sego Lily
  * Wholesale appears in Dashboard > Updates alongside every other plugin.
@@ -17,8 +17,20 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 class SLW_Updater {
 
-    /** @var string GitHub owner/repo slug */
-    private static $github_repo = 'louievillaverde/sego-lily-wholesale';
+    /** @var string Default GitHub owner/repo slug. Admin can override via the setting on Wholesale > Settings. */
+    private static $github_repo_default = 'louievillaverde/sego-lily-wholesale';
+
+    /**
+     * Resolve the GitHub repo slug. Reads the admin-configured option and
+     * falls back to the canonical Lead Piranha repo if unset or malformed.
+     */
+    private static function get_github_repo() {
+        $configured = trim( (string) get_option( 'slw_github_repo', '' ) );
+        if ( $configured !== '' && strpos( $configured, '/' ) !== false ) {
+            return $configured;
+        }
+        return self::$github_repo_default;
+    }
 
     /** @var string Transient key for caching the latest release info */
     private static $cache_key = 'slw_github_release';
@@ -33,7 +45,7 @@ class SLW_Updater {
         add_filter( 'site_transient_update_plugins', array( __CLASS__, 'check_update' ) );
         add_filter( 'plugins_api', array( __CLASS__, 'plugin_info' ), 20, 3 );
 
-        // No CSS injection needed — icon shows via transient on the updates page
+        // No CSS injection needed. Icon shows via transient on the updates page.
 
         // Clear cached release data when the admin manually checks for updates
         add_action( 'load-update-core.php', array( __CLASS__, 'flush_cache_on_manual_check' ) );
@@ -99,7 +111,7 @@ class SLW_Updater {
                 'requires_php' => '7.4',
             );
         } else {
-            // Tell WP we're current — include icons so the Plugins page shows them
+            // Tell WP we're current. Include icons so the Plugins page shows them.
             $transient->no_update[ self::$plugin_file ] = (object) array(
                 'slug'        => 'sego-lily-wholesale',
                 'plugin'      => self::$plugin_file,
@@ -129,7 +141,7 @@ class SLW_Updater {
             return $result;
         }
 
-        $changelog_url = 'https://github.com/' . self::$github_repo . '/releases/tag/v' . $remote['version'];
+        $changelog_url = 'https://github.com/' . self::get_github_repo() . '/releases/tag/v' . $remote['version'];
 
         return (object) array(
             'name'          => 'Wholesale Portal',
@@ -171,7 +183,7 @@ class SLW_Updater {
         }
 
         $response = wp_remote_get(
-            'https://api.github.com/repos/' . self::$github_repo . '/releases/latest',
+            'https://api.github.com/repos/' . self::get_github_repo() . '/releases/latest',
             array(
                 'timeout' => 10,
                 'headers' => array(
@@ -222,7 +234,7 @@ class SLW_Updater {
 
     /**
      * Return icon URLs for the updates screen.
-     * Simple format — just the SVG URL. This is the exact pattern that
+     * Simple format: just the SVG URL. This is the exact pattern that
      * worked when the lily icon was showing on the updates page.
      */
     private static function get_icon_urls() {
@@ -234,7 +246,7 @@ class SLW_Updater {
     /**
      * Inject CSS on the plugins list and updates pages that adds our icon
      * next to the plugin name. WordPress only auto-renders icons for
-     * wordpress.org plugins — self-hosted plugins need this manual approach.
+     * wordpress.org plugins. Self-hosted plugins need this manual approach.
      */
     public static function inject_plugin_icon_css() {
         $icon_url = SLW_PLUGIN_URL . 'assets/icon.svg';

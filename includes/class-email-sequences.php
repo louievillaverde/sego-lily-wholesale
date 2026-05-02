@@ -3,7 +3,7 @@
  * Email Sequences Dashboard
  *
  * Read-only dashboard that pulls campaign/email data from Mautic's REST API
- * and displays it in the admin. All email editing happens in Mautic — this
+ * and displays it in the admin. All email editing happens in Mautic. This
  * page just shows stats, deep links, and webhook health.
  *
  * Provider-abstracted: Mautic methods are isolated so Mailchimp/Klaviyo
@@ -154,7 +154,7 @@ class SLW_Email_Sequences {
 
         $code = wp_remote_retrieve_response_code( $response );
 
-        // Token expired — clear cache and retry once
+        // Token expired. Clear cache and retry once.
         if ( $code === 401 ) {
             delete_transient( 'slw_mautic_access_token' );
             $token = self::get_mautic_token();
@@ -721,7 +721,7 @@ class SLW_Email_Sequences {
                             <td>
                                 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
                                     <select id="slw-nl-template" style="min-width:200px;">
-                                        <option value="">— Choose a template (<?php echo count( $saved_templates ); ?> saved) —</option>
+                                        <option value="">Choose a template (<?php echo count( $saved_templates ); ?> saved)</option>
                                         <option value="__blank">Blank (start fresh)</option>
                                         <?php foreach ( $saved_templates as $tpl_slug => $tpl ) : ?>
                                             <option value="<?php echo esc_attr( $tpl_slug ); ?>"
@@ -1003,7 +1003,7 @@ class SLW_Email_Sequences {
                         var btn = document.getElementById('slw-clear-failures-btn');
                         if (!btn) return;
                         btn.addEventListener('click', function() {
-                            if (!confirm('Clear all failed entries from the log? This only clears the log — it does not retry the failed events.')) return;
+                            if (!confirm('Clear all failed entries from the log? This only clears the log. It does not retry the failed events.')) return;
                             btn.disabled = true;
                             btn.textContent = 'Clearing...';
                             var formData = new FormData();
@@ -1090,33 +1090,45 @@ class SLW_Email_Sequences {
                                     <option value="klaviyo" <?php selected( $provider, 'klaviyo' ); ?>>Klaviyo</option>
                                     <option value="convertkit" <?php selected( $provider, 'convertkit' ); ?>>ConvertKit</option>
                                 </select>
-                                <p class="description">Select your email marketing platform. Webhooks fire regardless — the provider integration adds campaign stats and deep links to this dashboard.</p>
+                                <p class="description">Select your email marketing platform. Webhooks fire regardless. The provider integration adds campaign stats and deep links to this dashboard.</p>
                             </td>
                         </tr>
                         <tr class="slw-mautic-fields">
                             <th scope="row"><label for="slw_mautic_url">Mautic URL</label></th>
                             <td>
-                                <input type="url" id="slw_mautic_url" name="slw_mautic_url"
-                                       value="<?php echo esc_attr( get_option( 'slw_mautic_url', '' ) ); ?>"
-                                       class="regular-text" placeholder="https://marketing.example.com" />
+                                <span class="slw-locked-field-wrap" style="display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                                    <input type="url" id="slw_mautic_url" name="slw_mautic_url"
+                                           value="<?php echo esc_attr( get_option( 'slw_mautic_url', '' ) ); ?>"
+                                           class="regular-text slw-locked-field" placeholder="https://marketing.example.com"
+                                           data-warning="Changing the Mautic URL will break every integration that talks to Mautic: campaign stats, OAuth token refresh, segment lookups, and the lead-captured webhook destination. Type RESET to enable editing." readonly />
+                                    <button type="button" class="button button-small slw-locked-unlock">Unlock</button>
+                                </span>
                                 <p class="description">Your Mautic instance URL (no trailing slash).</p>
                             </td>
                         </tr>
                         <tr class="slw-mautic-fields">
                             <th scope="row"><label for="slw_mautic_client_id">Client ID</label></th>
                             <td>
-                                <input type="text" id="slw_mautic_client_id" name="slw_mautic_client_id"
-                                       value="<?php echo esc_attr( get_option( 'slw_mautic_client_id', '' ) ); ?>"
-                                       class="regular-text" />
+                                <span class="slw-locked-field-wrap" style="display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                                    <input type="text" id="slw_mautic_client_id" name="slw_mautic_client_id"
+                                           value="<?php echo esc_attr( get_option( 'slw_mautic_client_id', '' ) ); ?>"
+                                           class="regular-text slw-locked-field"
+                                           data-warning="Changing the Mautic Client ID will invalidate the OAuth token. Mautic API calls (campaigns, email stats, lead segmentation) will fail until both ID and Secret are rotated together. Type RESET to enable editing." readonly />
+                                    <button type="button" class="button button-small slw-locked-unlock">Unlock</button>
+                                </span>
                                 <p class="description">OAuth2 Client ID from Mautic API Credentials.</p>
                             </td>
                         </tr>
                         <tr class="slw-mautic-fields">
                             <th scope="row"><label for="slw_mautic_client_secret">Client Secret</label></th>
                             <td>
-                                <input type="password" id="slw_mautic_client_secret" name="slw_mautic_client_secret"
-                                       value="<?php echo esc_attr( get_option( 'slw_mautic_client_secret', '' ) ); ?>"
-                                       class="regular-text" autocomplete="new-password" />
+                                <span class="slw-locked-field-wrap" style="display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                                    <input type="password" id="slw_mautic_client_secret" name="slw_mautic_client_secret"
+                                           value="<?php echo esc_attr( get_option( 'slw_mautic_client_secret', '' ) ); ?>"
+                                           class="regular-text slw-locked-field" autocomplete="new-password"
+                                           data-warning="Changing the Mautic Client Secret will invalidate the OAuth token. Make sure you have the new secret from Mautic API Credentials before changing this. Type RESET to enable editing." readonly />
+                                    <button type="button" class="button button-small slw-locked-unlock">Unlock</button>
+                                </span>
                                 <p class="description">OAuth2 Client Secret. Stored securely in the database.</p>
                             </td>
                         </tr>
@@ -1156,7 +1168,7 @@ class SLW_Email_Sequences {
                     </table>
                     <div class="slw-provider-coming-soon" style="display:none;padding:16px 20px;background:#fff8e1;border:1px solid #ffe082;border-radius:6px;margin:12px 0;">
                         <strong style="color:#e65100;">Coming Soon:</strong>
-                        <span style="color:#2C2C2C;">Full campaign stats and deep links for this provider are in development. Save your credentials now — webhook integration works immediately.</span>
+                        <span style="color:#2C2C2C;">Full campaign stats and deep links for this provider are in development. Save your credentials now. Webhook integration works immediately.</span>
                     </div>
                     <div class="slw-mautic-fields" style="margin-bottom:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                         <button type="button" id="slw-test-connection" class="button" data-nonce="<?php echo esc_attr( $nonce ); ?>">Test Connection</button>
@@ -1167,6 +1179,7 @@ class SLW_Email_Sequences {
                     </div>
                     <?php submit_button( 'Save Provider Settings' ); ?>
                 </form>
+                <?php if ( class_exists( 'SLW_Settings' ) ) { SLW_Settings::print_lock_handler_script(); } ?>
             </div>
             </details>
 
@@ -1760,7 +1773,7 @@ class SLW_Email_Sequences {
                 'User-Agent'    => self::USER_AGENT,
             ),
             'body' => wp_json_encode( array(
-                'name'       => $subject . ' — ' . current_time( 'Y-m-d H:i' ),
+                'name'       => $subject . ': ' . current_time( 'Y-m-d H:i' ),
                 'subject'    => $subject,
                 'customHtml' => $html,
                 'emailType'  => 'list',
