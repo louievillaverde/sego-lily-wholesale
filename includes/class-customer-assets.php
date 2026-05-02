@@ -241,8 +241,11 @@ class SLW_Customer_Assets {
     }
 
     /**
-     * Resolve the effective asset list for a wholesale customer:
-     * default library minus their removed IDs, plus their custom additions.
+     * Resolve the effective asset list for a wholesale customer.
+     * Filters the default library by:
+     *   1. Per-customer "remove" overrides hide an "all" asset from this user.
+     *   2. Per-asset customer_ids restriction. Empty list means visible to all.
+     * Then appends per-customer "add" overrides at the end.
      *
      * @return array Asset records visible to this user.
      */
@@ -251,12 +254,22 @@ class SLW_Customer_Assets {
         $overrides = self::get_user_overrides( $user_id );
         $remove    = array_map( 'strval', (array) ( $overrides['remove'] ?? array() ) );
         $add       = is_array( $overrides['add'] ?? null ) ? $overrides['add'] : array();
+        $user_id   = (int) $user_id;
 
         $effective = array();
         foreach ( $defaults as $asset ) {
-            if ( ! in_array( (string) ( $asset['id'] ?? '' ), $remove, true ) ) {
-                $effective[] = $asset;
+            // Per-customer "remove" override hides this asset for this user.
+            if ( in_array( (string) ( $asset['id'] ?? '' ), $remove, true ) ) {
+                continue;
             }
+            // Per-asset customer restriction. Empty array means visible to all.
+            $customer_ids = isset( $asset['customer_ids'] ) && is_array( $asset['customer_ids'] )
+                ? array_map( 'intval', $asset['customer_ids'] )
+                : array();
+            if ( ! empty( $customer_ids ) && ! in_array( $user_id, $customer_ids, true ) ) {
+                continue;
+            }
+            $effective[] = $asset;
         }
         foreach ( $add as $asset ) {
             $effective[] = $asset;
@@ -280,6 +293,20 @@ class SLW_Customer_Assets {
         $url         = esc_url_raw( wp_unslash( $_POST['asset_url'] ?? '' ) );
         $thumbnail   = esc_url_raw( wp_unslash( $_POST['asset_thumbnail'] ?? '' ) );
 
+        // Visibility picker. 'all' means every wholesale customer sees this
+        // asset (empty customer_ids array). 'specific' restricts to the
+        // selected user IDs.
+        $visibility   = sanitize_key( $_POST['asset_visibility'] ?? 'all' );
+        $customer_ids = array();
+        if ( $visibility === 'specific' && ! empty( $_POST['asset_customer_ids'] ) && is_array( $_POST['asset_customer_ids'] ) ) {
+            foreach ( $_POST['asset_customer_ids'] as $cid ) {
+                $cid = absint( $cid );
+                if ( $cid > 0 ) {
+                    $customer_ids[] = $cid;
+                }
+            }
+        }
+
         if ( ! in_array( $type, array( 'image', 'pdf', 'video', 'link' ), true ) ) {
             $type = 'link';
         }
@@ -296,11 +323,12 @@ class SLW_Customer_Assets {
             foreach ( $assets as $i => $asset ) {
                 if ( ( $asset['id'] ?? '' ) === $id ) {
                     $assets[ $i ] = array_merge( $asset, array(
-                        'title'       => $title,
-                        'description' => $description,
-                        'type'        => $type,
-                        'url'         => $url,
-                        'thumbnail'   => $thumbnail,
+                        'title'        => $title,
+                        'description'  => $description,
+                        'type'         => $type,
+                        'url'          => $url,
+                        'thumbnail'    => $thumbnail,
+                        'customer_ids' => $customer_ids,
                     ) );
                     $found = true;
                     break;
@@ -309,13 +337,14 @@ class SLW_Customer_Assets {
         }
         if ( ! $found ) {
             $assets[] = array(
-                'id'          => $id !== '' ? $id : 'a' . wp_generate_password( 10, false, false ),
-                'title'       => $title,
-                'description' => $description,
-                'type'        => $type,
-                'url'         => $url,
-                'thumbnail'   => $thumbnail,
-                'created_at'  => current_time( 'mysql' ),
+                'id'           => $id !== '' ? $id : 'a' . wp_generate_password( 10, false, false ),
+                'title'        => $title,
+                'description'  => $description,
+                'type'         => $type,
+                'url'          => $url,
+                'thumbnail'    => $thumbnail,
+                'customer_ids' => $customer_ids,
+                'created_at'   => current_time( 'mysql' ),
             );
         }
         update_option( self::OPTION_KEY, $assets );
@@ -492,12 +521,63 @@ class SLW_Customer_Assets {
                         <th scope="row"><label for="asset_description">Description <span style="color:#888;font-weight:normal;">(optional)</span></label></th>
                         <td><textarea id="asset_description" name="asset_description" rows="2" class="large-text"><?php echo esc_textarea( $editing_record['description'] ?? '' ); ?></textarea></td>
                     </tr>
+                    <tr>
+                        <th scope="row">Visible to</th>
+                        <td>
+                            <?php
+                            $editing_customer_ids = array();
+                            if ( $editing_record && isset( $editing_record['customer_ids'] ) && is_array( $editing_record['customer_ids'] ) ) {
+                                $editing_customer_ids = array_map( 'intval', $editing_record['customer_ids'] );
+                            }
+                            $editing_visibility = empty( $editing_customer_ids ) ? 'all' : 'specific';
+                            $wholesale_users = get_users( array( 'role' => 'wholesale_customer', 'orderby' => 'display_name' ) );
+                            ?>
+                            <label style="display:block;margin-bottom:6px;">
+                                <input type="radio" name="asset_visibility" value="all" <?php checked( $editing_visibility, 'all' ); ?> />
+                                <strong>All wholesale customers</strong> (default)
+                            </label>
+                            <label style="display:block;margin-bottom:6px;">
+                                <input type="radio" name="asset_visibility" value="specific" <?php checked( $editing_visibility, 'specific' ); ?> />
+                                <strong>Specific customers only</strong>
+                            </label>
+                            <div id="slw-asset-customer-picker" style="margin-top:8px;<?php echo $editing_visibility === 'specific' ? '' : 'display:none;'; ?>">
+                                <?php if ( empty( $wholesale_users ) ) : ?>
+                                    <p style="color:#628393;font-style:italic;">No wholesale customers yet. Approve some applications first.</p>
+                                <?php else : ?>
+                                    <select name="asset_customer_ids[]" multiple size="6" style="width:100%;max-width:520px;">
+                                        <?php foreach ( $wholesale_users as $u ) :
+                                            $business = get_user_meta( $u->ID, 'slw_business_name', true );
+                                            $label    = $u->display_name . ( $business ? ' (' . $business . ')' : '' );
+                                        ?>
+                                            <option value="<?php echo esc_attr( $u->ID ); ?>" <?php echo in_array( (int) $u->ID, $editing_customer_ids, true ) ? 'selected' : ''; ?>>
+                                                <?php echo esc_html( $label ); ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <p class="description" style="margin-top:4px;">Hold Ctrl (or Cmd on Mac) to select more than one. Only the selected customers will see this asset on their portal.</p>
+                                <?php endif; ?>
+                            </div>
+                        </td>
+                    </tr>
                 </table>
 
                 <?php submit_button( $editing_record ? 'Update Asset' : 'Add Asset' ); ?>
                 <?php if ( $editing_record ) : ?>
                     <a href="<?php echo esc_url( admin_url( 'admin.php?page=slw-assets' ) ); ?>" class="button">Cancel</a>
                 <?php endif; ?>
+
+                <script>
+                (function() {
+                    var radios = document.querySelectorAll('input[name="asset_visibility"]');
+                    var picker = document.getElementById('slw-asset-customer-picker');
+                    if (!radios.length || !picker) return;
+                    radios.forEach(function(r) {
+                        r.addEventListener('change', function() {
+                            picker.style.display = (r.checked && r.value === 'specific') ? '' : 'none';
+                        });
+                    });
+                })();
+                </script>
             </form>
 
             <h2 style="margin-top:32px;">Default Library (<?php echo count( $assets ); ?>)</h2>
@@ -509,18 +589,35 @@ class SLW_Customer_Assets {
                         <tr>
                             <th style="width:80px;">Type</th>
                             <th>Title</th>
+                            <th style="width:140px;">Visible to</th>
                             <th>URL</th>
                             <th style="width:160px;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ( $assets as $asset ) : ?>
+                        <?php foreach ( $assets as $asset ) :
+                            $cids = isset( $asset['customer_ids'] ) && is_array( $asset['customer_ids'] ) ? array_map( 'intval', $asset['customer_ids'] ) : array();
+                        ?>
                             <tr>
                                 <td><?php echo esc_html( ucfirst( $asset['type'] ?? 'link' ) ); ?></td>
                                 <td>
                                     <strong><?php echo esc_html( $asset['title'] ?? '' ); ?></strong>
                                     <?php if ( ! empty( $asset['description'] ) ) : ?>
                                         <br><span style="color:#628393;font-size:13px;"><?php echo esc_html( $asset['description'] ); ?></span>
+                                    <?php endif; ?>
+                                </td>
+                                <td style="font-size:12px;">
+                                    <?php if ( empty( $cids ) ) : ?>
+                                        <span style="color:#386174;">All customers</span>
+                                    <?php else :
+                                        $names = array();
+                                        foreach ( $cids as $cid ) {
+                                            $u = get_userdata( $cid );
+                                            if ( $u ) $names[] = $u->display_name;
+                                        }
+                                        $label = count( $names ) === 1 ? $names[0] : count( $names ) . ' customers';
+                                    ?>
+                                        <span style="color:#5d4037;background:#FFF8E1;padding:2px 8px;border-radius:10px;font-weight:600;" title="<?php echo esc_attr( implode( ', ', $names ) ); ?>"><?php echo esc_html( $label ); ?></span>
                                     <?php endif; ?>
                                 </td>
                                 <td style="word-break:break-all;font-size:12px;">
