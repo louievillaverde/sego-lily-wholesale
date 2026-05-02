@@ -1,54 +1,94 @@
-# Holly — WordPress Admin To-Dos
+# Wholesale Portal — Your Punch List
 
-Working list of WP admin / external actions discovered during the wholesale portal updates. Raw notes for now — will be reorganized and rewritten in your voice before sending.
+Hey Holly,
 
----
+Just pushed all the updates from our walkthrough. Most of what we talked through is already running — rolled it all into one release so you'll see everything show up at once on the next admin page load.
 
-## Auto-handled (done by the plugin update — no action needed)
-
-- ~~Rename "Tallow Skincare" product category → "Tallow Butter"~~ — handled by a one-shot migration that runs once on the next admin page load.
-- ~~Create a "Lip Balm" product category~~ — same migration creates it if missing.
-- ~~Auto-create the wholesale booth free-shipping coupon~~ — created on the first booth wholesale render, code defaults to `WHOLESALE-SHOWSHIP` (or whatever you put in Settings → Booth & Lead Capture → Wholesale Bonus Code).
-- ~~Mautic: rename "1 hour delay" step~~ — already done by Holly.
+A few things still need a hand from your side. None are heavy — the whole list below shouldn't take more than 30 minutes start to finish, and you can knock them out in any order. I've grouped them by "do this once to get set up" → "do this every show" so you can pace yourself.
 
 ---
 
-## Still needs you (WordPress)
+## Already done for you
 
-- [ ] **Assign your existing lip balm products to the new "Lip Balm" category**
-  Products → edit each lip balm product → set the category to "Lip Balm" instead of "Tallow Butter" (or keep both if you want them visible under Tallow Butter too).
+You don't need to touch any of this — flagging it just so you know what changed:
 
-- [ ] **Create the four Gift Set products**
-  Plugin's category-minimum feature handles the "minimum 4 mixable across gift sets" rule automatically once the products + category are set up.
-
-  1. **Products → Categories → Add New** — create a "Gift Sets" category.
-  2. Create four simple products under that category, one per "type":
-     - Ageless Gift Set
-     - Renewal Gift Set
-     - Moxy Gift Set
-     - Variety Gift Set
-  3. *(For curating scents)* If you want each gift set to be a specific scent assortment (e.g. "Ageless Gift Set – Top 3"), make them simple products with that combination implied in the title and description. If you want the customer to pick one of multiple scent variations per gift set, make them **variable products** with a "Scent" attribute and add only the variations you want them to choose from.
-  4. **Wholesale → Pricing → Category Minimums** — find "Gift Sets" in the table, set Minimum Qty to **4**.
-
-  The order form will then show "Minimum 4 units (mix & match)" in the Gift Sets category header, with a live count of what they've added. If they try to check out with fewer than 4 across the four gift sets, the cart will block them.
-
-- [ ] **Set per-category minimums** for Ageless / Renewal / Moxy
-  Wholesale → Pricing → Category Minimums. Per the meeting: 6 in each so customers can mix scents (3 honey + 3 lavender, 2/2/2, 4/4/4, etc.) and hit the minimum without being forced to buy 6 of one scent.
-
-- [ ] **Set the Lip Balm case pack** (only if it actually applies)
-  First turn on Wholesale → Settings → Order Form → "Enable per-product case pack sizes" (off by default). Then on each lip balm product → General tab → "Wholesale Case Pack Size" = 6. Category-minimum is preferred for everything else; case pack is only for true case-pack scenarios where the customer can't break the case.
-
-- [ ] **Set the Active Trade Show before each event**
-  Wholesale → Customers → Leads tab → Trade Show Tools → "Active Trade Show" field. Save it once at the start of the show. Any iPad-direct fill (or QR scan without an event param) will be tagged with that show name automatically. Clear it when the show ends.
-
-- [ ] **Bulk-import existing wholesale customers**
-  Wholesale → Customers → Import tab. Either fill out the Quick Add form per customer or download the CSV template, paste in your existing wholesale customer spreadsheet, and upload. The new welcome email is now tuned for migration — it explains the new portal exists, gives them a temp password + reset link, and asks them to add their EIN on the Account tab.
+- **"Tallow Skincare" is now "Tallow Butter"** across the order form, the visibility list, and everywhere else.
+- **A "Lip Balm" category was created** for you (you'll just need to assign your lip balm products to it — see below).
+- **A free-shipping coupon for the booth bonus is in place** (`WHOLESALE-SHOWSHIP`). Wholesale visitors who fill out your booth quiz now see it on their thank-you screen automatically. Nothing to set up in WC → Coupons.
+- **The Mautic step rename, settings text fixes, the "Welcome! Here\'s" backslash bug, and the EIN encryption issue** — all handled.
 
 ---
 
-## Notes for final cleanup
+## One-time setup (do these once and forget)
 
-- Group by "first thing you'll see" vs "do whenever"
-- Phrase as friendly directives from Louie
-- Add screenshots / paths where helpful
-- Drop any items that get superseded by code changes
+### 1. Assign lip balm products to the new Lip Balm category
+Products → edit each lip balm product → set the category to **Lip Balm**. (If you want the products to also stay under Tallow Butter, tick both — your call.)
+
+### 2. Set the per-category minimums
+Wholesale → Pricing → **Category Minimums**.
+
+Set these to **6**:
+- Ageless
+- Renewal
+- Moxy
+
+That gives your customers what we talked about — they can mix scents within a category (3 honey + 3 lavender, 2/2/2, whatever) and still hit the minimum without being forced to buy 6 of a single scent. The order form will show a live "X / 6" counter in each category header so they always know where they stand.
+
+### 3. Create the four Gift Set products
+Once these are set up, the same category-minimum rule handles the "minimum 4 mixable across gift sets" automatically.
+
+1. **Products → Categories → Add New** — create a "Gift Sets" category.
+2. Create four simple products under that category:
+   - Ageless Gift Set
+   - Renewal Gift Set
+   - Moxy Gift Set
+   - Variety Gift Set
+3. In the description for each, list the scents that come in it (you said you'd curate the top sellers per category — that part's all yours).
+4. Wholesale → Pricing → **Category Minimums** → find "Gift Sets" → set Minimum Qty to **4**.
+
+That's it. Customer mixes any combination across the four gift sets, total has to hit 4, cart blocks them with a friendly error if they try to check out short.
+
+### 4. Bulk-import your existing wholesale customers
+Wholesale → Customers → **Import** tab.
+
+Two options:
+- **Quick Add form** — one customer at a time
+- **CSV upload** — download the template, paste your existing spreadsheet, upload
+
+The welcome email is already worded for migration — it explains the new portal, gives them a temporary password + reset link, and prompts them to add their EIN once they log in. So this is basically your first touch on every existing wholesale account, all in one go.
+
+---
+
+## Per-show ritual (do this each trade show)
+
+### 5. Set the Active Trade Show
+Before each show: Wholesale → Customers → Leads → Trade Show Tools → **Active Trade Show** field.
+
+Type in the show name (e.g. "Montana Craft Fair"), hit save. Every lead captured during the show — whether they scan the QR or fill out the iPad directly — gets tagged with that show name automatically. Clear the field when the show ends.
+
+---
+
+## Optional
+
+### 6. Lip balm case pack (only if you actually need the rule)
+By default, case packs are off — the field doesn't even show on product edit pages and the "Case of N" labels don't appear on the order form. If you want lip balm to enforce a case-of-6 rule:
+
+1. Wholesale → Settings → Order Form → check **"Enable per-product case pack sizes"**
+2. Edit each lip balm product → General tab → set **Wholesale Case Pack Size** to 6
+
+I'd say leave this off unless you have a real "the customer can't break the case" scenario. Category minimums cover almost every other situation more cleanly.
+
+---
+
+## One thing I need from you
+
+The Assets tab is built and live (Wholesale → Assets in the admin, and your wholesale customers see it as a new "Assets" tab in their portal). Right now it's empty waiting for content.
+
+Send me whatever brand assets you'd like in there — logos, product photos, shelf talkers, marketing PDFs, video links, whatever — and I'll seed the default library so every wholesale customer sees the same starter set. From there you can edit/add/remove anytime, and there's a per-customer override editor for any partners who need extras.
+
+---
+
+Let me know when you've worked through the list (or sooner if anything's confusing). Anything that's not behaving the way you expected, just send a screenshot and I'll get it sorted.
+
+Talk soon,
+Louie
