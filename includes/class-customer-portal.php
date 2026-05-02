@@ -101,7 +101,7 @@ class SLW_Customer_Portal {
 
         // Admin preview banner
         if ( $is_admin_preview && class_exists( 'SLW_Dashboard' ) ) {
-            SLW_Dashboard::render_preview_banner( 'Customer Portal — ' . esc_html( self::$tabs[ $active_tab ] ) );
+            SLW_Dashboard::render_preview_banner( 'Customer Portal: ' . esc_html( self::$tabs[ $active_tab ] ) );
         }
 
         // When rendered inside the admin Preview page, tab URLs must stay in admin
@@ -128,7 +128,7 @@ class SLW_Customer_Portal {
                     <?php foreach ( self::$tabs as $slug => $label ) :
                         $tab_key = $is_admin_context ? 'portal_tab' : 'tab';
                         $params = array_merge( $extra_params, array( $tab_key => $slug ) );
-                        // Dashboard is default — no tab param needed
+                        // Dashboard is default. No tab param needed.
                         if ( $slug === 'dashboard' ) {
                             unset( $params[ $tab_key ] );
                         }
@@ -204,21 +204,21 @@ class SLW_Customer_Portal {
     // ── Tab Renderers ─────────────────────────────────────────────────────
 
     /**
-     * Dashboard tab — reuses existing dashboard template.
+     * Dashboard tab. Reuses existing dashboard template.
      */
     private static function render_dashboard_tab() {
         include SLW_PLUGIN_DIR . 'templates/dashboard.php';
     }
 
     /**
-     * Order Form tab — reuses existing order form template.
+     * Order Form tab. Reuses existing order form template.
      */
     private static function render_orders_tab() {
         include SLW_PLUGIN_DIR . 'templates/order-form.php';
     }
 
     /**
-     * Invoices tab — lists all orders with invoice download links.
+     * Invoices tab. Lists all orders with invoice download links.
      */
     private static function render_invoices_tab() {
         $user = wp_get_current_user();
@@ -319,7 +319,7 @@ class SLW_Customer_Portal {
     }
 
     /**
-     * Account tab — edit profile, change password, shipping address.
+     * Account tab. Edit profile, change password, shipping address.
      */
     private static function render_account_tab() {
         $user = wp_get_current_user();
@@ -418,7 +418,7 @@ class SLW_Customer_Portal {
     }
 
     /**
-     * Assets tab — onboarding materials (images, PDFs, video links, etc.).
+     * Assets tab. Onboarding materials (images, PDFs, video links, etc.).
      */
     private static function render_assets_tab() {
         $user = wp_get_current_user();
@@ -445,7 +445,7 @@ class SLW_Customer_Portal {
 
             <?php if ( empty( $assets ) ) : ?>
                 <div class="slw-notice slw-notice-info" style="margin-top:16px;">
-                    No assets available yet — we'll add them shortly. In the meantime, reach out via the Help tab and we'll send what you need by email.
+                    No assets available yet. We'll add them shortly. In the meantime, reach out via the Help tab and we'll send what you need by email.
                 </div>
             <?php else : ?>
                 <div class="slw-dashboard-grid" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr));">
@@ -482,7 +482,7 @@ class SLW_Customer_Portal {
     }
 
     /**
-     * RFQ tab — renders the existing RFQ shortcode.
+     * RFQ tab. Renders the existing RFQ shortcode.
      */
     private static function render_rfq_tab() {
         if ( class_exists( 'SLW_RFQ' ) ) {
@@ -494,7 +494,7 @@ class SLW_Customer_Portal {
     }
 
     /**
-     * Price List tab — download link for the line sheet.
+     * Price List tab. Download link for the line sheet.
      */
     private static function render_price_list_tab() {
         $linesheet_url = '';

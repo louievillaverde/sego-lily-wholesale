@@ -117,7 +117,7 @@ class SLW_Category_Minimums {
         foreach ( $mins as $term_id => $min_qty ) {
             $cart_qty = $totals[ $term_id ] ?? 0;
             if ( $cart_qty <= 0 ) {
-                continue; // Nothing in this category — skip silently.
+                continue; // Nothing in this category. Skip silently.
             }
             if ( $cart_qty < $min_qty ) {
                 $term = get_term( $term_id, 'product_cat' );
@@ -147,8 +147,11 @@ class SLW_Category_Minimums {
         ?>
         <div class="slw-admin-card" style="padding:20px 24px;margin-bottom:24px;">
             <h2 class="slw-admin-card__heading" style="margin-bottom:8px;">Category Minimums</h2>
-            <p style="color:#628393;margin-bottom:16px;">
-                Set a minimum total quantity per category. Customers can mix and match scents within a category as long as the total hits the minimum (e.g. 6 in Ageless = 3 honey + 3 lavender, 2/2/2, etc.). Leave blank for no minimum.
+            <p style="color:#628393;margin-bottom:6px;">
+                Set a minimum total quantity for a category. Customers can mix and match items within the category to hit the total, so smaller stores aren't forced to buy 6 of one scent to meet your minimum.
+            </p>
+            <p style="color:#628393;margin-bottom:16px;font-size:13px;">
+                Example: set Ageless to 6. A customer can order 3 Honey plus 3 Lavender, or 2/2/2 across three scents, or 6 of one scent. Anything that adds up to 6 works. Leave a row blank for no minimum on that category.
             </p>
 
             <?php if ( is_wp_error( $terms ) || empty( $terms ) ) : ?>

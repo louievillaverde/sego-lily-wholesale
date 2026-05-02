@@ -371,7 +371,7 @@ class SLW_Wholesale_Role {
 
         update_user_meta( $user_id, 'slw_resale_certificate_number', SLW_Encryption::encrypt( sanitize_text_field( $_POST['slw_resale_certificate_number'] ?? '' ) ) );
 
-        // EIN — keep encrypted to match the application/portal flow
+        // EIN: keep encrypted to match the application/portal flow
         $ein_input = sanitize_text_field( wp_unslash( $_POST['slw_ein'] ?? '' ) );
         update_user_meta( $user_id, 'slw_ein', $ein_input === '' ? '' : SLW_Encryption::encrypt( $ein_input ) );
 
@@ -531,7 +531,7 @@ class SLW_Wholesale_Role {
             return;
         }
         // Output directly via wp_head so it works on ALL pages (product pages,
-        // cart, checkout) — not just pages where our plugin stylesheet is enqueued.
+        // cart, checkout), not just pages where our plugin stylesheet is enqueued.
         add_action( 'wp_head', function() {
             echo '<style id="slw-hide-subscriptions">'
                 . '.wcsatt-options-wrapper,'

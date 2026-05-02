@@ -239,13 +239,13 @@ class SLW_Lead_Capture {
         ob_start();
         ?>
         <style>
-        /* Inline critical booth CSS — full page takeover for booth/tablet use */
+        /* Inline critical booth CSS for full-page takeover on booth/tablet use */
 
         /* Full-page cream background */
         body.page-template-default:has(#slw-booth) { background: #F7F6F3 !important; }
         body { background: #F7F6F3 !important; }
 
-        /* Main container — centered, full-height, vertically aligned */
+        /* Main container, centered, full-height, vertically aligned */
         #slw-booth {
             max-width: 680px;
             margin: 0 auto;
@@ -279,7 +279,7 @@ class SLW_Lead_Capture {
             margin: 0 0 40px;
         }
 
-        /* Card selector — wider, overflow-safe */
+        /* Card selector, wider, overflow-safe */
         #slw-booth .slw-booth__cards {
             display: flex;
             gap: 20px;
@@ -672,7 +672,7 @@ class SLW_Lead_Capture {
                 </div>
                 <div style="margin-top:16px;padding:16px 20px;background:#FEF8EC;border:1px solid #E8D8A0;border-radius:8px;text-align:center;">
                     <p style="color:#B8892E;font-size:14px;font-weight:600;margin:0 0 4px;">After your first order, you'll get 3 personal codes to share with friends</p>
-                    <p style="color:#628393;font-size:13px;margin:0;">They get 15% off &mdash; you earn a reward every time.</p>
+                    <p style="color:#628393;font-size:13px;margin:0;">They get 15% off. You earn a reward every time.</p>
                 </div>
             </div>
 
@@ -1107,7 +1107,7 @@ class SLW_Lead_Capture {
         if ( $source === 'wholesale_booth' ) {
             $app_table = $wpdb->prefix . 'slw_applications';
             $wpdb->insert( $app_table, array(
-                'business_name' => $business_type ? $business_type . ' — ' . $name : $name,
+                'business_name' => $business_type ? $business_type . ': ' . $name : $name,
                 'contact_name'  => $name,
                 'email'         => $email,
                 'phone'         => $phone,
@@ -1137,7 +1137,7 @@ class SLW_Lead_Capture {
                         $admin_email = get_option( 'admin_email' );
                     }
 
-                    $subject = 'Booth Lead — Wholesale Inquiry: ' . $name;
+                    $subject = 'Booth Lead. Wholesale Inquiry: ' . $name;
                     $body    = SLW_Email_Approve::build_notification_html( $app_row, 'booth', array(
                         'skincare_experience' => $skincare_experience,
                         'tallow_interest'     => $tallow_interest,
@@ -1596,8 +1596,8 @@ class SLW_Lead_Capture {
                                     <td><a href="mailto:<?php echo esc_attr( $lead->email ); ?>"><?php echo esc_html( $lead->email ); ?></a></td>
                                     <td><?php echo esc_html( $lead->business_name ); ?></td>
                                     <td><?php echo esc_html( $lead->phone ); ?></td>
-                                    <td style="font-size:12px;color:#628393;max-width:200px;"><?php echo ! empty( $lead->address ) ? esc_html( $lead->address ) : '&mdash;'; ?></td>
-                                    <td style="font-size:12px;"><?php echo $lead_ein_plain ? esc_html( $lead_ein_plain ) : '&mdash;'; ?></td>
+                                    <td style="font-size:12px;color:#628393;max-width:200px;"><?php echo ! empty( $lead->address ) ? esc_html( $lead->address ) : 'None'; ?></td>
+                                    <td style="font-size:12px;"><?php echo $lead_ein_plain ? esc_html( $lead_ein_plain ) : 'None'; ?></td>
                                     <td><?php echo self::get_source_badge( $lead->source ); ?></td>
                                     <td><span class="slw-lead-status slw-lead-status--<?php echo esc_attr( $lead->status ); ?>"><?php echo esc_html( ucfirst( $lead->status ) ); ?></span></td>
                                     <td><?php echo esc_html( human_time_diff( strtotime( $lead->captured_at ) ) . ' ago' ); ?></td>
@@ -1831,13 +1831,13 @@ class SLW_Lead_Capture {
 
 I came across {shop_name} and love what you're doing. I think our products would be a great fit for your customers.
 
-I'm Holly — I run Sego Lily Naturals out of Montana. We make small-batch, plant-based skincare that's been really popular with boutiques and spas. Everything is made with clean ingredients and our wholesale partners get 50% off retail pricing.
+I'm Holly. I run Sego Lily Naturals out of Montana. We make small-batch, plant-based skincare that's been really popular with boutiques and spas. Everything is made with clean ingredients and our wholesale partners get 50% off retail pricing.
 
 If you're open to it, I'd love to send you our price list or set up a quick call. You can learn more and apply here:
 
 {$wholesale_url}
 
-No pressure at all — just thought it could be a good match.
+No pressure at all. Just thought it could be a good match.
 
 Talk soon,
 Holly";
@@ -1956,15 +1956,15 @@ Holly";
                             <tr><th>Name</th><td><?php echo esc_html( $lead->name ); ?></td></tr>
                             <tr><th>Email</th><td><a href="mailto:<?php echo esc_attr( $lead->email ); ?>"><?php echo esc_html( $lead->email ); ?></a></td></tr>
                             <tr><th>Business</th><td><?php echo esc_html( $lead->business_name ); ?></td></tr>
-                            <tr><th>Phone</th><td><?php echo esc_html( $lead->phone ?: '—' ); ?></td></tr>
-                            <tr><th>Address</th><td><?php echo ! empty( $lead->address ) ? nl2br( esc_html( $lead->address ) ) : '—'; ?></td></tr>
+                            <tr><th>Phone</th><td><?php echo esc_html( $lead->phone ?: 'None' ); ?></td></tr>
+                            <tr><th>Address</th><td><?php echo ! empty( $lead->address ) ? nl2br( esc_html( $lead->address ) ) : 'None'; ?></td></tr>
                             <tr><th>EIN</th><td><?php
                                 $detail_ein = ! empty( $lead->ein ) && class_exists( 'SLW_Encryption' )
                                     ? SLW_Encryption::decrypt( $lead->ein )
                                     : ( $lead->ein ?? '' );
-                                echo $detail_ein ? esc_html( $detail_ein ) : '—';
+                                echo $detail_ein ? esc_html( $detail_ein ) : 'None';
                             ?></td></tr>
-                            <tr><th>How Heard</th><td><?php echo esc_html( $lead->how_heard ?: '—' ); ?></td></tr>
+                            <tr><th>How Heard</th><td><?php echo esc_html( $lead->how_heard ?: 'None' ); ?></td></tr>
                             <tr><th>Source</th><td><?php echo esc_html( ucfirst( $lead->source ) ); ?></td></tr>
                             <tr><th>Captured</th><td><?php echo esc_html( date_i18n( 'M j, Y g:i a', strtotime( $lead->captured_at ) ) ); ?></td></tr>
                         </table>

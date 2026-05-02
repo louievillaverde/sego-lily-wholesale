@@ -147,7 +147,16 @@ class SLW_Pricing_Page {
                 <!-- Section 4: Per-Product Overrides (editable) -->
                 <div class="slw-admin-card" style="padding:20px 24px;margin-bottom:24px;">
                     <h2 class="slw-admin-card__heading" style="margin-bottom:16px;">Per-Product Overrides</h2>
-                    <p style="color:#628393;margin-bottom:16px;">Set custom wholesale pricing, minimum quantities, and case pack sizes per product. <strong>Tip:</strong> if you only want a category-wide minimum (e.g. 6 in Ageless mixable across scents), use Category Minimums above and leave per-product Min Qty blank — products inside the category will use the category rule.</p>
+                    <?php $case_packs_on = class_exists( 'SLW_Product_Minimums' ) ? SLW_Product_Minimums::case_packs_enabled() : false; ?>
+                    <p style="color:#628393;margin-bottom:8px;">
+                        Set custom wholesale pricing and minimum quantities for individual products<?php echo $case_packs_on ? ', plus case pack sizes' : ''; ?>.
+                        If you want a category-wide minimum that customers can split across scents (see Category Minimums above), leave each product's Min Qty blank. Products inside a category with a category minimum will follow the category rule.
+                    </p>
+                    <?php if ( ! $case_packs_on ) : ?>
+                        <p style="color:#628393;margin-bottom:16px;font-size:13px;">
+                            <strong>Need fixed case-pack sizes</strong> (for example: a case of 6 lip balms that can't be broken)? Turn on per-product case packs at <a href="<?php echo esc_url( admin_url( 'admin.php?page=slw-settings' ) ); ?>">Wholesale &rarr; Settings &rarr; Order Form</a>. The Case Pack column will appear here once enabled.
+                        </p>
+                    <?php endif; ?>
 
                     <?php self::render_product_overrides_table(); ?>
                 </div>
@@ -326,7 +335,7 @@ class SLW_Pricing_Page {
             }
         }
 
-        // Redirect back with success flag — honor an explicit redirect target
+        // Redirect back with success flag. Honor an explicit redirect target
         // (set by the pagination guard so save-then-navigate lands on the next page).
         $target = ! empty( $_POST['slw_redirect_to'] )
             ? esc_url_raw( wp_unslash( $_POST['slw_redirect_to'] ) )

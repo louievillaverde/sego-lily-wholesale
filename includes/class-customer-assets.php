@@ -61,7 +61,7 @@ class SLW_Customer_Assets {
 
     /**
      * Seed the default library + internal references with the known starter
-     * set the first time admin loads after this update. Idempotent — gated
+     * set the first time admin loads after this update. Idempotent: gated
      * by SEED_FLAG so admin edits aren't overwritten.
      */
     public static function maybe_seed_initial_assets() {
@@ -84,7 +84,7 @@ class SLW_Customer_Assets {
                 array(
                     'id'          => 'seed-team-pdf',
                     'title'       => 'Staff Reference (PDF)',
-                    'description' => 'Print for your floor team — bestsellers, talking points, and the two questions every customer asks.',
+                    'description' => 'Print for your floor team. Covers bestsellers, talking points, and the two questions every customer asks.',
                     'type'        => 'pdf',
                     'url'         => 'https://drive.google.com/file/d/1bAyz4aSr_uOGunXO0qAYVVx7htp8Rlm6/view',
                     'thumbnail'   => '',
@@ -102,7 +102,7 @@ class SLW_Customer_Assets {
             ) );
         }
 
-        // Internal masters (admin-only — for Holly + her team to edit).
+        // Internal masters (admin-only, for Holly and her team to edit).
         if ( ! get_option( self::INTERNAL_KEY ) ) {
             update_option( self::INTERNAL_KEY, array(
                 array(
@@ -475,7 +475,7 @@ class SLW_Customer_Assets {
                                 <input type="url" id="asset_url" name="asset_url" value="<?php echo esc_attr( $editing_record['url'] ?? '' ); ?>" class="regular-text" required placeholder="https://…" style="flex:1;min-width:280px;" />
                                 <button type="button" class="button" id="slw-asset-pick-url">Choose from Media Library</button>
                             </div>
-                            <p class="description">Pick a file you've uploaded to WordPress, or paste any URL — Drive share links, YouTube, etc.</p>
+                            <p class="description">Pick a file you've uploaded to WordPress, or paste any URL (Drive share links, YouTube, etc.).</p>
                         </td>
                     </tr>
                     <tr>
@@ -545,7 +545,7 @@ class SLW_Customer_Assets {
             <p>Add or remove assets for a specific wholesale customer (special-case partners with extra co-branded materials, etc.).</p>
             <p>
                 <select id="slw-asset-user-picker" style="min-width:280px;">
-                    <option value="">— Pick a wholesale customer —</option>
+                    <option value="">Pick a wholesale customer</option>
                     <?php
                     $users = get_users( array( 'role' => 'wholesale_customer', 'orderby' => 'display_name' ) );
                     foreach ( $users as $u ) {
@@ -560,7 +560,7 @@ class SLW_Customer_Assets {
 
             <hr style="margin:32px 0;" />
             <h2 id="internal">Internal References</h2>
-            <p>Editable master docs and internal links — visible only to you and your team in this admin area, plus on your dashboard's Resources card. Wholesale customers don't see these.</p>
+            <p>Editable master docs and internal links. Visible only to you and your team in this admin area, plus on your dashboard's Resources card. Wholesale customers don't see these.</p>
 
             <?php $internal_refs = self::get_internal_references(); $editing_ref = sanitize_key( $_GET['edit_ref'] ?? '' ); $editing_ref_record = null;
             if ( $editing_ref !== '' ) {
@@ -637,7 +637,7 @@ class SLW_Customer_Assets {
                     });
                 }
 
-                // Media Library picker — wires the two "Choose from Media Library" buttons
+                // Media Library picker. Wires the two "Choose from Media Library" buttons
                 // to the WP media modal. Selected attachment URL drops into the field.
                 function bindMediaPicker(btnId, fieldId, mediaType, modalTitle) {
                     var btn = document.getElementById(btnId);
@@ -684,7 +684,7 @@ class SLW_Customer_Assets {
         ?>
         <div class="wrap">
             <a href="<?php echo esc_url( admin_url( 'admin.php?page=slw-assets' ) ); ?>" class="button" style="margin-bottom:12px;">&larr; Back to Asset Library</a>
-            <h1>Asset Overrides — <?php echo esc_html( $user->display_name ); ?></h1>
+            <h1>Asset Overrides for <?php echo esc_html( $user->display_name ); ?></h1>
             <p style="color:#628393;">Tick a default asset to <em>hide</em> it from this customer, or add custom assets only this customer will see.</p>
 
             <?php if ( $just_saved ) : ?>

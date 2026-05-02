@@ -634,11 +634,11 @@ class SLW_Premium_Features {
         $reply_email   = SLW_Email_Settings::get( 'reply_to' );
         $subject       = 'Your new ' . $brand_name . ' wholesale portal';
 
-        // Migration-friendly copy — works equally well for brand-new wholesale
+        // Migration-friendly copy. Works equally well for brand-new wholesale
         // partners and for existing customers being moved into the new portal
         // (which is the main use case for the bulk import flow).
         $body  = "Hi {$first_name},\n\n";
-        $body .= "Quick note — we've set up a brand new wholesale portal at {$brand_name} and I've created an account for you so all your future orders, invoices, and reorders live in one place.\n\n";
+        $body .= "Quick note. We've set up a brand new wholesale portal at {$brand_name} and I've created an account for you so all your future orders, invoices, and reorders live in one place.\n\n";
         $body .= "Here's what's new:\n";
         $body .= " · A clean, password-protected order form with all your wholesale pricing built in\n";
         $body .= " · Saved order templates so you can reorder in two clicks\n";
@@ -650,7 +650,7 @@ class SLW_Premium_Features {
         $body .= "Log in here: {$login_url}\n\n";
         $body .= "Once you're in, head to Account → Password to set your own. If the temp password doesn't work for you, use this reset link instead: {$reset_url}\n\n";
         $body .= "One small ask: please add your EIN / Resale Certificate number on the Account tab once you're logged in. We need it on file before your next order.\n\n";
-        $body .= "Questions or want me to walk you through it? Just reply to this email — I read every one. You can also reach me at {$reply_email}.\n\n";
+        $body .= "Questions or want me to walk you through it? Just reply to this email. I read every one. You can also reach me at {$reply_email}.\n\n";
         $body .= "Talk soon,\n" . SLW_Email_Settings::get_signature();
 
         wp_mail( $user->user_email, $subject, $body, SLW_Email_Settings::get_headers() );

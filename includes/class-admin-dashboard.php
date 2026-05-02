@@ -88,7 +88,7 @@ class SLW_Admin_Dashboard {
                         </div>
                     </div>
 
-                    <!-- Lead Pipeline (distinct from overview stats — shows conversion flow) -->
+                    <!-- Lead Pipeline (distinct from overview stats. Shows conversion flow.) -->
                     <div class="slw-admin-card" style="padding:20px 24px;">
                         <?php
                         $pipeline_range = sanitize_key( $_GET['pipeline_range'] ?? 'all' );
@@ -306,7 +306,7 @@ class SLW_Admin_Dashboard {
                         </ul>
 
                         <?php
-                        // Internal References — admin-only links to editable master docs.
+                        // Internal References (admin-only links to editable master docs).
                         // Lives in this card so they're always one click from the dashboard home.
                         $internal_refs = class_exists( 'SLW_Customer_Assets' )
                             ? SLW_Customer_Assets::get_internal_references()
@@ -322,7 +322,6 @@ class SLW_Admin_Dashboard {
                                 </li>
                             <?php endforeach; ?>
                         </ul>
-                        <p style="margin:6px 0 0;font-size:12px;"><a href="<?php echo esc_url( admin_url( 'admin.php?page=slw-assets#internal' ) ); ?>">Manage internal references &rarr;</a></p>
                         <?php endif; ?>
                         <div class="slw-whats-new">
                             <h4 class="slw-whats-new__title">What's New in v<?php echo esc_html( SLW_VERSION ); ?></h4>

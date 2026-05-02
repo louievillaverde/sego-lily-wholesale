@@ -44,7 +44,7 @@ add_action( 'plugins_loaded', function() {
         return;
     }
 
-    // Warn if WooCommerce Wholesale Suite is also active — both plugins
+    // Warn if WooCommerce Wholesale Suite is also active. Both plugins
     // register similar page slugs and hooks which causes admin page mix-ups.
     if ( class_exists( 'WooCommerceWholeSalePrices' ) || defined( 'WWPP_PLUGIN_DIR' ) || defined( 'WWP_PLUGIN_DIR' ) ) {
         add_action( 'admin_notices', function() {
@@ -56,7 +56,7 @@ add_action( 'plugins_loaded', function() {
         });
     }
 
-    // Load all modules — core
+    // Load all modules. Core.
     require_once SLW_PLUGIN_DIR . 'includes/class-wholesale-role.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-settings.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-application-form.php';
@@ -81,7 +81,7 @@ add_action( 'plugins_loaded', function() {
     require_once SLW_PLUGIN_DIR . 'includes/class-nav-menu.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-context-switcher.php';
 
-    // Load v2.0 modules — tiers, invoices, reminders, RFQ
+    // Load v2.0 modules. Tiers, invoices, reminders, RFQ.
     require_once SLW_PLUGIN_DIR . 'includes/class-tiers.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-tier-settings.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-product-minimums.php';
@@ -107,7 +107,7 @@ add_action( 'plugins_loaded', function() {
     require_once SLW_PLUGIN_DIR . 'includes/class-pricing-page.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-customers-page.php';
 
-    // Initialize — core
+    // Initialize core modules
     SLW_Wholesale_Role::init();
     SLW_Settings::init();
     SLW_Application_Form::init();
@@ -132,7 +132,7 @@ add_action( 'plugins_loaded', function() {
     SLW_Context_Switcher::init();
     SLW_Product_Recommendations::init();
 
-    // Initialize — v2.0 modules (order matters: tiers before groups)
+    // Initialize v2.0 modules (order matters: tiers before groups)
     SLW_Tiers::init();
     SLW_Tier_Settings::init();
     SLW_Product_Minimums::init();
@@ -425,7 +425,7 @@ add_action( 'admin_init', function() {
 
     // ── 1b. Product category housekeeping ──
     // One-shot rename + create. Gated by option so it doesn't trample
-    // future admin-side renames. Only touches taxonomy terms — products
+    // future admin-side renames. Only touches taxonomy terms. Products
     // remain assigned correctly because we update the existing term in place.
     if ( ! get_option( 'slw_product_cat_migrated_v1' ) ) {
         if ( taxonomy_exists( 'product_cat' ) ) {
@@ -441,7 +441,7 @@ add_action( 'admin_init', function() {
             }
 
             // Ensure a "Lip Balm" category exists. Holly still has to assign
-            // her lip balm products to it manually — we don't try to guess
+            // her lip balm products to it manually. We don't try to guess
             // which products are lip balms.
             $lip_balm = get_term_by( 'name', 'Lip Balm', 'product_cat' );
             if ( ! $lip_balm ) {
@@ -479,7 +479,7 @@ add_action( 'admin_init', function() {
             ));
         }
     }
-    // No db_version flag needed — each check is independent.
+    // No db_version flag needed. Each check is independent.
     // Tables check via SHOW TABLES, pages check via get_page_by_path.
     // Runs on every admin_init but each check is a single cheap query
     // that short-circuits when the resource already exists.
@@ -547,7 +547,7 @@ function slw_is_wholesale_context( $user_id = null ) {
     if ( ! $user ) {
         return false;
     }
-    // Only actual wholesale role holders get wholesale pricing — NOT admins
+    // Only actual wholesale role holders get wholesale pricing. NOT admins.
     // (admins can access wholesale pages but shop at retail pricing unless
     // they also have the wholesale_customer role)
     if ( ! in_array( 'wholesale_customer', (array) $user->roles, true ) ) {

@@ -348,7 +348,7 @@ class SLW_Customers_Page {
                             $order_count     = $order_counts[ $user_id ] ?? 0;
                             $last_order_date = isset( $last_orders[ $user_id ] ) && $last_orders[ $user_id ]
                                 ? $last_orders[ $user_id ]->date_i18n( get_option( 'date_format' ) )
-                                : '&mdash;';
+                                : 'None';
                             ?>
                             <?php
                             $address_str = self::format_user_address( $user_id );
@@ -356,18 +356,18 @@ class SLW_Customers_Page {
                             ?>
                             <tr>
                                 <td><strong><?php echo esc_html( $full_name ); ?></strong></td>
-                                <td><?php echo esc_html( $business_name ?: '&mdash;' ); ?></td>
+                                <td><?php echo esc_html( $business_name ?: 'None' ); ?></td>
                                 <td><a href="mailto:<?php echo esc_attr( $customer->user_email ); ?>"><?php echo esc_html( $customer->user_email ); ?></a></td>
                                 <td><span class="slw-lead-status slw-lead-status--<?php echo esc_attr( $tier ); ?>"><?php echo esc_html( ucfirst( $tier ) ); ?></span></td>
-                                <td><?php echo $net_terms ? 'NET ' . esc_html( $net_terms ) : '&mdash;'; ?></td>
+                                <td><?php echo $net_terms ? 'NET ' . esc_html( $net_terms ) : 'None'; ?></td>
                                 <td><?php echo esc_html( $order_count ); ?></td>
                                 <td><?php echo $last_order_date; ?></td>
-                                <td style="font-size:12px;color:#628393;max-width:200px;"><?php echo $address_str ? esc_html( $address_str ) : '&mdash;'; ?></td>
+                                <td style="font-size:12px;color:#628393;max-width:200px;"><?php echo $address_str ? esc_html( $address_str ) : 'None'; ?></td>
                                 <td style="font-size:12px;"><?php
                                     if ( $customer_ein ) {
                                         echo esc_html( $customer_ein );
                                     } else {
-                                        echo '<span style="color:#c62828;font-weight:600;" title="No EIN on file">&mdash; missing</span>';
+                                        echo '<span style="color:#c62828;font-weight:600;" title="No EIN on file">missing</span>';
                                     }
                                 ?></td>
                                 <td style="white-space:nowrap;">

@@ -132,7 +132,7 @@ class SLW_Tier_Settings {
 				var idx = rows.length;
 				var tr = document.createElement('tr');
 				tr.className = 'slw-tier-row';
-				// New rows are editable from creation — only existing tiers are locked.
+				// New rows are editable from creation. Only existing tiers are locked.
 				tr.innerHTML = '<td><input type="text" name="tiers[' + idx + '][slug]" value="" class="regular-text" style="width:100%;" pattern="[a-z0-9_]+" title="Lowercase letters, numbers, underscores only" required /></td>'
 					+ '<td><input type="text" name="tiers[' + idx + '][name]" value="" class="regular-text" style="width:100%;" required /></td>'
 					+ '<td><input type="number" name="tiers[' + idx + '][discount]" value="50" min="0" max="99" step="0.5" style="width:100%;" required /></td>'

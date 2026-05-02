@@ -371,7 +371,7 @@ $products = $all_products; // keep for empty check
                             }
 
                             // When a category-wide min is set, the customer can mix scents
-                            // freely — relax the per-row min so they aren't forced to enter
+                            // freely, so relax the per-row min so they aren't forced to enter
                             // the full minimum on a single SKU.
                             if ( $category_min_qty > 0 ) {
                                 $v_min_input = 0;

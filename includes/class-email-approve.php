@@ -180,7 +180,7 @@ class SLW_Email_Approve {
         $body .= site_url( '/wholesale-dashboard/' ) . "\n\n";
         $body .= "Questions? Just reply to this email.\n\n";
         $owner = class_exists( 'SLW_Email_Settings' ) ? SLW_Email_Settings::get( 'owner_name' ) : '';
-        $body .= $owner ? "— {$owner}" : "— The {$business_name} Team";
+        $body .= $owner ? $owner : 'The ' . $business_name . ' Team';
 
         $headers = class_exists( 'SLW_Email_Settings' ) ? SLW_Email_Settings::get_headers() : array();
         wp_mail( $app->email, $subject, $body, $headers );
@@ -225,7 +225,7 @@ class SLW_Email_Approve {
         $body .= "You're always welcome to shop our retail products at " . site_url() . "\n\n";
         $body .= "If you'd like to chat about it, just reply to this email.\n\n";
         $owner = class_exists( 'SLW_Email_Settings' ) ? SLW_Email_Settings::get( 'owner_name' ) : '';
-        $body .= $owner ? "— {$owner}" : "— The {$business_name} Team";
+        $body .= $owner ? $owner : 'The ' . $business_name . ' Team';
 
         $headers = class_exists( 'SLW_Email_Settings' ) ? SLW_Email_Settings::get_headers() : array();
         wp_mail( $app->email, $subject, $body, $headers );
@@ -235,7 +235,7 @@ class SLW_Email_Approve {
      * Build the HTML email body for Holly's notification with approve/deny buttons.
      *
      * @param object $app        Application row from the DB.
-     * @param string $source     'website' or 'booth' — changes the copy.
+     * @param string $source     'website' or 'booth'. Changes the copy.
      * @param array  $extra_data Additional quiz data for booth leads.
      * @return string HTML email body.
      */
@@ -259,7 +259,7 @@ class SLW_Email_Approve {
             'Business'  => $app->business_name,
             'Contact'   => $app->contact_name,
             'Email'     => $app->email,
-            'Phone'     => $app->phone ?: '—',
+            'Phone'     => $app->phone ?: 'None',
         );
         if ( ! empty( $app->website ) ) {
             $fields['Business Website'] = $app->website;
@@ -290,7 +290,7 @@ class SLW_Email_Approve {
         }
         $html .= '</table>';
 
-        // Booth leads note — they haven't submitted EIN yet
+        // Booth leads note. They haven't submitted EIN yet
         if ( $source === 'booth' && empty( $app->ein ) ) {
             $html .= '<p style="color:#996800;font-size:13px;background:#FFF8E1;padding:12px;border-radius:6px;margin-bottom:24px;">';
             $html .= 'This lead came from the trade show booth. EIN and shipping address will be collected after approval via the activation form.';
