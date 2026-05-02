@@ -28,13 +28,194 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 class SLW_Customer_Assets {
 
-    const OPTION_KEY = 'slw_assets_default';
-    const META_KEY   = 'slw_assets_overrides';
+    const OPTION_KEY    = 'slw_assets_default';
+    const INTERNAL_KEY  = 'slw_internal_references';
+    const META_KEY      = 'slw_assets_overrides';
+    const SEED_FLAG     = 'slw_assets_seeded_v1';
 
     public static function init() {
         add_action( 'admin_post_slw_save_asset',     array( __CLASS__, 'handle_save_asset' ) );
         add_action( 'admin_post_slw_delete_asset',   array( __CLASS__, 'handle_delete_asset' ) );
         add_action( 'admin_post_slw_save_asset_overrides', array( __CLASS__, 'handle_save_overrides' ) );
+        add_action( 'admin_post_slw_save_internal_ref',    array( __CLASS__, 'handle_save_internal_ref' ) );
+        add_action( 'admin_post_slw_delete_internal_ref',  array( __CLASS__, 'handle_delete_internal_ref' ) );
+
+        // Enqueue WP Media Library picker on the Assets admin page.
+        add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_media_picker' ) );
+
+        // One-shot seed for the initial library so the page isn't empty out of the box.
+        add_action( 'admin_init', array( __CLASS__, 'maybe_seed_initial_assets' ) );
+    }
+
+    /**
+     * Enqueue the WP Media Library JS so the Assets admin form can launch
+     * the standard "Choose File" modal alongside a manual URL field.
+     */
+    public static function enqueue_media_picker( $hook ) {
+        // Only on the Assets admin page.
+        if ( strpos( (string) $hook, 'slw-assets' ) === false ) {
+            return;
+        }
+        wp_enqueue_media();
+    }
+
+    /**
+     * Seed the default library + internal references with the known starter
+     * set the first time admin loads after this update. Idempotent — gated
+     * by SEED_FLAG so admin edits aren't overwritten.
+     */
+    public static function maybe_seed_initial_assets() {
+        if ( get_option( self::SEED_FLAG ) ) {
+            return;
+        }
+
+        // Customer-facing PDFs (live in the wholesale portal Assets tab).
+        if ( ! get_option( self::OPTION_KEY ) ) {
+            update_option( self::OPTION_KEY, array(
+                array(
+                    'id'          => 'seed-manager-pdf',
+                    'title'       => 'Manager Reference (PDF)',
+                    'description' => 'How to place orders, manage stock, and run your wholesale relationship with us. Print one for yourself.',
+                    'type'        => 'pdf',
+                    'url'         => 'https://drive.google.com/file/d/1xnskWy7U4FRJPwx70tC2-qrt3RCQsQgP/view',
+                    'thumbnail'   => '',
+                    'created_at'  => current_time( 'mysql' ),
+                ),
+                array(
+                    'id'          => 'seed-team-pdf',
+                    'title'       => 'Staff Reference (PDF)',
+                    'description' => 'Print for your floor team — bestsellers, talking points, and the two questions every customer asks.',
+                    'type'        => 'pdf',
+                    'url'         => 'https://drive.google.com/file/d/1bAyz4aSr_uOGunXO0qAYVVx7htp8Rlm6/view',
+                    'thumbnail'   => '',
+                    'created_at'  => current_time( 'mysql' ),
+                ),
+                array(
+                    'id'          => 'seed-orderform-pdf',
+                    'title'       => 'Wholesale Order Form (PDF)',
+                    'description' => 'Printable order form. Most partners order online via the portal, but the PDF is here if you need it.',
+                    'type'        => 'pdf',
+                    'url'         => 'https://drive.google.com/file/d/1HcOKRGVpD5937EdFRvHpYowp8phZoctf/view',
+                    'thumbnail'   => '',
+                    'created_at'  => current_time( 'mysql' ),
+                ),
+            ) );
+        }
+
+        // Internal masters (admin-only — for Holly + her team to edit).
+        if ( ! get_option( self::INTERNAL_KEY ) ) {
+            update_option( self::INTERNAL_KEY, array(
+                array(
+                    'id'          => 'seed-manager-doc',
+                    'title'       => 'Manager Reference (editable)',
+                    'description' => 'Master doc for the Manager Reference. Edit here, then export to PDF and replace the customer-facing version.',
+                    'type'        => 'link',
+                    'url'         => 'https://drive.google.com/file/d/1-DhoGydeejDbGSYrHCK-5vBdPG4uZhSA/view',
+                    'created_at'  => current_time( 'mysql' ),
+                ),
+                array(
+                    'id'          => 'seed-team-doc',
+                    'title'       => 'Staff Reference (editable)',
+                    'description' => 'Master doc for the Staff Reference. Edit here, then export to PDF.',
+                    'type'        => 'link',
+                    'url'         => 'https://drive.google.com/file/d/1l2ChlytBJIzt8BA3Cw-50oO7b9yXyLgk/view',
+                    'created_at'  => current_time( 'mysql' ),
+                ),
+                array(
+                    'id'          => 'seed-orderform-doc',
+                    'title'       => 'Wholesale Order Form (editable)',
+                    'description' => 'Master doc for the Wholesale Order Form. Edit here, then export to PDF.',
+                    'type'        => 'link',
+                    'url'         => 'https://docs.google.com/document/d/18XDBMdKqczS1XNm6tJqtrLIHKBQaHxvyzZgQaqEHIkY/edit',
+                    'created_at'  => current_time( 'mysql' ),
+                ),
+            ) );
+        }
+
+        update_option( self::SEED_FLAG, 1 );
+    }
+
+    /**
+     * Get the internal references library (admin-only docs).
+     */
+    public static function get_internal_references() {
+        $stored = get_option( self::INTERNAL_KEY, array() );
+        return is_array( $stored ) ? $stored : array();
+    }
+
+    /**
+     * Save (create or update) an internal reference.
+     */
+    public static function handle_save_internal_ref() {
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_die( 'Unauthorized', 403 );
+        }
+        check_admin_referer( 'slw_save_internal_ref' );
+
+        $id          = sanitize_key( $_POST['ref_id'] ?? '' );
+        $title       = sanitize_text_field( wp_unslash( $_POST['ref_title'] ?? '' ) );
+        $description = sanitize_textarea_field( wp_unslash( $_POST['ref_description'] ?? '' ) );
+        $url         = esc_url_raw( wp_unslash( $_POST['ref_url'] ?? '' ) );
+
+        if ( $title === '' || $url === '' ) {
+            wp_safe_redirect( add_query_arg( 'slw_assets_error', 'missing', admin_url( 'admin.php?page=slw-assets#internal' ) ) );
+            exit;
+        }
+
+        $refs = self::get_internal_references();
+        $found = false;
+        if ( $id !== '' ) {
+            foreach ( $refs as $i => $ref ) {
+                if ( ( $ref['id'] ?? '' ) === $id ) {
+                    $refs[ $i ] = array_merge( $ref, array(
+                        'title'       => $title,
+                        'description' => $description,
+                        'url'         => $url,
+                    ) );
+                    $found = true;
+                    break;
+                }
+            }
+        }
+        if ( ! $found ) {
+            $refs[] = array(
+                'id'          => $id !== '' ? $id : 'r' . wp_generate_password( 10, false, false ),
+                'title'       => $title,
+                'description' => $description,
+                'type'        => 'link',
+                'url'         => $url,
+                'created_at'  => current_time( 'mysql' ),
+            );
+        }
+        update_option( self::INTERNAL_KEY, $refs );
+
+        wp_safe_redirect( add_query_arg( 'slw_assets_saved', '1', admin_url( 'admin.php?page=slw-assets' ) ) . '#internal' );
+        exit;
+    }
+
+    /**
+     * Delete an internal reference.
+     */
+    public static function handle_delete_internal_ref() {
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_die( 'Unauthorized', 403 );
+        }
+        check_admin_referer( 'slw_delete_internal_ref' );
+
+        $id = sanitize_key( $_POST['ref_id'] ?? '' );
+        if ( $id === '' ) {
+            wp_safe_redirect( admin_url( 'admin.php?page=slw-assets' ) );
+            exit;
+        }
+
+        $refs = self::get_internal_references();
+        $refs = array_values( array_filter( $refs, function ( $r ) use ( $id ) {
+            return ( $r['id'] ?? '' ) !== $id;
+        } ) );
+        update_option( self::INTERNAL_KEY, $refs );
+
+        wp_safe_redirect( add_query_arg( 'slw_assets_saved', '1', admin_url( 'admin.php?page=slw-assets' ) ) . '#internal' );
+        exit;
     }
 
     /**
@@ -290,15 +471,21 @@ class SLW_Customer_Assets {
                     <tr>
                         <th scope="row"><label for="asset_url">URL</label></th>
                         <td>
-                            <input type="url" id="asset_url" name="asset_url" value="<?php echo esc_attr( $editing_record['url'] ?? '' ); ?>" class="regular-text" required placeholder="https://…" />
-                            <p class="description">For files: upload via Media Library, then paste the file URL here. Videos: paste the YouTube/Vimeo link.</p>
+                            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                                <input type="url" id="asset_url" name="asset_url" value="<?php echo esc_attr( $editing_record['url'] ?? '' ); ?>" class="regular-text" required placeholder="https://…" style="flex:1;min-width:280px;" />
+                                <button type="button" class="button" id="slw-asset-pick-url">Choose from Media Library</button>
+                            </div>
+                            <p class="description">Pick a file you've uploaded to WordPress, or paste any URL — Drive share links, YouTube, etc.</p>
                         </td>
                     </tr>
                     <tr>
                         <th scope="row"><label for="asset_thumbnail">Thumbnail URL <span style="color:#888;font-weight:normal;">(optional)</span></label></th>
                         <td>
-                            <input type="url" id="asset_thumbnail" name="asset_thumbnail" value="<?php echo esc_attr( $editing_record['thumbnail'] ?? '' ); ?>" class="regular-text" placeholder="https://…" />
-                            <p class="description">Optional preview image. If left blank we'll use a generic icon based on the type.</p>
+                            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                                <input type="url" id="asset_thumbnail" name="asset_thumbnail" value="<?php echo esc_attr( $editing_record['thumbnail'] ?? '' ); ?>" class="regular-text" placeholder="https://…" style="flex:1;min-width:280px;" />
+                                <button type="button" class="button" id="slw-asset-pick-thumb">Choose from Media Library</button>
+                            </div>
+                            <p class="description">Optional preview image. Picker filters to images only. If left blank, customers see a generic icon based on the type.</p>
                         </td>
                     </tr>
                     <tr>
@@ -370,16 +557,108 @@ class SLW_Customer_Assets {
                 </select>
                 <button type="button" class="button button-primary" id="slw-asset-user-go">Edit Overrides &rarr;</button>
             </p>
+
+            <hr style="margin:32px 0;" />
+            <h2 id="internal">Internal References</h2>
+            <p>Editable master docs and internal links — visible only to you and your team in this admin area, plus on your dashboard's Resources card. Wholesale customers don't see these.</p>
+
+            <?php $internal_refs = self::get_internal_references(); $editing_ref = sanitize_key( $_GET['edit_ref'] ?? '' ); $editing_ref_record = null;
+            if ( $editing_ref !== '' ) {
+                foreach ( $internal_refs as $r ) { if ( ( $r['id'] ?? '' ) === $editing_ref ) { $editing_ref_record = $r; break; } }
+            } ?>
+
+            <h3><?php echo $editing_ref_record ? 'Edit Reference' : 'Add Reference'; ?></h3>
+            <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="background:#fff;border:1px solid #e0ddd8;border-radius:6px;padding:16px 20px;max-width:760px;">
+                <?php wp_nonce_field( 'slw_save_internal_ref' ); ?>
+                <input type="hidden" name="action" value="slw_save_internal_ref" />
+                <input type="hidden" name="ref_id" value="<?php echo esc_attr( $editing_ref_record['id'] ?? '' ); ?>" />
+                <table class="form-table">
+                    <tr>
+                        <th scope="row"><label for="ref_title">Title</label></th>
+                        <td><input type="text" id="ref_title" name="ref_title" value="<?php echo esc_attr( $editing_ref_record['title'] ?? '' ); ?>" class="regular-text" required /></td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="ref_url">URL</label></th>
+                        <td><input type="url" id="ref_url" name="ref_url" value="<?php echo esc_attr( $editing_ref_record['url'] ?? '' ); ?>" class="regular-text" required placeholder="https://…" /></td>
+                    </tr>
+                    <tr>
+                        <th scope="row"><label for="ref_description">Description <span style="color:#888;font-weight:normal;">(optional)</span></label></th>
+                        <td><textarea id="ref_description" name="ref_description" rows="2" class="large-text"><?php echo esc_textarea( $editing_ref_record['description'] ?? '' ); ?></textarea></td>
+                    </tr>
+                </table>
+                <?php submit_button( $editing_ref_record ? 'Update Reference' : 'Add Reference' ); ?>
+                <?php if ( $editing_ref_record ) : ?>
+                    <a href="<?php echo esc_url( admin_url( 'admin.php?page=slw-assets#internal' ) ); ?>" class="button">Cancel</a>
+                <?php endif; ?>
+            </form>
+
+            <h3 style="margin-top:24px;">Current References (<?php echo count( $internal_refs ); ?>)</h3>
+            <?php if ( empty( $internal_refs ) ) : ?>
+                <p style="color:#628393;font-style:italic;">No internal references yet.</p>
+            <?php else : ?>
+                <table class="widefat striped" style="max-width:1000px;">
+                    <thead><tr><th>Title</th><th>URL</th><th style="width:160px;">Actions</th></tr></thead>
+                    <tbody>
+                        <?php foreach ( $internal_refs as $ref ) : ?>
+                            <tr>
+                                <td>
+                                    <strong><?php echo esc_html( $ref['title'] ?? '' ); ?></strong>
+                                    <?php if ( ! empty( $ref['description'] ) ) : ?>
+                                        <br><span style="color:#628393;font-size:13px;"><?php echo esc_html( $ref['description'] ); ?></span>
+                                    <?php endif; ?>
+                                </td>
+                                <td style="word-break:break-all;font-size:12px;">
+                                    <a href="<?php echo esc_url( $ref['url'] ?? '#' ); ?>" target="_blank" rel="noopener"><?php echo esc_html( $ref['url'] ?? '' ); ?></a>
+                                </td>
+                                <td style="white-space:nowrap;">
+                                    <a href="<?php echo esc_url( add_query_arg( 'edit_ref', $ref['id'] ?? '', admin_url( 'admin.php?page=slw-assets' ) ) . '#internal' ); ?>" class="button button-small">Edit</a>
+                                    <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="display:inline;" onsubmit="return confirm('Delete this internal reference?');">
+                                        <?php wp_nonce_field( 'slw_delete_internal_ref' ); ?>
+                                        <input type="hidden" name="action" value="slw_delete_internal_ref" />
+                                        <input type="hidden" name="ref_id" value="<?php echo esc_attr( $ref['id'] ?? '' ); ?>" />
+                                        <button type="submit" class="button button-small" style="color:#c62828;">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            <?php endif; ?>
+
             <script>
             (function() {
                 var picker = document.getElementById('slw-asset-user-picker');
                 var btn    = document.getElementById('slw-asset-user-go');
-                if (!picker || !btn) return;
-                btn.addEventListener('click', function() {
-                    var uid = picker.value;
-                    if (!uid) return;
-                    window.location.href = '<?php echo esc_js( admin_url( 'admin.php?page=slw-assets&user=' ) ); ?>' + encodeURIComponent(uid);
-                });
+                if (picker && btn) {
+                    btn.addEventListener('click', function() {
+                        var uid = picker.value;
+                        if (!uid) return;
+                        window.location.href = '<?php echo esc_js( admin_url( 'admin.php?page=slw-assets&user=' ) ); ?>' + encodeURIComponent(uid);
+                    });
+                }
+
+                // Media Library picker — wires the two "Choose from Media Library" buttons
+                // to the WP media modal. Selected attachment URL drops into the field.
+                function bindMediaPicker(btnId, fieldId, mediaType, modalTitle) {
+                    var btn = document.getElementById(btnId);
+                    var field = document.getElementById(fieldId);
+                    if (!btn || !field || typeof wp === 'undefined' || !wp.media) return;
+                    var frame = null;
+                    btn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        if (frame) { frame.open(); return; }
+                        var args = { title: modalTitle, button: { text: 'Use this file' }, multiple: false };
+                        if (mediaType) { args.library = { type: mediaType }; }
+                        frame = wp.media(args);
+                        frame.on('select', function() {
+                            var att = frame.state().get('selection').first().toJSON();
+                            field.value = att.url;
+                        });
+                        frame.open();
+                    });
+                }
+                bindMediaPicker('slw-asset-pick-url',   'asset_url',       null,    'Choose an asset file');
+                bindMediaPicker('slw-asset-pick-thumb', 'asset_thumbnail', 'image', 'Choose a thumbnail image');
             })();
             </script>
         </div>

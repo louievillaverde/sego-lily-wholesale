@@ -304,6 +304,26 @@ class SLW_Admin_Dashboard {
                             <li><a href="mailto:support@leadpiranha.com"><span class="dashicons dashicons-sos"></span> Contact Support</a></li>
                             <li><a href="<?php echo esc_url( admin_url( 'admin.php?page=slw-preview' ) ); ?>"><span class="dashicons dashicons-visibility"></span> Preview Portal</a></li>
                         </ul>
+
+                        <?php
+                        // Internal References — admin-only links to editable master docs.
+                        // Lives in this card so they're always one click from the dashboard home.
+                        $internal_refs = class_exists( 'SLW_Customer_Assets' )
+                            ? SLW_Customer_Assets::get_internal_references()
+                            : array();
+                        if ( ! empty( $internal_refs ) ) : ?>
+                        <h3 class="slw-admin-card__heading" style="font-size:14px;margin-top:18px;">Internal References</h3>
+                        <ul class="slw-admin-resources">
+                            <?php foreach ( $internal_refs as $ref ) : ?>
+                                <li>
+                                    <a href="<?php echo esc_url( $ref['url'] ?? '#' ); ?>" target="_blank" rel="noopener" title="<?php echo esc_attr( $ref['description'] ?? '' ); ?>">
+                                        <span class="dashicons dashicons-media-document"></span> <?php echo esc_html( $ref['title'] ?? '' ); ?>
+                                    </a>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                        <p style="margin:6px 0 0;font-size:12px;"><a href="<?php echo esc_url( admin_url( 'admin.php?page=slw-assets#internal' ) ); ?>">Manage internal references &rarr;</a></p>
+                        <?php endif; ?>
                         <div class="slw-whats-new">
                             <h4 class="slw-whats-new__title">What's New in v<?php echo esc_html( SLW_VERSION ); ?></h4>
                             <ul class="slw-whats-new__list">
