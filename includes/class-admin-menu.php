@@ -118,6 +118,11 @@ class SLW_Admin_Menu {
             add_submenu_page( 'slw-dashboard', 'Customer Assets', 'Assets', 'manage_woocommerce', 'slw-assets', array( 'SLW_Customer_Assets', 'render_admin_page' ) );
         }
 
+        // 5c. Wholesale Inbox (quick-launch link to SiteGround Webmail)
+        if ( class_exists( 'SLW_Mailbox' ) ) {
+            add_submenu_page( 'slw-dashboard', 'Wholesale Inbox', 'Inbox', 'manage_woocommerce', 'slw-inbox', array( 'SLW_Mailbox', 'render_page' ) );
+        }
+
         // 6. Sequences (email campaigns + newsletters) — with failure count badge
         if ( class_exists( 'SLW_Email_Sequences' ) ) {
             $seq_label = 'Sequences';

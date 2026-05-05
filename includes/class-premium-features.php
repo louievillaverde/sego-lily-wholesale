@@ -503,6 +503,22 @@ class SLW_Premium_Features {
             self::send_bulk_welcome_email( $user, $password, $business );
         }
 
+        // Fire wholesale-approved webhook so Mautic gets the tag, segment
+        // membership updates, and the onboarding campaign picks them up.
+        // Pre-v4.6.8 manual-add silently skipped this, leaving manually-added
+        // customers stranded outside Mautic. Tracked via slw_synced_to_mautic
+        // for idempotent re-sync via the bulk Sync action.
+        if ( class_exists( 'SLW_Webhooks' ) ) {
+            SLW_Webhooks::fire( 'wholesale-approved', array(
+                'email'         => $email,
+                'first_name'    => $first_name,
+                'last_name'     => $last_name,
+                'business_name' => $business,
+                'source'        => 'manual_add',
+            ) );
+            update_user_meta( $user_id, 'slw_synced_to_mautic', current_time( 'mysql' ) );
+        }
+
         set_transient( 'slw_single_customer_result', array(
             'type' => 'success', 'message' => 'Wholesale account created for ' . $first_name . ' ' . $last_name . ' (' . $email . ').' . ( $send_welcome ? ' Welcome email sent.' : '' ),
         ), 60 );
@@ -591,6 +607,19 @@ class SLW_Premium_Features {
             if ( $phone )         update_user_meta( $user->ID, 'billing_phone', $phone );
             update_user_meta( $user->ID, 'slw_net30_approved', $net30 ? '1' : '0' );
             update_user_meta( $user->ID, 'slw_resale_cert_verified', $tax_exempt ? '1' : '0' );
+
+            // Fire wholesale-approved webhook so Mautic gets the tag, segment
+            // membership updates, and the onboarding campaign picks them up.
+            if ( class_exists( 'SLW_Webhooks' ) ) {
+                SLW_Webhooks::fire( 'wholesale-approved', array(
+                    'email'         => $email,
+                    'first_name'    => $first_name,
+                    'last_name'     => $last_name,
+                    'business_name' => $business_name,
+                    'source'        => 'csv_import',
+                ) );
+                update_user_meta( $user->ID, 'slw_synced_to_mautic', current_time( 'mysql' ) );
+            }
         }
 
         set_transient( 'slw_last_import_result', array(

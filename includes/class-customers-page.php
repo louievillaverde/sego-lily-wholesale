@@ -13,6 +13,63 @@ class SLW_Customers_Page {
     public static function init() {
         add_action( 'admin_init', array( __CLASS__, 'maybe_export_csv' ) );
         add_action( 'wp_ajax_slw_deactivate_wholesale', array( __CLASS__, 'ajax_deactivate_wholesale' ) );
+        add_action( 'admin_post_slw_sync_mautic_bulk', array( __CLASS__, 'handle_sync_mautic_bulk' ) );
+    }
+
+    /**
+     * Bulk-sync wholesale customers to Mautic by firing the
+     * wholesale-approved webhook for each one without slw_synced_to_mautic
+     * user_meta. Idempotent: customers with the flag are skipped.
+     *
+     * Backfill mechanism for the manual-add Mautic sync gap fixed in v4.6.8.
+     * Pre-v4.6.8 the Quick Add and CSV Import paths skipped the webhook
+     * entirely, leaving manually-added customers stranded outside Mautic.
+     * This processes all of them in one click.
+     */
+    public static function handle_sync_mautic_bulk() {
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_die( 'Unauthorized', 403 );
+        }
+        check_admin_referer( 'slw_sync_mautic_bulk' );
+
+        if ( ! class_exists( 'SLW_Webhooks' ) ) {
+            wp_safe_redirect( add_query_arg( 'slw_sync_result', 'no_webhooks', admin_url( 'admin.php?page=slw-customers&tab=customers' ) ) );
+            exit;
+        }
+
+        $users = get_users( array(
+            'role'   => 'wholesale_customer',
+            'fields' => array( 'ID', 'user_email' ),
+        ) );
+
+        $synced = 0;
+        $skipped = 0;
+        foreach ( $users as $user ) {
+            $existing_flag = get_user_meta( $user->ID, 'slw_synced_to_mautic', true );
+            if ( $existing_flag ) {
+                $skipped++;
+                continue;
+            }
+            $first_name    = get_user_meta( $user->ID, 'first_name', true );
+            $last_name     = get_user_meta( $user->ID, 'last_name', true );
+            $business_name = get_user_meta( $user->ID, 'slw_business_name', true );
+
+            SLW_Webhooks::fire( 'wholesale-approved', array(
+                'email'         => $user->user_email,
+                'first_name'    => $first_name,
+                'last_name'     => $last_name,
+                'business_name' => $business_name,
+                'source'        => 'mautic_backfill_sync',
+            ) );
+            update_user_meta( $user->ID, 'slw_synced_to_mautic', current_time( 'mysql' ) );
+            $synced++;
+        }
+
+        $result = $synced . '_' . $skipped;
+        wp_safe_redirect( add_query_arg( array(
+            'slw_sync_result' => $result,
+        ), admin_url( 'admin.php?page=slw-customers&tab=customers' ) ) );
+        exit;
     }
 
     /**
@@ -255,6 +312,8 @@ class SLW_Customers_Page {
 
         <?php
         $export_url = wp_nonce_url( admin_url( 'admin.php?page=slw-customers&action=export_csv' ), 'slw_export_customers' );
+        $sync_nonce = wp_create_nonce( 'slw_sync_mautic_bulk' );
+        $sync_action_url = admin_url( 'admin-post.php' );
 
         // Pull all distinct parent organizations for the filter dropdown.
         global $wpdb;
@@ -264,7 +323,40 @@ class SLW_Customers_Page {
              ORDER BY meta_value ASC",
             'slw_parent_organization'
         ) );
-        ?>
+
+        // Count unsynced wholesale customers for the Sync to Mautic button.
+        $unsynced_count = (int) $wpdb->get_var( $wpdb->prepare(
+            "SELECT COUNT(*) FROM {$wpdb->users} u
+             INNER JOIN {$wpdb->usermeta} cap ON cap.user_id = u.ID AND cap.meta_key = %s AND cap.meta_value LIKE %s
+             LEFT JOIN {$wpdb->usermeta} synced ON synced.user_id = u.ID AND synced.meta_key = %s
+             WHERE synced.meta_value IS NULL OR synced.meta_value = ''",
+            $wpdb->prefix . 'capabilities',
+            '%wholesale_customer%',
+            'slw_synced_to_mautic'
+        ) );
+
+        // Show the post-sync result notice.
+        $sync_result = sanitize_text_field( $_GET['slw_sync_result'] ?? '' );
+        if ( $sync_result === 'no_webhooks' ) : ?>
+            <div class="notice notice-error is-dismissible"><p>Sync skipped: webhook system not loaded.</p></div>
+        <?php elseif ( $sync_result && strpos( $sync_result, '_' ) !== false ) :
+            list( $synced_n, $skipped_n ) = array_map( 'absint', explode( '_', $sync_result ) ); ?>
+            <div class="notice notice-success is-dismissible"><p>Mautic sync complete. Synced <?php echo $synced_n; ?>, skipped <?php echo $skipped_n; ?> already-synced.</p></div>
+        <?php endif; ?>
+
+        <?php if ( $unsynced_count > 0 ) : ?>
+            <div style="background:#FFF8E1;border:1px solid #ffe082;border-radius:6px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+                <div style="color:#5d4037;">
+                    <strong><?php echo $unsynced_count; ?> wholesale <?php echo $unsynced_count === 1 ? 'customer' : 'customers'; ?> not yet synced to Mautic.</strong>
+                    <span style="font-size:13px;color:#996800;">Manually-added customers (Quick Add or CSV import) before v4.6.8 weren't auto-tagged in Mautic. Click below to backfill.</span>
+                </div>
+                <form method="post" action="<?php echo esc_url( $sync_action_url ); ?>" style="margin:0;">
+                    <input type="hidden" name="action" value="slw_sync_mautic_bulk" />
+                    <input type="hidden" name="_wpnonce" value="<?php echo esc_attr( $sync_nonce ); ?>" />
+                    <button type="submit" class="button button-primary" onclick="return confirm('Sync <?php echo $unsynced_count; ?> wholesale customer(s) to Mautic? This fires the wholesale-approved webhook for each, which tags them in Mautic and starts the onboarding sequence.');">Sync to Mautic</button>
+                </form>
+            </div>
+        <?php endif; ?>
 
         <?php if ( $org_filter ) : ?>
             <!-- Active organization filter banner. Makes it visually obvious which subset is showing. -->
