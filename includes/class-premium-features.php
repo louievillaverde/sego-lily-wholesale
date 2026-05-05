@@ -290,6 +290,9 @@ class SLW_Premium_Features {
                             <label style="font-size:13px;color:#628393;">
                                 <input type="checkbox" name="send_welcome" value="1" checked /> Send welcome email
                             </label>
+                            <label style="font-size:13px;color:#628393;" title="When checked, the customer is tagged in Mautic and enrolled in the Wholesale Onboarding email sequence. Uncheck for customers who are already onboarded or shouldn't receive the welcome series.">
+                                <input type="checkbox" name="add_to_onboarding" value="1" checked /> Add to onboarding sequence
+                            </label>
                         </div>
                     </div>
                 </form>
@@ -338,7 +341,7 @@ class SLW_Premium_Features {
                 <div class="slw-collapsible" id="slw-optional-columns">
                     <button type="button" class="slw-collapsible__toggle" onclick="this.parentElement.classList.toggle('slw-collapsible--open')">
                         <span class="dashicons dashicons-arrow-down-alt2 slw-collapsible__arrow"></span>
-                        Optional Columns (8 fields)
+                        Optional Columns (9 fields)
                     </button>
                     <div class="slw-collapsible__body">
                         <table class="slw-columns-table">
@@ -390,6 +393,11 @@ class SLW_Premium_Features {
                                     <td>Send login credentials via email (yes/no)</td>
                                     <td>yes</td>
                                 </tr>
+                                <tr>
+                                    <td><code>add_to_onboarding</code></td>
+                                    <td>Tag in Mautic + enroll in Wholesale Onboarding sequence (yes/no). Set to <code>no</code> for already-onboarded customers.</td>
+                                    <td>yes</td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
@@ -436,7 +444,8 @@ class SLW_Premium_Features {
         $business    = sanitize_text_field( $_POST['business_name'] ?? '' );
         $phone       = sanitize_text_field( $_POST['phone'] ?? '' );
         $parent_org  = sanitize_text_field( wp_unslash( $_POST['parent_organization'] ?? '' ) );
-        $send_welcome = ! empty( $_POST['send_welcome'] );
+        $send_welcome      = ! empty( $_POST['send_welcome'] );
+        $add_to_onboarding = ! empty( $_POST['add_to_onboarding'] );
 
         if ( ! $email || ! is_email( $email ) ) {
             set_transient( 'slw_single_customer_result', array(
@@ -505,10 +514,13 @@ class SLW_Premium_Features {
 
         // Fire wholesale-approved webhook so Mautic gets the tag, segment
         // membership updates, and the onboarding campaign picks them up.
-        // Pre-v4.6.8 manual-add silently skipped this, leaving manually-added
-        // customers stranded outside Mautic. Tracked via slw_synced_to_mautic
-        // for idempotent re-sync via the bulk Sync action.
-        if ( class_exists( 'SLW_Webhooks' ) ) {
+        // Honors the "Add to onboarding sequence" toggle (v4.6.10): when
+        // unchecked, skip the webhook entirely so the customer is created
+        // in WP only and won't be enrolled in the Mautic onboarding series.
+        // Tracked via slw_synced_to_mautic for idempotent re-sync via the
+        // bulk Sync action — when opted out, the flag stays empty so the
+        // customer surfaces on the banner if Holly changes her mind.
+        if ( $add_to_onboarding && class_exists( 'SLW_Webhooks' ) ) {
             SLW_Webhooks::fire( 'wholesale-approved', array(
                 'email'         => $email,
                 'first_name'    => $first_name,
@@ -519,8 +531,12 @@ class SLW_Premium_Features {
             update_user_meta( $user_id, 'slw_synced_to_mautic', current_time( 'mysql' ) );
         }
 
+        $msg_parts = array( 'Wholesale account created for ' . $first_name . ' ' . $last_name . ' (' . $email . ').' );
+        if ( $send_welcome )       $msg_parts[] = 'Welcome email sent.';
+        if ( ! $add_to_onboarding ) $msg_parts[] = 'Skipped Mautic onboarding sequence.';
+
         set_transient( 'slw_single_customer_result', array(
-            'type' => 'success', 'message' => 'Wholesale account created for ' . $first_name . ' ' . $last_name . ' (' . $email . ').' . ( $send_welcome ? ' Welcome email sent.' : '' ),
+            'type' => 'success', 'message' => implode( ' ', $msg_parts ),
         ), 60 );
         wp_redirect( admin_url( 'admin.php?page=slw-customers&tab=import' ) );
         exit;
@@ -566,7 +582,10 @@ class SLW_Premium_Features {
             $phone         = sanitize_text_field( $row['phone'] ?? '' );
             $net30         = strtolower( trim( $row['net30_approved'] ?? 'no' ) ) === 'yes';
             $tax_exempt    = strtolower( trim( $row['tax_exempt'] ?? 'no' ) ) === 'yes';
-            $send_welcome  = $force_welcome || strtolower( trim( $row['send_welcome_email'] ?? 'yes' ) ) === 'yes';
+            $send_welcome      = $force_welcome || strtolower( trim( $row['send_welcome_email'] ?? 'yes' ) ) === 'yes';
+            // CSV column add_to_onboarding controls Mautic onboarding sequence
+            // enrollment. Default yes if column is absent (preserves prior behavior).
+            $add_to_onboarding = strtolower( trim( $row['add_to_onboarding'] ?? 'yes' ) ) === 'yes';
 
             $existing = get_user_by( 'email', $email );
             if ( $existing ) {
@@ -610,7 +629,8 @@ class SLW_Premium_Features {
 
             // Fire wholesale-approved webhook so Mautic gets the tag, segment
             // membership updates, and the onboarding campaign picks them up.
-            if ( class_exists( 'SLW_Webhooks' ) ) {
+            // Honors the add_to_onboarding CSV column (v4.6.10): default yes.
+            if ( $add_to_onboarding && class_exists( 'SLW_Webhooks' ) ) {
                 SLW_Webhooks::fire( 'wholesale-approved', array(
                     'email'         => $email,
                     'first_name'    => $first_name,
@@ -638,7 +658,7 @@ class SLW_Premium_Features {
         header( 'Content-Type: text/csv; charset=utf-8' );
         header( 'Content-Disposition: attachment; filename=wholesale-users-template.csv' );
         $out = fopen( 'php://output', 'w' );
-        fputcsv( $out, array( 'email', 'first_name', 'last_name', 'business_name', 'parent_organization', 'phone', 'address', 'ein', 'business_type', 'net30_approved', 'tax_exempt', 'send_welcome_email' ) );
+        fputcsv( $out, array( 'email', 'first_name', 'last_name', 'business_name', 'parent_organization', 'phone', 'address', 'ein', 'business_type', 'net30_approved', 'tax_exempt', 'send_welcome_email', 'add_to_onboarding' ) );
         fputcsv( $out, array( 'shop@example.com', 'Alex', 'Smith', 'Example Boutique (Bozeman)', 'Example Boutique', '555-123-4567', '123 Main St, Austin TX', '12-3456789', 'boutique', 'no', 'yes', 'yes' ) );
         fclose( $out );
         exit;
