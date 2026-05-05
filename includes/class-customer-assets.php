@@ -50,10 +50,16 @@ class SLW_Customer_Assets {
     /**
      * Enqueue the WP Media Library JS so the Assets admin form can launch
      * the standard "Choose File" modal alongside a manual URL field.
+     *
+     * Earlier versions only checked the $hook string for "slw-assets", but
+     * WordPress's hook naming for sub-pages under a custom top-level menu
+     * varies by the parent menu's title sanitization. Falling back to
+     * $_GET['page'] === 'slw-assets' is the reliable signal.
      */
     public static function enqueue_media_picker( $hook ) {
-        // Only on the Assets admin page.
-        if ( strpos( (string) $hook, 'slw-assets' ) === false ) {
+        $on_assets_page = ( isset( $_GET['page'] ) && $_GET['page'] === 'slw-assets' )
+            || strpos( (string) $hook, 'slw-assets' ) !== false;
+        if ( ! $on_assets_page ) {
             return;
         }
         wp_enqueue_media();
