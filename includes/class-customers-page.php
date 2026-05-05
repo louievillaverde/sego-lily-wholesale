@@ -64,7 +64,7 @@ class SLW_Customers_Page {
         header( 'Content-Disposition: attachment; filename=wholesale-customers-' . date( 'Y-m-d' ) . '.csv' );
 
         $out = fopen( 'php://output', 'w' );
-        fputcsv( $out, array( 'Name', 'Email', 'Business Name', 'Tier', 'NET Terms', 'Phone', 'Address', 'EIN' ) );
+        fputcsv( $out, array( 'Name', 'Email', 'Business Name', 'Parent Organization', 'Tier', 'NET Terms', 'Phone', 'Address', 'EIN' ) );
 
         foreach ( $users as $user ) {
             $tier = class_exists( 'SLW_Tiers' ) ? SLW_Tiers::get_user_tier( $user->ID ) : 'standard';
@@ -74,6 +74,7 @@ class SLW_Customers_Page {
                 $user->first_name . ' ' . $user->last_name,
                 $user->user_email,
                 get_user_meta( $user->ID, 'slw_business_name', true ),
+                get_user_meta( $user->ID, 'slw_parent_organization', true ),
                 ucfirst( $tier ),
                 $net > 0 ? 'NET ' . $net : 'None',
                 get_user_meta( $user->ID, 'billing_phone', true ),
@@ -172,45 +173,34 @@ class SLW_Customers_Page {
         $per_page    = 20;
         $paged       = max( 1, absint( $_GET['paged'] ?? 1 ) );
         $search      = sanitize_text_field( $_GET['s'] ?? '' );
+        $org_filter  = sanitize_text_field( wp_unslash( $_GET['org'] ?? '' ) );
         $offset      = ( $paged - 1 ) * $per_page;
 
         // Build user query args.
+        // Sort by parent organization first, then by business name when an org
+        // filter is active, so locations group together. Otherwise newest first.
         $args = array(
             'role'    => 'wholesale_customer',
             'number'  => $per_page,
             'offset'  => $offset,
-            'orderby' => 'registered',
-            'order'   => 'DESC',
+            'orderby' => $org_filter ? 'meta_value' : 'registered',
+            'meta_key' => $org_filter ? 'slw_business_name' : '',
+            'order'   => $org_filter ? 'ASC' : 'DESC',
         );
 
-        // Search by business name, first name, last name, or email.
-        if ( $search ) {
-            $args['search']         = '*' . $search . '*';
-            $args['search_columns'] = array( 'user_email', 'display_name' );
+        // Apply parent organization filter when set.
+        if ( $org_filter ) {
             $args['meta_query'] = array(
-                'relation' => 'OR',
                 array(
-                    'key'     => 'slw_business_name',
-                    'value'   => $search,
-                    'compare' => 'LIKE',
-                ),
-                array(
-                    'key'     => 'first_name',
-                    'value'   => $search,
-                    'compare' => 'LIKE',
-                ),
-                array(
-                    'key'     => 'last_name',
-                    'value'   => $search,
-                    'compare' => 'LIKE',
+                    'key'   => 'slw_parent_organization',
+                    'value' => $org_filter,
                 ),
             );
-            // WP_User_Query combines search + meta_query with AND by default.
-            // We need OR across all of them, so use a custom approach:
-            // Remove the built-in search and rely on meta_query + a filter.
-            unset( $args['search'], $args['search_columns'] );
+        }
 
-            // Instead, get IDs that match email/display_name separately.
+        // Search by business name, first name, last name, email, or parent organization.
+        if ( $search ) {
+            // Get IDs that match email/display_name separately.
             $email_match_args = array(
                 'role'           => 'wholesale_customer',
                 'search'         => '*' . $search . '*',
@@ -239,6 +229,11 @@ class SLW_Customers_Page {
                         'value'   => $search,
                         'compare' => 'LIKE',
                     ),
+                    array(
+                        'key'     => 'slw_parent_organization',
+                        'value'   => $search,
+                        'compare' => 'LIKE',
+                    ),
                 ),
             );
             $meta_matched_ids = get_users( $meta_match_args );
@@ -258,20 +253,55 @@ class SLW_Customers_Page {
         $total_pages = ceil( $total_users / $per_page );
         ?>
 
-        <?php $export_url = wp_nonce_url( admin_url( 'admin.php?page=slw-customers&action=export_csv' ), 'slw_export_customers' ); ?>
+        <?php
+        $export_url = wp_nonce_url( admin_url( 'admin.php?page=slw-customers&action=export_csv' ), 'slw_export_customers' );
 
-        <!-- Search Box -->
-        <div class="slw-admin-card" style="padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;">
-            <form method="get" style="display: flex; align-items: center; gap: 8px;">
+        // Pull all distinct parent organizations for the filter dropdown.
+        global $wpdb;
+        $all_organizations = $wpdb->get_col( $wpdb->prepare(
+            "SELECT DISTINCT meta_value FROM {$wpdb->usermeta}
+             WHERE meta_key = %s AND meta_value != ''
+             ORDER BY meta_value ASC",
+            'slw_parent_organization'
+        ) );
+        ?>
+
+        <?php if ( $org_filter ) : ?>
+            <!-- Active organization filter banner. Makes it visually obvious which subset is showing. -->
+            <div style="background:#FFF8E1;border:1px solid #ffe082;border-radius:6px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+                <div style="color:#5d4037;">
+                    <strong>Showing locations in:</strong>
+                    <span style="background:#fff;padding:2px 8px;border-radius:10px;font-weight:600;margin-left:6px;"><?php echo esc_html( $org_filter ); ?></span>
+                    <span style="color:#996800;font-size:13px;margin-left:8px;"><?php echo esc_html( $total_users ); ?> location<?php echo $total_users !== 1 ? 's' : ''; ?></span>
+                </div>
+                <a href="<?php echo esc_url( admin_url( 'admin.php?page=slw-customers&tab=customers' ) ); ?>" class="button button-small">Clear filter</a>
+            </div>
+        <?php endif; ?>
+
+        <!-- Search + Org Filter Box -->
+        <div class="slw-admin-card" style="padding: 12px 16px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+            <form method="get" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                 <input type="hidden" name="page" value="slw-customers" />
                 <input type="hidden" name="tab" value="customers" />
-                <label for="slw-customer-search" class="screen-reader-text">Search by business name</label>
+
+                <label for="slw-customer-search" class="screen-reader-text">Search</label>
                 <input type="search" id="slw-customer-search" name="s"
                        value="<?php echo esc_attr( $search ); ?>"
-                       placeholder="Search by business name..."
+                       placeholder="Search name, business, or organization..."
                        style="min-width: 280px;" />
+
+                <?php if ( ! empty( $all_organizations ) ) : ?>
+                    <label for="slw-org-filter" class="screen-reader-text">Filter by organization</label>
+                    <select id="slw-org-filter" name="org" onchange="this.form.submit();" style="min-width:200px;">
+                        <option value="">All organizations</option>
+                        <?php foreach ( $all_organizations as $org ) : ?>
+                            <option value="<?php echo esc_attr( $org ); ?>" <?php selected( $org_filter, $org ); ?>><?php echo esc_html( $org ); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                <?php endif; ?>
+
                 <button type="submit" class="button">Search</button>
-                <?php if ( $search ) : ?>
+                <?php if ( $search || $org_filter ) : ?>
                     <a href="<?php echo esc_url( admin_url( 'admin.php?page=slw-customers&tab=customers' ) ); ?>" class="button">Clear</a>
                 <?php endif; ?>
             </form>
@@ -290,6 +320,7 @@ class SLW_Customers_Page {
                     <tr>
                         <th>Name</th>
                         <th>Business Name</th>
+                        <th>Organization</th>
                         <th>Email</th>
                         <th>Tier</th>
                         <th>NET Terms</th>
@@ -303,7 +334,7 @@ class SLW_Customers_Page {
                 <tbody>
                     <?php if ( empty( $customers ) ) : ?>
                         <tr>
-                            <td colspan="10" style="text-align: center; padding: 24px; color: #628393;">
+                            <td colspan="11" style="text-align: center; padding: 24px; color: #628393;">
                                 <?php echo $search ? 'No customers match your search.' : 'No wholesale customers found.'; ?>
                             </td>
                         </tr>
@@ -353,10 +384,28 @@ class SLW_Customers_Page {
                             <?php
                             $address_str = self::format_user_address( $user_id );
                             $customer_ein = class_exists( 'SLW_Customer_Portal' ) ? SLW_Customer_Portal::get_user_ein( $user_id ) : '';
+                            $parent_org   = get_user_meta( $user_id, 'slw_parent_organization', true );
+                            // Build the org-filter URL so the pill filters to that organization on click.
+                            $org_pill_url = $parent_org
+                                ? add_query_arg( array(
+                                    'page' => 'slw-customers',
+                                    'tab'  => 'customers',
+                                    'org'  => $parent_org,
+                                  ), admin_url( 'admin.php' ) )
+                                : '';
                             ?>
                             <tr>
                                 <td><strong><?php echo esc_html( $full_name ); ?></strong></td>
                                 <td><?php echo esc_html( $business_name ?: 'None' ); ?></td>
+                                <td><?php if ( $parent_org ) : ?>
+                                    <a href="<?php echo esc_url( $org_pill_url ); ?>"
+                                       title="View all locations in <?php echo esc_attr( $parent_org ); ?>"
+                                       style="display:inline-block;padding:2px 10px;background:#FFF8E1;color:#5d4037;border:1px solid #ffe082;border-radius:10px;font-size:12px;font-weight:600;text-decoration:none;line-height:1.5;">
+                                        <?php echo esc_html( $parent_org ); ?>
+                                    </a>
+                                <?php else : ?>
+                                    <span style="color:#999;font-size:12px;">None</span>
+                                <?php endif; ?></td>
                                 <td><a href="mailto:<?php echo esc_attr( $customer->user_email ); ?>"><?php echo esc_html( $customer->user_email ); ?></a></td>
                                 <td><span class="slw-lead-status slw-lead-status--<?php echo esc_attr( $tier ); ?>"><?php echo esc_html( ucfirst( $tier ) ); ?></span></td>
                                 <td><?php echo $net_terms ? 'NET ' . esc_html( $net_terms ) : 'None'; ?></td>

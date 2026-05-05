@@ -220,6 +220,7 @@ class SLW_Premium_Features {
     }
 
     public static function render_import_page() {
+        global $wpdb;
         $last_result = get_transient( 'slw_last_import_result' );
         delete_transient( 'slw_last_import_result' );
         $single_result = get_transient( 'slw_single_customer_result' );
@@ -269,6 +270,23 @@ class SLW_Premium_Features {
                         <div class="slw-form-field">
                             <label for="slw_sc_business">Business Name</label>
                             <input type="text" id="slw_sc_business" name="business_name" />
+                        </div>
+                        <div class="slw-form-field">
+                            <label for="slw_sc_parent_org">Parent Organization <span style="color:#888;font-weight:normal;">(optional)</span></label>
+                            <input type="text" id="slw_sc_parent_org" name="parent_organization" list="slw-parent-org-suggestions" placeholder="e.g. Boutique X" />
+                            <?php
+                            $existing_orgs_qa = $wpdb->get_col( $wpdb->prepare(
+                                "SELECT DISTINCT meta_value FROM {$wpdb->usermeta} WHERE meta_key = %s AND meta_value != '' ORDER BY meta_value ASC LIMIT 100",
+                                'slw_parent_organization'
+                            ) );
+                            if ( ! empty( $existing_orgs_qa ) ) : ?>
+                                <datalist id="slw-parent-org-suggestions">
+                                    <?php foreach ( $existing_orgs_qa as $org_qa ) : ?>
+                                        <option value="<?php echo esc_attr( $org_qa ); ?>"></option>
+                                    <?php endforeach; ?>
+                                </datalist>
+                            <?php endif; ?>
+                            <small style="color:#628393;">Use when this account is one location of a multi-location customer.</small>
                         </div>
                         <div class="slw-form-field">
                             <label for="slw_sc_phone">Phone</label>
@@ -327,7 +345,7 @@ class SLW_Premium_Features {
                 <div class="slw-collapsible" id="slw-optional-columns">
                     <button type="button" class="slw-collapsible__toggle" onclick="this.parentElement.classList.toggle('slw-collapsible--open')">
                         <span class="dashicons dashicons-arrow-down-alt2 slw-collapsible__arrow"></span>
-                        Optional Columns (7 fields)
+                        Optional Columns (8 fields)
                     </button>
                     <div class="slw-collapsible__body">
                         <table class="slw-columns-table">
@@ -340,9 +358,14 @@ class SLW_Premium_Features {
                             </thead>
                             <tbody>
                                 <tr>
+                                    <td><code>parent_organization</code></td>
+                                    <td>Group multiple locations under one organization (e.g. "Boutique X"). Leaves rows ungrouped if blank.</td>
+                                    <td>blank</td>
+                                </tr>
+                                <tr>
                                     <td><code>phone</code></td>
                                     <td>Business phone number</td>
-                                    <td>-</td>
+                                    <td>blank</td>
                                 </tr>
                                 <tr>
                                     <td><code>address</code></td>
@@ -414,11 +437,12 @@ class SLW_Premium_Features {
         if ( ! current_user_can( 'manage_woocommerce' ) ) wp_die( 'Unauthorized', 403 );
         check_admin_referer( 'slw_single_customer' );
 
-        $email      = sanitize_email( $_POST['email'] ?? '' );
-        $first_name = sanitize_text_field( $_POST['first_name'] ?? '' );
-        $last_name  = sanitize_text_field( $_POST['last_name'] ?? '' );
-        $business   = sanitize_text_field( $_POST['business_name'] ?? '' );
-        $phone      = sanitize_text_field( $_POST['phone'] ?? '' );
+        $email       = sanitize_email( $_POST['email'] ?? '' );
+        $first_name  = sanitize_text_field( $_POST['first_name'] ?? '' );
+        $last_name   = sanitize_text_field( $_POST['last_name'] ?? '' );
+        $business    = sanitize_text_field( $_POST['business_name'] ?? '' );
+        $phone       = sanitize_text_field( $_POST['phone'] ?? '' );
+        $parent_org  = sanitize_text_field( wp_unslash( $_POST['parent_organization'] ?? '' ) );
         $send_welcome = ! empty( $_POST['send_welcome'] );
 
         if ( ! $email || ! is_email( $email ) ) {
@@ -441,14 +465,17 @@ class SLW_Premium_Features {
         if ( $existing ) {
             if ( ! slw_is_wholesale_user( $existing->ID ) ) {
                 $existing->add_role( 'wholesale_customer' );
-                if ( $business ) update_user_meta( $existing->ID, 'slw_business_name', $business );
-                if ( $phone )    update_user_meta( $existing->ID, 'billing_phone', $phone );
+                if ( $business )   update_user_meta( $existing->ID, 'slw_business_name', $business );
+                if ( $phone )      update_user_meta( $existing->ID, 'billing_phone', $phone );
+                if ( $parent_org ) update_user_meta( $existing->ID, 'slw_parent_organization', $parent_org );
                 set_transient( 'slw_single_customer_result', array(
                     'type' => 'success', 'message' => 'Existing user ' . $email . ' has been promoted to wholesale customer.',
                 ), 60 );
             } else {
+                // Already wholesale. Update the parent org if Holly provided one this time.
+                if ( $parent_org ) update_user_meta( $existing->ID, 'slw_parent_organization', $parent_org );
                 set_transient( 'slw_single_customer_result', array(
-                    'type' => 'warning', 'message' => $email . ' is already a wholesale customer.',
+                    'type' => 'warning', 'message' => $email . ' is already a wholesale customer.' . ( $parent_org ? ' Parent organization updated.' : '' ),
                 ), 60 );
             }
             wp_redirect( admin_url( 'admin.php?page=slw-import' ) );
@@ -474,8 +501,9 @@ class SLW_Premium_Features {
             exit;
         }
 
-        if ( $business ) update_user_meta( $user_id, 'slw_business_name', $business );
-        if ( $phone )    update_user_meta( $user_id, 'billing_phone', $phone );
+        if ( $business )   update_user_meta( $user_id, 'slw_business_name', $business );
+        if ( $phone )      update_user_meta( $user_id, 'billing_phone', $phone );
+        if ( $parent_org ) update_user_meta( $user_id, 'slw_parent_organization', $parent_org );
 
         if ( $send_welcome ) {
             $user = get_userdata( $user_id );
@@ -525,6 +553,7 @@ class SLW_Premium_Features {
             $first_name    = sanitize_text_field( $row['first_name'] ?? '' );
             $last_name     = sanitize_text_field( $row['last_name'] ?? '' );
             $business_name = sanitize_text_field( $row['business_name'] ?? '' );
+            $parent_org    = sanitize_text_field( $row['parent_organization'] ?? '' );
             $phone         = sanitize_text_field( $row['phone'] ?? '' );
             $net30         = strtolower( trim( $row['net30_approved'] ?? 'no' ) ) === 'yes';
             $tax_exempt    = strtolower( trim( $row['tax_exempt'] ?? 'no' ) ) === 'yes';
@@ -565,6 +594,7 @@ class SLW_Premium_Features {
             }
 
             if ( $business_name ) update_user_meta( $user->ID, 'slw_business_name', $business_name );
+            if ( $parent_org )    update_user_meta( $user->ID, 'slw_parent_organization', $parent_org );
             if ( $phone )         update_user_meta( $user->ID, 'billing_phone', $phone );
             update_user_meta( $user->ID, 'slw_net30_approved', $net30 ? '1' : '0' );
             update_user_meta( $user->ID, 'slw_resale_cert_verified', $tax_exempt ? '1' : '0' );
@@ -586,8 +616,8 @@ class SLW_Premium_Features {
         header( 'Content-Type: text/csv; charset=utf-8' );
         header( 'Content-Disposition: attachment; filename=wholesale-users-template.csv' );
         $out = fopen( 'php://output', 'w' );
-        fputcsv( $out, array( 'email', 'first_name', 'last_name', 'business_name', 'phone', 'address', 'ein', 'business_type', 'net30_approved', 'tax_exempt', 'send_welcome_email' ) );
-        fputcsv( $out, array( 'shop@example.com', 'Alex', 'Smith', 'Example Boutique', '555-123-4567', '123 Main St, Austin TX', '12-3456789', 'boutique', 'no', 'yes', 'yes' ) );
+        fputcsv( $out, array( 'email', 'first_name', 'last_name', 'business_name', 'parent_organization', 'phone', 'address', 'ein', 'business_type', 'net30_approved', 'tax_exempt', 'send_welcome_email' ) );
+        fputcsv( $out, array( 'shop@example.com', 'Alex', 'Smith', 'Example Boutique (Bozeman)', 'Example Boutique', '555-123-4567', '123 Main St, Austin TX', '12-3456789', 'boutique', 'no', 'yes', 'yes' ) );
         fclose( $out );
         exit;
     }

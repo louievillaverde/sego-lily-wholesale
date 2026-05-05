@@ -292,6 +292,7 @@ class SLW_Wholesale_Role {
         $net_terms = absint( $net_terms );
         $resale_number = SLW_Encryption::decrypt( get_user_meta( $user->ID, 'slw_resale_certificate_number', true ) );
         $ein_number    = SLW_Encryption::decrypt( get_user_meta( $user->ID, 'slw_ein', true ) );
+        $parent_org    = get_user_meta( $user->ID, 'slw_parent_organization', true );
         ?>
         <h2>Wholesale Portal</h2>
         <table class="form-table">
@@ -320,6 +321,26 @@ class SLW_Wholesale_Role {
                 <td>
                     <input type="text" id="slw_ein" name="slw_ein" value="<?php echo esc_attr( $ein_number ); ?>" class="regular-text" placeholder="XX-XXXXXXX" />
                     <p class="description">Federal EIN. Stored encrypted at rest. Customer can also edit this from their wholesale portal account tab.</p>
+                </td>
+            </tr>
+            <tr>
+                <th><label for="slw_parent_organization">Parent Organization</label></th>
+                <td>
+                    <input type="text" id="slw_parent_organization" name="slw_parent_organization" value="<?php echo esc_attr( $parent_org ); ?>" class="regular-text" placeholder="e.g. Boutique X" list="slw_parent_org_suggestions" />
+                    <?php
+                    global $wpdb;
+                    $existing_orgs = $wpdb->get_col( $wpdb->prepare(
+                        "SELECT DISTINCT meta_value FROM {$wpdb->usermeta} WHERE meta_key = %s AND meta_value != '' ORDER BY meta_value ASC LIMIT 100",
+                        'slw_parent_organization'
+                    ) );
+                    if ( ! empty( $existing_orgs ) ) : ?>
+                        <datalist id="slw_parent_org_suggestions">
+                            <?php foreach ( $existing_orgs as $org ) : ?>
+                                <option value="<?php echo esc_attr( $org ); ?>"></option>
+                            <?php endforeach; ?>
+                        </datalist>
+                    <?php endif; ?>
+                    <p class="description">Optional. Use when this account is one location of a multi-location customer. All accounts sharing the same parent organization will group together in the Customers admin and the new-organization filter dropdown. Free text. Type a new name or pick from existing organizations.</p>
                 </td>
             </tr>
             <tr>
@@ -374,6 +395,10 @@ class SLW_Wholesale_Role {
         // EIN: keep encrypted to match the application/portal flow
         $ein_input = sanitize_text_field( wp_unslash( $_POST['slw_ein'] ?? '' ) );
         update_user_meta( $user_id, 'slw_ein', $ein_input === '' ? '' : SLW_Encryption::encrypt( $ein_input ) );
+
+        // Parent Organization: free text, plain (not encrypted, used for grouping in admin)
+        $parent_org_input = sanitize_text_field( wp_unslash( $_POST['slw_parent_organization'] ?? '' ) );
+        update_user_meta( $user_id, 'slw_parent_organization', $parent_org_input );
 
         // Audit log: wholesale status change
         if ( $should_be_wholesale && ! $is_currently ) {
