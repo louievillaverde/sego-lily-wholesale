@@ -12,8 +12,55 @@ class SLW_Customers_Page {
 
     public static function init() {
         add_action( 'admin_init', array( __CLASS__, 'maybe_export_csv' ) );
+        add_action( 'admin_init', array( __CLASS__, 'maybe_backfill_mautic_sync_flag' ) );
         add_action( 'wp_ajax_slw_deactivate_wholesale', array( __CLASS__, 'ajax_deactivate_wholesale' ) );
         add_action( 'admin_post_slw_sync_mautic_bulk', array( __CLASS__, 'handle_sync_mautic_bulk' ) );
+    }
+
+    /**
+     * One-time backfill of the slw_synced_to_mautic user_meta flag.
+     *
+     * v4.6.8 introduced the flag and the bulk-sync banner, but the flag was
+     * only set going forward. Any wholesale customer already in Mautic
+     * (application-path approvals, customers tagged via direct API, anyone
+     * tagged before this flag existed) showed up as "unsynced" on the
+     * Customers page even though they were correctly tagged. This handler
+     * runs once: queries Mautic for the set of emails carrying the
+     * wholesale-approved tag and sets the flag for matching WP customers.
+     * Gated by slw_mautic_backfill_done so it never repeats. Skipped
+     * silently if Mautic is unconfigured/unreachable (retries next load).
+     */
+    public static function maybe_backfill_mautic_sync_flag() {
+        if ( get_option( 'slw_mautic_backfill_done' ) ) {
+            return;
+        }
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            return;
+        }
+        if ( ! class_exists( 'SLW_Webhooks' ) ) {
+            return;
+        }
+
+        $tagged_emails = SLW_Webhooks::get_mautic_emails_with_tag( 'wholesale-approved' );
+        if ( $tagged_emails === false ) {
+            return; // Retry on next admin load.
+        }
+
+        $users = get_users( array(
+            'role'   => 'wholesale_customer',
+            'fields' => array( 'ID', 'user_email' ),
+        ) );
+
+        foreach ( $users as $user ) {
+            if ( get_user_meta( $user->ID, 'slw_synced_to_mautic', true ) ) {
+                continue;
+            }
+            if ( ! empty( $tagged_emails[ strtolower( $user->user_email ) ] ) ) {
+                update_user_meta( $user->ID, 'slw_synced_to_mautic', current_time( 'mysql' ) );
+            }
+        }
+
+        update_option( 'slw_mautic_backfill_done', current_time( 'mysql' ) );
     }
 
     /**
@@ -42,14 +89,30 @@ class SLW_Customers_Page {
             'fields' => array( 'ID', 'user_email' ),
         ) );
 
+        // Pre-fetch the set of emails already tagged in Mautic so we don't
+        // re-fire the webhook for contacts that are genuinely synced (just
+        // missing the WP-side flag). Re-firing wouldn't double-tag (Mautic
+        // dedups) but WOULD re-enroll them in the onboarding campaign,
+        // duplicating emails. So if Mautic already has them, just set the
+        // flag and skip the webhook.
+        $tagged_emails = SLW_Webhooks::get_mautic_emails_with_tag( 'wholesale-approved' );
+        if ( ! is_array( $tagged_emails ) ) {
+            $tagged_emails = array();
+        }
+
         $synced = 0;
         $skipped = 0;
         foreach ( $users as $user ) {
-            $existing_flag = get_user_meta( $user->ID, 'slw_synced_to_mautic', true );
-            if ( $existing_flag ) {
+            if ( get_user_meta( $user->ID, 'slw_synced_to_mautic', true ) ) {
                 $skipped++;
                 continue;
             }
+            if ( ! empty( $tagged_emails[ strtolower( $user->user_email ) ] ) ) {
+                update_user_meta( $user->ID, 'slw_synced_to_mautic', current_time( 'mysql' ) );
+                $skipped++;
+                continue;
+            }
+
             $first_name    = get_user_meta( $user->ID, 'first_name', true );
             $last_name     = get_user_meta( $user->ID, 'last_name', true );
             $business_name = get_user_meta( $user->ID, 'slw_business_name', true );

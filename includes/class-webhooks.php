@@ -146,6 +146,88 @@ class SLW_Webhooks {
      * @param string $tag   Tag to add (same as event name).
      * @param array  $data  Additional contact data (first_name, business_name, etc.).
      */
+    /**
+     * Fetch the set of email addresses in Mautic that carry a given tag.
+     * Used by the v4.6.9 sync-flag backfill so already-tagged customers
+     * (those who came through the application path, or were synced via
+     * direct API, or were tagged before slw_synced_to_mautic existed)
+     * get their flag set correctly without re-firing the webhook.
+     *
+     * @param string $tag    Tag name without leading +/-.
+     * @param int    $limit  Max contacts to scan (Mautic default is 30; we
+     *                       page through up to this many).
+     * @return array<string,bool>|false  Map of lowercased email => true,
+     *                       or false if Mautic is unconfigured / auth failed.
+     */
+    public static function get_mautic_emails_with_tag( $tag, $limit = 500 ) {
+        $base_url      = rtrim( get_option( 'slw_mautic_url', '' ), '/' );
+        $client_id     = get_option( 'slw_mautic_client_id', '' );
+        $client_secret = get_option( 'slw_mautic_client_secret', '' );
+
+        if ( empty( $base_url ) || empty( $client_id ) || empty( $client_secret ) ) {
+            return false;
+        }
+
+        $token = self::get_mautic_token( $base_url, $client_id, $client_secret );
+        if ( ! $token ) {
+            return false;
+        }
+
+        $headers = array(
+            'Authorization' => 'Bearer ' . $token,
+            'Accept'        => 'application/json',
+            'User-Agent'    => self::USER_AGENT,
+        );
+
+        $emails    = array();
+        $page_size = 100;
+        $start     = 0;
+
+        while ( $start < $limit ) {
+            $url = $base_url . '/api/contacts?' . http_build_query( array(
+                'search' => 'tag:' . $tag,
+                'limit'  => $page_size,
+                'start'  => $start,
+            ) );
+            $resp = wp_remote_get( $url, array(
+                'timeout' => 15,
+                'headers' => $headers,
+            ) );
+
+            if ( is_wp_error( $resp ) ) {
+                return false;
+            }
+
+            $code = wp_remote_retrieve_response_code( $resp );
+            if ( $code === 401 ) {
+                delete_transient( 'slw_mautic_access_token' );
+                $token = self::get_mautic_token( $base_url, $client_id, $client_secret );
+                if ( ! $token ) return false;
+                $headers['Authorization'] = 'Bearer ' . $token;
+                continue;
+            }
+            if ( $code < 200 || $code >= 300 ) {
+                return false;
+            }
+
+            $body     = json_decode( wp_remote_retrieve_body( $resp ), true );
+            $contacts = $body['contacts'] ?? array();
+            if ( empty( $contacts ) ) break;
+
+            foreach ( $contacts as $contact ) {
+                $email = $contact['fields']['core']['email']['value'] ?? ( $contact['fields']['all']['email'] ?? '' );
+                if ( $email ) {
+                    $emails[ strtolower( $email ) ] = true;
+                }
+            }
+
+            if ( count( $contacts ) < $page_size ) break;
+            $start += $page_size;
+        }
+
+        return $emails;
+    }
+
     private static function tag_mautic_contact( $email, $tag, $data = array() ) {
         $base_url      = rtrim( get_option( 'slw_mautic_url', '' ), '/' );
         $client_id     = get_option( 'slw_mautic_client_id', '' );
