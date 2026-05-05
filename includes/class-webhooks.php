@@ -209,15 +209,19 @@ class SLW_Webhooks {
             $contact_id = array_key_first( $contacts );
         }
 
-        // Build contact data for create/update
-        // For existing contacts, prefix tags with + to ADD them (Mautic API requirement)
-        $tags = $contact_id ? array( '+' . $tag ) : array( $tag );
+        // Build contact data for create/update.
+        // Send tags as an ARRAY of bare names. Mautic 4+ adds these to the
+        // contact's existing tags (does not replace) when sent via PATCH /edit
+        // or POST /new. The "+tagname" string-prefix syntax is only correct
+        // when tags is sent as a comma-separated STRING; sending "+tagname"
+        // inside an array creates a literal tag named "+tagname" in Mautic.
+        // That's exactly the bug v4.6.5 fixes.
+        $tags = array( $tag );
 
         // Retail quiz leads also get quiz-completed + routing tags
-        $prefix = $contact_id ? '+' : '';
         if ( ! empty( $data['skin_concern'] ) ) {
-            $tags[] = $prefix . 'quiz-completed';
-            $tags[] = $prefix . 'retail-quiz-lead';
+            $tags[] = 'quiz-completed';
+            $tags[] = 'retail-quiz-lead';
             $skin_tag_map = array(
                 'Dryness & tightness'  => 'skin-dryness',
                 'Breakouts'            => 'skin-breakouts',
@@ -225,7 +229,7 @@ class SLW_Webhooks {
                 'Wrinkles & dark spots' => 'skin-aging',
             );
             if ( isset( $skin_tag_map[ $data['skin_concern'] ] ) ) {
-                $tags[] = $prefix . $skin_tag_map[ $data['skin_concern'] ];
+                $tags[] = $skin_tag_map[ $data['skin_concern'] ];
             }
         }
         if ( ! empty( $data['frustration'] ) ) {
@@ -236,7 +240,7 @@ class SLW_Webhooks {
                 'Just want something simple' => 'frustration-simple',
             );
             if ( isset( $frustration_tag_map[ $data['frustration'] ] ) ) {
-                $tags[] = $prefix . $frustration_tag_map[ $data['frustration'] ];
+                $tags[] = $frustration_tag_map[ $data['frustration'] ];
             }
         }
 
@@ -366,13 +370,15 @@ class SLW_Webhooks {
 
         $contact_id = array_key_first( $contacts );
 
-        // Remove the tag (prefix with - to remove)
+        // Remove the tag. The "-tagname" remove syntax only works when tags
+        // is sent as a comma-separated STRING (not an array). In array form,
+        // Mautic creates a literal tag named "-tagname" instead of removing.
         wp_remote_request( $base_url . '/api/contacts/' . $contact_id . '/edit', array(
             'method'  => 'PATCH',
             'timeout' => 10,
             'headers' => $headers,
             'body'    => wp_json_encode( array(
-                'tags' => array( '-' . $tag ),
+                'tags' => '-' . $tag,
             )),
         ));
     }
