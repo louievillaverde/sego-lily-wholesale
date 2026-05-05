@@ -451,6 +451,12 @@ class SLW_Customer_Assets {
             return;
         }
 
+        // Belt-and-suspenders: also enqueue media here so the picker JS is
+        // guaranteed to load even if the admin_enqueue_scripts hook missed.
+        if ( function_exists( 'wp_enqueue_media' ) ) {
+            wp_enqueue_media();
+        }
+
         $user_id = absint( $_GET['user'] ?? 0 );
         if ( $user_id ) {
             self::render_user_overrides_page( $user_id );
@@ -740,15 +746,23 @@ class SLW_Customer_Assets {
                     });
                 }
 
-                // Media Library picker. Wires the two "Choose from Media Library" buttons
-                // to the WP media modal. Selected attachment URL drops into the field.
+                // Media Library picker. Wires the two "Choose from Media Library"
+                // buttons to the WP media modal. The wp.media check runs at CLICK
+                // time, not script-load time, because WordPress's media-views JS
+                // loads in the footer and may not be ready when this inline IIFE
+                // executes in body. Earlier versions checked at load time and
+                // silently no-op'd if wp.media wasn't ready yet.
                 function bindMediaPicker(btnId, fieldId, mediaType, modalTitle) {
                     var btn = document.getElementById(btnId);
                     var field = document.getElementById(fieldId);
-                    if (!btn || !field || typeof wp === 'undefined' || !wp.media) return;
+                    if (!btn || !field) return;
                     var frame = null;
                     btn.addEventListener('click', function(e) {
                         e.preventDefault();
+                        if (typeof wp === 'undefined' || !wp.media) {
+                            alert('WordPress Media Library is not loaded on this page. Try a hard refresh (Cmd+Shift+R or Ctrl+Shift+R). If it still does not open, paste the file URL directly into the URL field.');
+                            return;
+                        }
                         if (frame) { frame.open(); return; }
                         var args = { title: modalTitle, button: { text: 'Use this file' }, multiple: false };
                         if (mediaType) { args.library = { type: mediaType }; }
