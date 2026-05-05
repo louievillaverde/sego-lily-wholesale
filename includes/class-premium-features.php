@@ -206,19 +206,12 @@ class SLW_Premium_Features {
     // ── 4. Bulk user import ───────────────────────────────────────────────
 
     /**
-     * Add the "Import Users" submenu under Wholesale Applications.
+     * Render the import page. As of v4.0 this page lives as the "Import" tab
+     * on the consolidated Wholesale > Customers screen (admin.php?page=slw-customers&tab=import),
+     * called by SLW_Customers_Page::render_page(). The standalone slw-import
+     * admin page registration was retired in v4.0; redirects now point at the
+     * tab URL.
      */
-    public static function add_import_menu() {
-        add_submenu_page(
-            'slw-applications',
-            'Import Wholesale Users',
-            'Import Users',
-            'manage_woocommerce',
-            'slw-import',
-            array( __CLASS__, 'render_import_page' )
-        );
-    }
-
     public static function render_import_page() {
         global $wpdb;
         $last_result = get_transient( 'slw_last_import_result' );
@@ -449,7 +442,7 @@ class SLW_Premium_Features {
             set_transient( 'slw_single_customer_result', array(
                 'type' => 'error', 'message' => 'Please provide a valid email address.',
             ), 60 );
-            wp_redirect( admin_url( 'admin.php?page=slw-import' ) );
+            wp_redirect( admin_url( 'admin.php?page=slw-customers&tab=import' ) );
             exit;
         }
 
@@ -457,7 +450,7 @@ class SLW_Premium_Features {
             set_transient( 'slw_single_customer_result', array(
                 'type' => 'error', 'message' => 'First name and last name are required.',
             ), 60 );
-            wp_redirect( admin_url( 'admin.php?page=slw-import' ) );
+            wp_redirect( admin_url( 'admin.php?page=slw-customers&tab=import' ) );
             exit;
         }
 
@@ -478,7 +471,7 @@ class SLW_Premium_Features {
                     'type' => 'warning', 'message' => $email . ' is already a wholesale customer.' . ( $parent_org ? ' Parent organization updated.' : '' ),
                 ), 60 );
             }
-            wp_redirect( admin_url( 'admin.php?page=slw-import' ) );
+            wp_redirect( admin_url( 'admin.php?page=slw-customers&tab=import' ) );
             exit;
         }
 
@@ -497,7 +490,7 @@ class SLW_Premium_Features {
             set_transient( 'slw_single_customer_result', array(
                 'type' => 'error', 'message' => 'Could not create user: ' . $user_id->get_error_message(),
             ), 60 );
-            wp_redirect( admin_url( 'admin.php?page=slw-import' ) );
+            wp_redirect( admin_url( 'admin.php?page=slw-customers&tab=import' ) );
             exit;
         }
 
@@ -513,7 +506,7 @@ class SLW_Premium_Features {
         set_transient( 'slw_single_customer_result', array(
             'type' => 'success', 'message' => 'Wholesale account created for ' . $first_name . ' ' . $last_name . ' (' . $email . ').' . ( $send_welcome ? ' Welcome email sent.' : '' ),
         ), 60 );
-        wp_redirect( admin_url( 'admin.php?page=slw-import' ) );
+        wp_redirect( admin_url( 'admin.php?page=slw-customers&tab=import' ) );
         exit;
     }
 
@@ -525,7 +518,7 @@ class SLW_Premium_Features {
             set_transient( 'slw_last_import_result', array(
                 'type' => 'error', 'message' => 'No file uploaded.'
             ), 60 );
-            wp_redirect( admin_url( 'admin.php?page=slw-import' ) );
+            wp_redirect( admin_url( 'admin.php?page=slw-customers&tab=import' ) );
             exit;
         }
 
@@ -534,7 +527,7 @@ class SLW_Premium_Features {
             set_transient( 'slw_last_import_result', array(
                 'type' => 'error', 'message' => 'CSV appears empty or unreadable.'
             ), 60 );
-            wp_redirect( admin_url( 'admin.php?page=slw-import' ) );
+            wp_redirect( admin_url( 'admin.php?page=slw-customers&tab=import' ) );
             exit;
         }
 
@@ -605,7 +598,7 @@ class SLW_Premium_Features {
             'message' => "Import done. Created: {$created} new users. Promoted: {$promoted} existing users. Errors: " . count( $errors ) . '.',
             'errors'  => $errors,
         ), 300 );
-        wp_redirect( admin_url( 'admin.php?page=slw-import' ) );
+        wp_redirect( admin_url( 'admin.php?page=slw-customers&tab=import' ) );
         exit;
     }
 
