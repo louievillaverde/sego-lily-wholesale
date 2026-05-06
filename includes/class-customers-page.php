@@ -14,7 +14,43 @@ class SLW_Customers_Page {
         add_action( 'admin_init', array( __CLASS__, 'maybe_export_csv' ) );
         add_action( 'admin_init', array( __CLASS__, 'maybe_backfill_mautic_sync_flag' ) );
         add_action( 'wp_ajax_slw_deactivate_wholesale', array( __CLASS__, 'ajax_deactivate_wholesale' ) );
+        add_action( 'wp_ajax_slw_resend_welcome', array( __CLASS__, 'ajax_resend_welcome' ) );
         add_action( 'admin_post_slw_sync_mautic_bulk', array( __CLASS__, 'handle_sync_mautic_bulk' ) );
+    }
+
+    /**
+     * AJAX: resend the wholesale welcome email (login credentials) to an
+     * existing wholesale customer. Generates a fresh password, applies it,
+     * and re-sends the same email Quick Add would send on first creation
+     * via wp_mail (Holly's transactional pipe).
+     *
+     * Added v4.6.11 to give Holly a one-click recovery when a welcome email
+     * lands in a customer's spam folder or gets missed.
+     */
+    public static function ajax_resend_welcome() {
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_send_json_error( 'Unauthorized', 403 );
+        }
+        check_ajax_referer( 'slw_resend_welcome', 'nonce' );
+
+        $user_id = isset( $_POST['user_id'] ) ? absint( $_POST['user_id'] ) : 0;
+        if ( ! $user_id ) {
+            wp_send_json_error( 'Missing user_id' );
+        }
+
+        if ( ! class_exists( 'SLW_Premium_Features' ) ) {
+            wp_send_json_error( 'Premium features not loaded' );
+        }
+
+        $result = SLW_Premium_Features::resend_welcome_email( $user_id );
+        if ( is_wp_error( $result ) ) {
+            wp_send_json_error( $result->get_error_message() );
+        }
+
+        $user = get_userdata( $user_id );
+        wp_send_json_success( array(
+            'message' => 'Welcome email re-sent to ' . $user->user_email . ' with a fresh password.',
+        ) );
     }
 
     /**
@@ -576,6 +612,7 @@ class SLW_Customers_Page {
                                 ?></td>
                                 <td style="white-space:nowrap;">
                                     <a href="<?php echo esc_url( get_edit_user_link( $user_id ) ); ?>" class="button button-small">Edit</a>
+                                    <button type="button" class="button button-small slw-resend-welcome-btn" data-user-id="<?php echo esc_attr( $user_id ); ?>" data-email="<?php echo esc_attr( $customer->user_email ); ?>">Resend Welcome</button>
                                     <button type="button" class="button button-small slw-deactivate-btn" data-user-id="<?php echo esc_attr( $user_id ); ?>" data-name="<?php echo esc_attr( $customer->display_name ); ?>" style="color:#c62828;">Deactivate</button>
                                 </td>
                             </tr>
@@ -626,6 +663,43 @@ class SLW_Customers_Page {
         <script>
         (function() {
             var nonce = '<?php echo esc_js( wp_create_nonce( 'slw_customers_nonce' ) ); ?>';
+            var resendNonce = '<?php echo esc_js( wp_create_nonce( 'slw_resend_welcome' ) ); ?>';
+
+            document.querySelectorAll('.slw-resend-welcome-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var userId = this.getAttribute('data-user-id');
+                    var email = this.getAttribute('data-email');
+                    if (!confirm('Resend the welcome email (with a fresh login password) to ' + email + '?\n\nThis invalidates their current password.')) return;
+                    btn.disabled = true;
+                    var originalLabel = btn.textContent;
+                    btn.textContent = 'Sending...';
+                    var formData = new FormData();
+                    formData.append('action', 'slw_resend_welcome');
+                    formData.append('nonce', resendNonce);
+                    formData.append('user_id', userId);
+                    var xhr = new XMLHttpRequest();
+                    xhr.open('POST', ajaxurl);
+                    xhr.onload = function() {
+                        var resp;
+                        try { resp = JSON.parse(xhr.responseText); } catch(e) { resp = null; }
+                        if (resp && resp.success) {
+                            btn.textContent = 'Sent';
+                            btn.style.color = '#2e7d32';
+                            setTimeout(function() {
+                                btn.textContent = originalLabel;
+                                btn.style.color = '';
+                                btn.disabled = false;
+                            }, 4000);
+                        } else {
+                            btn.disabled = false;
+                            btn.textContent = originalLabel;
+                            alert('Could not resend: ' + (resp && resp.data ? resp.data : 'Unknown error'));
+                        }
+                    };
+                    xhr.send(formData);
+                });
+            });
+
             document.querySelectorAll('.slw-deactivate-btn').forEach(function(btn) {
                 btn.addEventListener('click', function() {
                     var userId = this.getAttribute('data-user-id');

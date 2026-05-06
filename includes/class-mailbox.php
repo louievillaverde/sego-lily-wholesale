@@ -68,41 +68,54 @@ class SLW_Mailbox {
                     <p style="color:#666;margin:0 0 18px;">Opens <strong><?php echo esc_html( $email ); ?></strong> in SiteGround Webmail in a new tab.</p>
                     <a href="<?php echo esc_url( $webmail_url ); ?>" target="_blank" rel="noopener" class="button button-primary button-hero" style="font-size:15px;">Open Inbox in Webmail &nbsp;&rarr;</a>
                 </div>
-            <?php else : ?>
-                <div style="background:#FFF8E1;border:1px solid #ffe082;border-radius:8px;padding:18px 22px;margin-top:16px;">
-                    <h2 style="margin-top:0;color:#5d4037;">First-time setup</h2>
-                    <ol style="color:#5d4037;line-height:1.7;margin-bottom:0;">
-                        <li>Log in to <a href="https://my.siteground.com" target="_blank" rel="noopener">my.siteground.com</a> and open Site Tools for <strong>segolilyskincare.com</strong>.</li>
-                        <li>Go to <strong>Email &raquo; Accounts</strong>.</li>
-                        <li>Find <strong><?php echo esc_html( $email ); ?></strong> in the list, click the kebab menu (&hellip;), then choose <strong>Login to Webmail</strong>.</li>
-                        <li>Once Webmail opens, copy the URL from the address bar.</li>
-                        <li>Paste it into the field below and save.</li>
-                    </ol>
-                </div>
-            <?php endif; ?>
 
-            <h2 style="margin-top:32px;">Settings</h2>
-            <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="background:#fff;border:1px solid #dcdcde;border-radius:8px;padding:18px 22px;">
-                <input type="hidden" name="action" value="slw_save_mailbox_settings" />
-                <?php wp_nonce_field( 'slw_save_mailbox_settings' ); ?>
-                <table class="form-table" role="presentation">
-                    <tr>
-                        <th scope="row"><label for="slw_wholesale_email_address">Wholesale Email Address</label></th>
-                        <td>
+                <details style="margin-top:18px;">
+                    <summary style="cursor:pointer;color:#666;font-size:13px;">Update inbox settings</summary>
+                    <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" style="background:#fff;border:1px solid #dcdcde;border-radius:8px;padding:18px 22px;margin-top:12px;">
+                        <input type="hidden" name="action" value="slw_save_mailbox_settings" />
+                        <?php wp_nonce_field( 'slw_save_mailbox_settings' ); ?>
+                        <p style="margin-top:0;">
+                            <label for="slw_wholesale_email_address" style="display:block;font-weight:600;margin-bottom:4px;">Wholesale Email Address</label>
                             <input type="email" id="slw_wholesale_email_address" name="slw_wholesale_email_address" value="<?php echo esc_attr( $email ); ?>" class="regular-text" />
-                            <p class="description">The shared inbox address (display only).</p>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th scope="row"><label for="slw_webmail_url">Webmail URL</label></th>
-                        <td>
-                            <input type="url" id="slw_webmail_url" name="slw_webmail_url" value="<?php echo esc_attr( $webmail_url ); ?>" class="large-text" placeholder="https://&hellip;siteground.com/&hellip;" />
-                            <p class="description">SiteGround Webmail URL for the wholesale inbox. See setup instructions above if blank.</p>
-                        </td>
-                    </tr>
-                </table>
-                <?php submit_button( 'Save Settings' ); ?>
-            </form>
+                        </p>
+                        <p>
+                            <label for="slw_webmail_url" style="display:block;font-weight:600;margin-bottom:4px;">Webmail URL</label>
+                            <input type="url" id="slw_webmail_url" name="slw_webmail_url" value="<?php echo esc_attr( $webmail_url ); ?>" class="large-text" />
+                        </p>
+                        <?php submit_button( 'Save Settings', 'secondary', 'submit', false ); ?>
+                    </form>
+                </details>
+            <?php else : ?>
+                <!--
+                    First-time setup: the steps and the input field live in
+                    ONE card so the path from "read instructions" to "paste
+                    the URL and save" is impossible to miss. Earlier (4.6.8 -
+                    4.6.10) the steps were yellow card, settings were a
+                    separate form below — Holly literally asked "what Inbox
+                    tab settings am I entering it into" because she didn't
+                    scroll past the yellow card.
+                -->
+                <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+                    <input type="hidden" name="action" value="slw_save_mailbox_settings" />
+                    <?php wp_nonce_field( 'slw_save_mailbox_settings' ); ?>
+                    <input type="hidden" name="slw_wholesale_email_address" value="<?php echo esc_attr( $email ); ?>" />
+                    <div style="background:#FFF8E1;border:1px solid #ffe082;border-radius:8px;padding:22px 26px;margin-top:16px;">
+                        <h2 style="margin-top:0;color:#5d4037;">First-time setup</h2>
+                        <ol style="color:#5d4037;line-height:1.7;margin-bottom:18px;">
+                            <li>Log in to <a href="https://my.siteground.com" target="_blank" rel="noopener">my.siteground.com</a> and open Site Tools for <strong>segolilyskincare.com</strong>.</li>
+                            <li>Go to <strong>Email &raquo; Accounts</strong>.</li>
+                            <li>Find <strong><?php echo esc_html( $email ); ?></strong> in the list, click the kebab menu (&hellip;), then choose <strong>Login to Webmail</strong>.</li>
+                            <li>Once Webmail opens, copy the URL from the address bar.</li>
+                            <li>Paste it in the field below and click <strong>Save</strong>.</li>
+                        </ol>
+                        <div style="background:#fff;border:1px solid #ffe082;border-radius:6px;padding:14px 16px;">
+                            <label for="slw_webmail_url" style="display:block;font-weight:600;color:#5d4037;margin-bottom:6px;">Paste the Webmail URL here</label>
+                            <input type="url" id="slw_webmail_url" name="slw_webmail_url" value="" class="large-text" placeholder="https://&hellip;siteground.biz/webmail/&hellip;" required style="margin-bottom:10px;" />
+                            <button type="submit" class="button button-primary">Save &amp; Activate Inbox</button>
+                        </div>
+                    </div>
+                </form>
+            <?php endif; ?>
 
             <p style="margin-top:24px;color:#999;font-size:12px;">Coming later: read recent messages inline without leaving WordPress (full IMAP integration).</p>
         </div>

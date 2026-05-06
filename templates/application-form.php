@@ -24,6 +24,45 @@ $minimum = number_format( (float) slw_get_option( 'first_order_minimum', 300 ), 
 ?>
 
 <div class="slw-application-wrap">
+
+    <!--
+        How-it-works 3-step banner.
+
+        Why: the public wholesale page advertises "50% off retail" as the
+        value prop, which leads first-time visitors to assume they can just
+        scroll up to the nav, throw products in the cart, and check out at
+        wholesale pricing. They can't — wholesale pricing only applies once
+        you're logged in with an approved wholesale account. BBar Ranch ran
+        into this on 2026-05-06: saw 50% advertised, ordered without
+        applying, got charged retail.
+
+        This banner makes the apply -> approve -> login flow impossible to
+        miss before the form. Three steps, plain copy, no gimmicks.
+    -->
+    <div class="slw-howto" style="background:#F7F4EC;border:1px solid #E8DFC9;border-radius:10px;padding:18px 22px;margin-bottom:22px;">
+        <div style="font-size:13px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#7B6A45;margin-bottom:12px;">How wholesale pricing works</div>
+        <div style="display:flex;flex-wrap:wrap;gap:14px;align-items:stretch;">
+            <div style="flex:1 1 220px;background:#fff;border:1px solid #E8DFC9;border-radius:8px;padding:14px 16px;">
+                <div style="font-size:12px;font-weight:700;color:#A88A45;margin-bottom:4px;">STEP 1</div>
+                <div style="font-size:15px;font-weight:600;color:#1E2A30;margin-bottom:4px;">Apply below</div>
+                <div style="font-size:13px;color:#5C6B72;line-height:1.45;">Fill out the application on this page so we can review your business.</div>
+            </div>
+            <div style="flex:1 1 220px;background:#fff;border:1px solid #E8DFC9;border-radius:8px;padding:14px 16px;">
+                <div style="font-size:12px;font-weight:700;color:#A88A45;margin-bottom:4px;">STEP 2</div>
+                <div style="font-size:15px;font-weight:600;color:#1E2A30;margin-bottom:4px;">Get approved</div>
+                <div style="font-size:13px;color:#5C6B72;line-height:1.45;">Holly reviews personally. Approved partners get a login email within 2-3 business days.</div>
+            </div>
+            <div style="flex:1 1 220px;background:#fff;border:1px solid #E8DFC9;border-radius:8px;padding:14px 16px;">
+                <div style="font-size:12px;font-weight:700;color:#A88A45;margin-bottom:4px;">STEP 3</div>
+                <div style="font-size:15px;font-weight:600;color:#1E2A30;margin-bottom:4px;">Login &amp; order at wholesale</div>
+                <div style="font-size:13px;color:#5C6B72;line-height:1.45;">Once you log in with your wholesale account, the 50% wholesale pricing applies automatically at checkout.</div>
+            </div>
+        </div>
+        <div style="font-size:13px;color:#7B6A45;margin-top:12px;line-height:1.45;">
+            <strong>Already a wholesale partner?</strong> <a href="<?php echo esc_url( wp_login_url( home_url( '/wholesale-portal' ) ) ); ?>">Log in here</a> to see your wholesale prices.
+        </div>
+    </div>
+
     <div id="slw-form-success" style="display:none;">
         <div class="slw-notice slw-notice-success">
             <h3>Application Received</h3>

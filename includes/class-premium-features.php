@@ -697,6 +697,35 @@ class SLW_Premium_Features {
         return $username;
     }
 
+    /**
+     * Re-send the welcome email (login credentials) to an existing wholesale
+     * customer. Generates a fresh password, applies it, then sends the same
+     * email Quick Add would send on first creation.
+     *
+     * Use case (v4.6.11): Holly suspects a customer's original welcome email
+     * landed in spam or got missed. One-click resend from the customer row
+     * beats walking them through the Lost Password flow over text/phone.
+     *
+     * @param int $user_id Wholesale customer to resend to.
+     * @return true|WP_Error true on success, WP_Error on failure.
+     */
+    public static function resend_welcome_email( $user_id ) {
+        $user = get_userdata( $user_id );
+        if ( ! $user ) {
+            return new WP_Error( 'no_user', 'User not found.' );
+        }
+        if ( ! in_array( 'wholesale_customer', (array) $user->roles, true ) ) {
+            return new WP_Error( 'not_wholesale', 'Not a wholesale customer.' );
+        }
+
+        $password = wp_generate_password( 14, true );
+        wp_set_password( $password, $user_id );
+
+        $business_name = (string) get_user_meta( $user_id, 'slw_business_name', true );
+        self::send_bulk_welcome_email( $user, $password, $business_name );
+        return true;
+    }
+
     private static function send_bulk_welcome_email( $user, $password, $business_name ) {
         $portal_url    = home_url( '/wholesale-portal' );
         $login_url     = wp_login_url( $portal_url );
