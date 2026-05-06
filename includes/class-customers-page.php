@@ -16,6 +16,57 @@ class SLW_Customers_Page {
         add_action( 'wp_ajax_slw_deactivate_wholesale', array( __CLASS__, 'ajax_deactivate_wholesale' ) );
         add_action( 'wp_ajax_slw_resend_welcome', array( __CLASS__, 'ajax_resend_welcome' ) );
         add_action( 'admin_post_slw_sync_mautic_bulk', array( __CLASS__, 'handle_sync_mautic_bulk' ) );
+        add_action( 'admin_post_slw_sync_email_opens', array( __CLASS__, 'handle_sync_email_opens' ) );
+
+        add_action( 'slw_hourly_email_open_sync', array( __CLASS__, 'cron_sync_email_opens' ) );
+        if ( ! wp_next_scheduled( 'slw_hourly_email_open_sync' ) ) {
+            wp_schedule_event( time() + 600, 'hourly', 'slw_hourly_email_open_sync' );
+        }
+    }
+
+    /**
+     * Sync the most recent email-open timestamp from Mautic into the
+     * slw_email_opened_at user_meta for every wholesale customer that's
+     * synced to Mautic. Runs hourly via wp-cron and on-demand via the
+     * "Sync Email Opens" admin button. Lets Holly spot non-openers
+     * without leaving WP.
+     */
+    public static function cron_sync_email_opens() {
+        if ( ! class_exists( 'SLW_Webhooks' ) ) {
+            return;
+        }
+        $users = get_users( array(
+            'role'   => 'wholesale_customer',
+            'fields' => array( 'ID', 'user_email' ),
+            'meta_query' => array(
+                array(
+                    'key'     => 'slw_synced_to_mautic',
+                    'compare' => 'EXISTS',
+                ),
+            ),
+        ) );
+        foreach ( $users as $user ) {
+            $last_open = SLW_Webhooks::get_last_email_open( $user->user_email );
+            if ( $last_open ) {
+                update_user_meta( $user->ID, 'slw_email_opened_at', $last_open );
+            }
+        }
+        update_option( 'slw_email_opens_last_sync', current_time( 'mysql' ) );
+    }
+
+    /**
+     * On-demand version of cron_sync_email_opens triggered by the
+     * "Sync Email Opens" button. Same logic, just kicks off immediately
+     * and redirects back with a flash notice.
+     */
+    public static function handle_sync_email_opens() {
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            wp_die( 'Unauthorized', 403 );
+        }
+        check_admin_referer( 'slw_sync_email_opens' );
+        self::cron_sync_email_opens();
+        wp_safe_redirect( add_query_arg( 'slw_opens_synced', '1', admin_url( 'admin.php?page=slw-customers&tab=customers' ) ) );
+        exit;
     }
 
     /**
@@ -443,6 +494,30 @@ class SLW_Customers_Page {
             <div class="notice notice-success is-dismissible"><p>Mautic sync complete. Synced <?php echo $synced_n; ?>, skipped <?php echo $skipped_n; ?> already-synced.</p></div>
         <?php endif; ?>
 
+        <?php if ( ! empty( $_GET['slw_opens_synced'] ) ) : ?>
+            <div class="notice notice-success is-dismissible"><p>Email-open status refreshed from Mautic.</p></div>
+        <?php endif; ?>
+
+        <?php
+        // Email-open sync toolbar. Shows last sync time + a manual refresh
+        // button. Hourly cron handles routine updates; this lets Holly pull
+        // fresh data on-demand.
+        $opens_last_sync = get_option( 'slw_email_opens_last_sync' );
+        $opens_sync_nonce = wp_create_nonce( 'slw_sync_email_opens' );
+        ?>
+        <div style="background:#F0F4F8;border:1px solid #d6dee6;border-radius:6px;padding:8px 14px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;font-size:13px;color:#3a4a52;">
+            <div>
+                <strong>Email opens sync:</strong>
+                <?php echo $opens_last_sync ? 'last refreshed ' . esc_html( human_time_diff( strtotime( $opens_last_sync ) ) ) . ' ago' : 'never run yet'; ?>.
+                Auto-syncs hourly.
+            </div>
+            <form method="post" action="<?php echo esc_url( $sync_action_url ); ?>" style="margin:0;">
+                <input type="hidden" name="action" value="slw_sync_email_opens" />
+                <input type="hidden" name="_wpnonce" value="<?php echo esc_attr( $opens_sync_nonce ); ?>" />
+                <button type="submit" class="button button-small">Sync Email Opens Now</button>
+            </form>
+        </div>
+
         <?php if ( $unsynced_count > 0 ) : ?>
             <div style="background:#FFF8E1;border:1px solid #ffe082;border-radius:6px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
                 <div style="color:#5d4037;">
@@ -517,6 +592,7 @@ class SLW_Customers_Page {
                         <th>NET Terms</th>
                         <th>Orders</th>
                         <th>Last Order</th>
+                        <th>Email Open</th>
                         <th>Address</th>
                         <th>EIN</th>
                         <th>Actions</th>
@@ -602,6 +678,15 @@ class SLW_Customers_Page {
                                 <td><?php echo $net_terms ? 'NET ' . esc_html( $net_terms ) : 'None'; ?></td>
                                 <td><?php echo esc_html( $order_count ); ?></td>
                                 <td><?php echo $last_order_date; ?></td>
+                                <td style="font-size:12px;"><?php
+                                    $opened_at = get_user_meta( $user_id, 'slw_email_opened_at', true );
+                                    if ( $opened_at ) {
+                                        $ts = strtotime( $opened_at );
+                                        echo '<span style="color:#2e7d32;font-weight:600;" title="' . esc_attr( $opened_at ) . '">Opened ' . esc_html( $ts ? date_i18n( 'M j', $ts ) : '' ) . '</span>';
+                                    } else {
+                                        echo '<span style="color:#c62828;" title="No email open recorded yet">Not yet</span>';
+                                    }
+                                ?></td>
                                 <td style="font-size:12px;color:#628393;max-width:200px;"><?php echo $address_str ? esc_html( $address_str ) : 'None'; ?></td>
                                 <td style="font-size:12px;"><?php
                                     if ( $customer_ein ) {

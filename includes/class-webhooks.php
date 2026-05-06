@@ -228,6 +228,106 @@ class SLW_Webhooks {
         return $emails;
     }
 
+    /**
+     * Look up the most recent email-open event for a given contact email
+     * in Mautic. Used by the v4.6.15 customer engagement column so Holly
+     * can spot which customers have read their welcome email vs which
+     * haven't (likely landed in spam, or just unread).
+     *
+     * Strategy:
+     *   1. Find the contact by email.
+     *   2. GET /api/contacts/{id}/events with type=email.read filter.
+     *   3. Return the timestamp of the most recent event, or false.
+     *
+     * @param string $email Contact email.
+     * @return string|false ISO 8601 timestamp of last open, or false.
+     */
+    public static function get_last_email_open( $email ) {
+        $base_url      = rtrim( get_option( 'slw_mautic_url', '' ), '/' );
+        $client_id     = get_option( 'slw_mautic_client_id', '' );
+        $client_secret = get_option( 'slw_mautic_client_secret', '' );
+
+        if ( empty( $base_url ) || empty( $client_id ) || empty( $client_secret ) ) {
+            return false;
+        }
+
+        $token = self::get_mautic_token( $base_url, $client_id, $client_secret );
+        if ( ! $token ) {
+            return false;
+        }
+
+        $headers = array(
+            'Authorization' => 'Bearer ' . $token,
+            'Accept'        => 'application/json',
+            'User-Agent'    => self::USER_AGENT,
+        );
+
+        // Look up contact id by email.
+        $search_resp = wp_remote_get( $base_url . '/api/contacts?search=' . rawurlencode( $email ) . '&limit=1', array(
+            'timeout' => 10,
+            'headers' => $headers,
+        ) );
+        if ( is_wp_error( $search_resp ) ) {
+            return false;
+        }
+        if ( wp_remote_retrieve_response_code( $search_resp ) === 401 ) {
+            delete_transient( 'slw_mautic_access_token' );
+            $token = self::get_mautic_token( $base_url, $client_id, $client_secret );
+            if ( ! $token ) return false;
+            $headers['Authorization'] = 'Bearer ' . $token;
+            $search_resp = wp_remote_get( $base_url . '/api/contacts?search=' . rawurlencode( $email ) . '&limit=1', array(
+                'timeout' => 10,
+                'headers' => $headers,
+            ) );
+        }
+        if ( is_wp_error( $search_resp ) ) {
+            return false;
+        }
+        if ( wp_remote_retrieve_response_code( $search_resp ) !== 200 ) {
+            return false;
+        }
+
+        $search_body = json_decode( wp_remote_retrieve_body( $search_resp ), true );
+        $contacts    = $search_body['contacts'] ?? array();
+        if ( empty( $contacts ) ) {
+            return false;
+        }
+        $contact_id = (int) array_key_first( $contacts );
+        if ( ! $contact_id ) {
+            return false;
+        }
+
+        // Fetch the contact's events filtered to email.read events. Mautic's
+        // events endpoint paginates; we only need the most recent.
+        $events_url = $base_url . '/api/contacts/' . $contact_id . '/events?' . http_build_query( array(
+            'filters' => array( 'type' => 'email.read' ),
+            'limit'   => 1,
+            'order'   => array( 'col' => 'timestamp', 'dir' => 'DESC' ),
+        ) );
+        $events_resp = wp_remote_get( $events_url, array(
+            'timeout' => 10,
+            'headers' => $headers,
+        ) );
+        if ( is_wp_error( $events_resp ) || wp_remote_retrieve_response_code( $events_resp ) !== 200 ) {
+            return false;
+        }
+        $events_body = json_decode( wp_remote_retrieve_body( $events_resp ), true );
+        $events      = $events_body['events'] ?? array();
+        if ( empty( $events ) ) {
+            return false;
+        }
+
+        // Mautic returns events under different shapes by version. Find the
+        // first event with a usable timestamp.
+        foreach ( $events as $event ) {
+            $ts = $event['timestamp'] ?? ( $event['eventTimestamp'] ?? null );
+            if ( $ts ) {
+                return $ts;
+            }
+        }
+        return false;
+    }
+
     private static function tag_mautic_contact( $email, $tag, $data = array() ) {
         $base_url      = rtrim( get_option( 'slw_mautic_url', '' ), '/' );
         $client_id     = get_option( 'slw_mautic_client_id', '' );
