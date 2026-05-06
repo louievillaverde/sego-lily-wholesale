@@ -718,11 +718,18 @@ class SLW_Premium_Features {
             return new WP_Error( 'not_wholesale', 'Not a wholesale customer.' );
         }
 
-        $password = wp_generate_password( 14, true );
-        wp_set_password( $password, $user_id );
-
+        // Send the email FIRST with the candidate password baked in. Only if
+        // wp_mail successfully hands off to the mailer do we commit the
+        // password change. Otherwise we'd leave the customer locked out with
+        // a password they never received.
+        $password      = wp_generate_password( 14, true );
         $business_name = (string) get_user_meta( $user_id, 'slw_business_name', true );
-        self::send_bulk_welcome_email( $user, $password, $business_name );
+        $sent          = self::send_bulk_welcome_email( $user, $password, $business_name );
+        if ( ! $sent ) {
+            return new WP_Error( 'mail_failed', 'Could not send welcome email. Password unchanged.' );
+        }
+
+        wp_set_password( $password, $user_id );
         return true;
     }
 
@@ -754,6 +761,6 @@ class SLW_Premium_Features {
         $body .= "Questions or want me to walk you through it? Just reply to this email. I read every one. You can also reach me at {$reply_email}.\n\n";
         $body .= "Talk soon,\n" . SLW_Email_Settings::get_signature();
 
-        wp_mail( $user->user_email, $subject, $body, SLW_Email_Settings::get_headers() );
+        return (bool) wp_mail( $user->user_email, $subject, $body, SLW_Email_Settings::get_headers() );
     }
 }
