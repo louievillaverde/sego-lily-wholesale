@@ -53,10 +53,12 @@ class SLW_Wholesale_Activate {
             @media (max-width: 500px) { #slw-activate .slw-activate-row { grid-template-columns: 1fr; } }
             #slw-activate .slw-activate-btn {
                 display: block; width: 100%; padding: 16px; font-size: 16px; font-weight: 600;
-                background: #386174; color: #F7F6F3; border: none; border-radius: 8px;
-                cursor: pointer; transition: background 0.2s; margin-top: 8px;
+                background: #C8A951; color: #1E2A30; border: none; border-radius: 8px;
+                cursor: pointer; transition: background 0.2s, transform 0.1s; margin-top: 8px;
+                letter-spacing: 0.01em;
             }
-            #slw-activate .slw-activate-btn:hover { background: #2C4F5E; }
+            #slw-activate .slw-activate-btn:hover { background: #B89238; }
+            #slw-activate .slw-activate-btn:active { transform: translateY(1px); }
             #slw-activate .slw-activate-msg { text-align: center; padding: 16px; border-radius: 8px; margin-top: 16px; }
             #slw-activate .slw-activate-msg--success { background: #E8F5E9; color: #2e7d32; }
             #slw-activate .slw-activate-msg--error { background: #FFEBEE; color: #c62828; }
@@ -87,7 +89,7 @@ class SLW_Wholesale_Activate {
                 </div>
                 <input type="text" id="slw-act-zip" name="zip" placeholder="ZIP code" required />
 
-                <button type="submit" class="slw-activate-btn">Activate My Wholesale Account</button>
+                <button type="submit" class="slw-activate-btn">Get My Wholesale Pricing</button>
                 <div id="slw-activate-msg" class="slw-activate-msg" style="display:none;"></div>
             </form>
         </div>
@@ -113,7 +115,7 @@ class SLW_Wholesale_Activate {
                 .then(function(r){ return r.json(); })
                 .then(function(res){
                     btn.disabled = false;
-                    btn.textContent = 'Activate My Wholesale Account';
+                    btn.textContent = 'Get My Wholesale Pricing';
                     msg.style.display = 'block';
                     if (res.success) {
                         msg.className = 'slw-activate-msg slw-activate-msg--success';
@@ -126,7 +128,7 @@ class SLW_Wholesale_Activate {
                 })
                 .catch(function(){
                     btn.disabled = false;
-                    btn.textContent = 'Activate My Wholesale Account';
+                    btn.textContent = 'Get My Wholesale Pricing';
                     msg.style.display = 'block';
                     msg.className = 'slw-activate-msg slw-activate-msg--error';
                     msg.textContent = 'Network error. Please try again.';
