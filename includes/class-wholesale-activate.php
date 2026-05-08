@@ -204,7 +204,7 @@ class SLW_Wholesale_Activate {
         }
 
         wp_send_json_success( array(
-            'message' => 'Your wholesale account is active! Check your email for login details and start ordering.',
+            'message' => 'Your wholesale account is active! Login details are in your email — please check your spam or promotions folder if you don\'t see them in your inbox within a few minutes.',
         ) );
     }
 }

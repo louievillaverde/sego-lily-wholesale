@@ -35,6 +35,9 @@ $minimum = number_format( (float) slw_get_option( 'first_order_minimum', 300 ), 
             ?>
             <p><?php echo $review_msg; ?></p>
         </div>
+        <div style="background:#FFF8E1;border:1px solid #ffe082;border-radius:8px;padding:14px 18px;margin-top:14px;color:#5d4037;font-size:14px;line-height:1.5;">
+            <strong>Heads up:</strong> we just sent a confirmation to your inbox, and your approval reply will follow there too. Small businesses sometimes land in spam or promotions, so if you don't see it within a few minutes, check those folders and mark it as not-spam so the approval doesn't get filtered.
+        </div>
     </div>
 
     <form id="slw-application-form" class="slw-form" novalidate>

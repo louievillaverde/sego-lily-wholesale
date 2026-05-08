@@ -174,10 +174,34 @@ class SLW_Application_Form {
             error_log( 'SLW: Failed to send admin notification to ' . $admin_email );
         }
 
-        $owner = SLW_Email_Settings::get( 'owner_name' );
-        $success_msg = $owner
-            ? sprintf( 'Thanks for applying! %s reviews applications personally and you\'ll hear back within 2-3 business days.', $owner )
-            : 'Thanks for applying! We review applications personally and you\'ll hear back within 2-3 business days.';
+        // Confirmation email to the applicant (added v4.6.16). Pre-v4.6.16 the
+        // form silently emailed the admin and returned a browser success
+        // message but never confirmed receipt to the applicant. Result: a
+        // prospect like BBar fills out the form, sees a green message,
+        // closes the tab, and gets nothing in their inbox even after Holly
+        // approves them. With this email they have a record and we set
+        // expectations for the spam/promotions filter on the approval reply.
+        $first_name = explode( ' ', trim( $data['contact_name'] ) )[0];
+        $owner_name = SLW_Email_Settings::get( 'owner_name' ) ?: 'Holly';
+        $reply_addr = SLW_Email_Settings::get( 'from_address' );
+
+        $applicant_subject = 'We got your application, ' . $first_name;
+        $applicant_body  = "Hi {$first_name},\n\n";
+        $applicant_body .= "Just confirming we received your wholesale application for {$data['business_name']}.\n\n";
+        $applicant_body .= "{$owner_name} reviews every one personally. Usually back to you within 2-3 business days at {$data['email']}.\n\n";
+        $applicant_body .= "Heads up: my reply might land in your spam or promotions folder. If you haven't heard from me in 3 business days, check there first. Adding {$reply_addr} to your contacts saves a lot of headache.\n\n";
+        $applicant_body .= "Talk soon,\n" . SLW_Email_Settings::get_signature();
+
+        wp_mail(
+            $data['email'],
+            $applicant_subject,
+            $applicant_body,
+            SLW_Email_Settings::get_headers()
+        );
+
+        $success_msg = $owner_name
+            ? sprintf( 'Thanks for applying! %s reviews applications personally and you\'ll hear back within 2-3 business days. We just sent you a confirmation email — please check your spam or promotions folder if you don\'t see it.', $owner_name )
+            : 'Thanks for applying! We review applications personally and you\'ll hear back within 2-3 business days. We just sent you a confirmation email — please check your spam or promotions folder if you don\'t see it.';
 
         wp_send_json_success( array(
             'message' => $success_msg,
