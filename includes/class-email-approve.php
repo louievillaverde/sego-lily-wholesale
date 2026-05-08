@@ -185,7 +185,10 @@ class SLW_Email_Approve {
         $headers = class_exists( 'SLW_Email_Settings' ) ? SLW_Email_Settings::get_headers() : array();
         wp_mail( $app->email, $subject, $body, $headers );
 
-        // Fire webhook for Mautic
+        // Fire webhook for Mautic + set the WP-side sync flag (v4.6.17 fix).
+        // Pre-v4.6.17 this path tagged the contact in Mautic correctly but
+        // never wrote the slw_synced_to_mautic user_meta, so the Customers
+        // admin page showed approved customers as "not synced" indefinitely.
         if ( class_exists( 'SLW_Webhooks' ) ) {
             SLW_Webhooks::fire( 'wholesale-approved', array(
                 'email'         => $app->email,
@@ -193,6 +196,10 @@ class SLW_Email_Approve {
                 'business_name' => $app->business_name,
                 'source'        => 'email_approve',
             ) );
+            $user = get_user_by( 'email', $app->email );
+            if ( $user ) {
+                update_user_meta( $user->ID, 'slw_synced_to_mautic', current_time( 'mysql' ) );
+            }
         }
     }
 

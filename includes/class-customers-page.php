@@ -118,7 +118,14 @@ class SLW_Customers_Page {
      * silently if Mautic is unconfigured/unreachable (retries next load).
      */
     public static function maybe_backfill_mautic_sync_flag() {
-        if ( get_option( 'slw_mautic_backfill_done' ) ) {
+        // Throttled to once per hour. Pre-v4.6.17 this was gated by a
+        // once-and-done option, which meant any contact added/tagged in
+        // Mautic AFTER the first run stayed flagged "not synced" forever
+        // (Jackson Stewart hit this case). Now self-heals on every admin
+        // load with a 1-hour transient cooldown, so any future gap from
+        // direct Mautic API tagging or new approval paths gets corrected
+        // automatically without re-burning the API.
+        if ( get_transient( 'slw_mautic_backfill_recent' ) ) {
             return;
         }
         if ( ! current_user_can( 'manage_woocommerce' ) ) {
@@ -130,7 +137,7 @@ class SLW_Customers_Page {
 
         $tagged_emails = SLW_Webhooks::get_mautic_emails_with_tag( 'wholesale-approved' );
         if ( $tagged_emails === false ) {
-            return; // Retry on next admin load.
+            return; // Mautic unconfigured/unreachable - retry on next admin load.
         }
 
         $users = get_users( array(
@@ -147,7 +154,9 @@ class SLW_Customers_Page {
             }
         }
 
-        update_option( 'slw_mautic_backfill_done', current_time( 'mysql' ) );
+        set_transient( 'slw_mautic_backfill_recent', '1', HOUR_IN_SECONDS );
+        update_option( 'slw_mautic_backfill_last_run', current_time( 'mysql' ) );
+        delete_option( 'slw_mautic_backfill_done' ); // Retire the old once-and-done flag if present.
     }
 
     /**

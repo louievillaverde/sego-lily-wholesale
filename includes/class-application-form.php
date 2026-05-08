@@ -612,12 +612,17 @@ class SLW_Application_Form {
 
         wp_mail( $app->email, $subject, $body, SLW_Email_Settings::get_headers() );
 
-        // Fire AIOS webhook for Mautic onboarding sequence
+        // Fire AIOS webhook for Mautic onboarding sequence + set the WP-side
+        // sync flag (v4.6.17 fix - same gap as class-email-approve).
         SLW_Webhooks::fire( 'wholesale-approved', array(
             'email'         => $app->email,
             'first_name'    => $first_name,
             'business_name' => $app->business_name,
         ));
+        $user = get_user_by( 'email', $app->email );
+        if ( $user ) {
+            update_user_meta( $user->ID, 'slw_synced_to_mautic', current_time( 'mysql' ) );
+        }
     }
 
     /**
