@@ -147,11 +147,36 @@ class SLW_Premium_Features {
     /**
      * Hide wholesale-only coupons from the retail customer coupon hints
      * (WooCommerce sometimes exposes coupon metadata on the cart page).
+     *
+     * This is a FRONTEND protection only. It must NOT run in wp-admin or it
+     * crashes the Coupons list screen by recursing forever (the previous
+     * implementation called `new WC_Coupon( $coupon_code )` inside this
+     * filter, which retriggered the same filter -> PHP fatal). Two guards:
+     *
+     *   1. Skip in admin (except real WC AJAX from the storefront).
+     *   2. Resolve the coupon's post ID via a direct WP_Query for the
+     *      shop_coupon slug, NOT a WC_Coupon constructor. The constructor
+     *      fires woocommerce_get_shop_coupon_data again; the WP_Query path
+     *      does not.
      */
     public static function hide_retail_coupon_hints( $data, $coupon_code ) {
+        if ( is_admin() && ! wp_doing_ajax() ) return $data;
         if ( slw_is_wholesale_context() ) return $data;
-        $coupon = new WC_Coupon( $coupon_code );
-        if ( get_post_meta( $coupon->get_id(), 'slw_wholesale_only_coupon', true ) === 'yes' ) {
+
+        $posts = get_posts( array(
+            'post_type'              => 'shop_coupon',
+            'name'                   => sanitize_title( $coupon_code ),
+            'posts_per_page'         => 1,
+            'fields'                 => 'ids',
+            'suppress_filters'       => true,
+            'no_found_rows'          => true,
+            'update_post_meta_cache' => false,
+            'update_post_term_cache' => false,
+            'post_status'            => 'publish',
+        ) );
+        if ( empty( $posts ) ) return $data;
+
+        if ( get_post_meta( $posts[0], 'slw_wholesale_only_coupon', true ) === 'yes' ) {
             return false;  // pretend coupon doesn't exist for retail users
         }
         return $data;
