@@ -107,16 +107,20 @@ class SLW_Wholesale_Role {
             if (isProduct) {
                 var banner = document.createElement('div');
                 banner.innerHTML =
-                    '<div style="background:#386174;color:#F7F6F3;padding:12px 20px;border-radius:8px;'
-                    + 'margin:0 0 20px;display:flex;align-items:center;justify-content:space-between;'
-                    + 'flex-wrap:wrap;gap:10px;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\','
-                    + 'Helvetica,Arial,sans-serif;font-size:14px;line-height:1.4;">'
-                    + '<span><strong style="color:#F7F6F3;">This page shows retail pricing.</strong> '
-                    + 'Wholesale customers, please place orders through your order form.</span>'
-                    + '<a href="' + orderForm + '" style="display:inline-block;background:#F7F6F3;'
-                    + 'color:#386174;padding:7px 16px;border-radius:999px;font-size:13px;font-weight:700;'
-                    + 'text-decoration:none;white-space:nowrap;flex-shrink:0;">'
-                    + '&rarr; Wholesale Order Form</a></div>';
+                    '<div style="background:#F7F6F3;border:1px solid #D8D2C7;border-radius:8px;'
+                    + 'padding:16px 20px;margin:18px 0;'
+                    + 'font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Helvetica,Arial,sans-serif;">'
+                    + '<p style="margin:0 0 12px;font-size:14px;color:#386174;font-weight:600;line-height:1.4;">'
+                    + 'You\'re on the retail page'
+                    + '</p>'
+                    + '<p style="margin:0 0 14px;font-size:13.5px;color:#4A4A4A;line-height:1.5;">'
+                    + 'Your wholesale pricing and order form are in your partner portal.'
+                    + '</p>'
+                    + '<a href="' + orderForm + '" style="display:inline-block;background:#386174;'
+                    + 'color:#F7F6F3;padding:9px 20px;border-radius:6px;font-size:13px;font-weight:600;'
+                    + 'text-decoration:none;letter-spacing:0.2px;">'
+                    + 'Go to my order form &rarr;</a>'
+                    + '</div>';
                 // Insert after the add-to-cart form
                 var target = document.querySelector('.elementor-add-to-cart, form.cart');
                 if (target) {
