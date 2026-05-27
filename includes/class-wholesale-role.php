@@ -117,10 +117,10 @@ class SLW_Wholesale_Role {
                     + 'color:#386174;padding:7px 16px;border-radius:999px;font-size:13px;font-weight:700;'
                     + 'text-decoration:none;white-space:nowrap;flex-shrink:0;">'
                     + '&rarr; Wholesale Order Form</a></div>';
-                // Try to insert before the add-to-cart form; fall back to before the product title
-                var target = document.querySelector('form.cart, .elementor-add-to-cart form, .product_title');
+                // Insert after the add-to-cart form
+                var target = document.querySelector('.elementor-add-to-cart, form.cart');
                 if (target) {
-                    target.parentNode.insertBefore(banner.firstElementChild, target);
+                    target.parentNode.insertBefore(banner.firstElementChild, target.nextSibling);
                 }
             }
 
