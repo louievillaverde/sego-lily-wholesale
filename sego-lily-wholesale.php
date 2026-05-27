@@ -3,7 +3,7 @@
  * Plugin Name:       Wholesale Portal
  * Plugin URI:        https://github.com/louievillaverde/sego-lily-wholesale
  * Description:       All-in-one B2B wholesale portal for WooCommerce. Customer portal, tiered pricing, application workflow, PDF invoices, email sequences with multi-provider support, NET payment terms, lead capture, trade show tools, and automated order reminders. Built by Lead Piranha.
- * Version:           4.6.20
+ * Version:           4.6.21
  * Author:            Lead Piranha
  * Author URI:        https://leadpiranha.com
  * Requires at least: 6.0
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SLW_VERSION', '4.6.20' );
+define( 'SLW_VERSION', '4.6.21' );
 define( 'SLW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SLW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -554,15 +554,24 @@ function slw_is_wholesale_context( $user_id = null ) {
     if ( ! in_array( 'wholesale_customer', (array) $user->roles, true ) ) {
         return false;
     }
-    // Check WC session context. Default to retail so wholesale_customer
-    // users start in their casual-browsing state and opt INTO wholesale
-    // mode explicitly via the context switcher. Avoids surprising minimums
-    // / wholesale pricing for someone just browsing a product page.
+    // Check WC session first, then persisted user preference, then default
+    // to retail. Persisted preference is what keeps wholesale customers in
+    // wholesale mode across sessions (so they don't have to re-toggle every
+    // visit and lose access to NET 30 / tier pricing).
     if ( function_exists( 'WC' ) && WC()->session ) {
-        $context = WC()->session->get( 'slw_shopping_context', 'retail' );
-        return $context === 'wholesale';
+        $context = WC()->session->get( 'slw_shopping_context', null );
+        if ( $context === 'wholesale' ) {
+            return true;
+        }
+        if ( $context === 'retail' ) {
+            return false;
+        }
     }
-    return false; // Default to retail if no session available
+    $pref = get_user_meta( $user_id, 'slw_preferred_context', true );
+    if ( $pref === 'wholesale' ) {
+        return true;
+    }
+    return false; // Default to retail
 }
 
 /**
@@ -572,3 +581,38 @@ function slw_get_option( $key, $default = '' ) {
     $value = get_option( 'slw_' . $key );
     return ( $value !== false && $value !== '' ) ? $value : $default;
 }
+
+/**
+ * For wholesale customers (logged-in users with the wholesale_customer
+ * role), redirect WooCommerce "Return to shop" links from the Shop page
+ * to the wholesale order form. Applies to the empty Downloads page, the
+ * empty cart page, and any other surface using
+ * woocommerce_return_to_shop_redirect.
+ */
+add_filter( 'woocommerce_return_to_shop_redirect', function( $url ) {
+    if ( is_user_logged_in() && function_exists( 'slw_is_wholesale_user' ) && slw_is_wholesale_user() ) {
+        return home_url( '/wholesale-order' );
+    }
+    return $url;
+}, 10, 1 );
+
+/**
+ * Add a "Back to order form" link at the top of the cart for wholesale
+ * customers, so they don't lose the order form context after adding
+ * items. The cart page typically doesn't expose a back-link to the
+ * previous browsing context, which Holly flagged on 2026-05-26.
+ */
+add_action( 'woocommerce_before_cart', function() {
+    if ( ! is_user_logged_in() ) return;
+    if ( ! function_exists( 'slw_is_wholesale_user' ) || ! slw_is_wholesale_user() ) return;
+    if ( ! function_exists( 'is_cart' ) || ! is_cart() ) return;
+    ?>
+    <div class="slw-cart-back" style="margin: 0 0 18px 0;">
+        <a href="<?php echo esc_url( home_url( '/wholesale-order' ) ); ?>"
+           style="display:inline-flex;align-items:center;gap:6px;color:#386174;text-decoration:none;font-size:14px;font-weight:600;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+            <span aria-hidden="true">&larr;</span>
+            Back to order form
+        </a>
+    </div>
+    <?php
+}, 5 );

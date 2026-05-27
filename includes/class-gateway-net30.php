@@ -59,13 +59,25 @@ class SLW_Gateway_Net30 extends WC_Payment_Gateway {
      * Also dynamically update the title/description based on the user's term.
      */
     public function is_available() {
-        if ( ! slw_is_wholesale_context() ) {
-            return false;
+        $user_id      = get_current_user_id();
+        $days         = $user_id ? self::get_user_net_terms( $user_id ) : 0;
+        $is_wholesale = slw_is_wholesale_context();
+
+        // Diagnostic logging for cases like BBar (2026-05-26) where a
+        // wholesale customer had NET terms approved but only saw credit
+        // card at checkout. Logged at debug level so it shows up if
+        // WP_DEBUG_LOG is on, without polluting normal sites.
+        if ( defined( 'WP_DEBUG' ) && WP_DEBUG && $user_id && $days > 0 && ! $is_wholesale ) {
+            error_log( sprintf(
+                '[SLW NET %d] gateway hidden for user %d: has NET terms but session context is retail',
+                $days,
+                $user_id
+            ) );
         }
 
-        $user_id = get_current_user_id();
-        $days    = self::get_user_net_terms( $user_id );
-
+        if ( ! $is_wholesale ) {
+            return false;
+        }
         if ( $days < 1 ) {
             return false;
         }

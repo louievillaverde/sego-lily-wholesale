@@ -23,14 +23,32 @@ class SLW_Context_Switcher {
     }
 
     /**
-     * Get the current shopping context from WC session.
-     * Returns 'wholesale' or 'retail'. Default: 'retail' so wholesale
-     * customers casually browsing don't get hit with minimums until they
-     * intentionally opt INTO wholesale mode via the toggle.
+     * Get the current shopping context.
+     *
+     * Priority order:
+     *   1. WC session value if explicitly set this session
+     *   2. Persistent user preference (last context the user chose, stored
+     *      in user_meta) -- this keeps wholesale customers in wholesale
+     *      mode across sessions instead of forcing them to re-toggle every
+     *      visit. Important for NET 30 gateway availability + tier pricing.
+     *   3. Default 'retail' for new users so casual browsing doesn't
+     *      trigger wholesale minimums.
      */
     public static function get_context() {
         if ( function_exists( 'WC' ) && WC()->session ) {
-            return WC()->session->get( 'slw_shopping_context', 'retail' );
+            $session_value = WC()->session->get( 'slw_shopping_context', null );
+            if ( $session_value === 'wholesale' || $session_value === 'retail' ) {
+                return $session_value;
+            }
+        }
+        if ( is_user_logged_in() ) {
+            $pref = get_user_meta( get_current_user_id(), 'slw_preferred_context', true );
+            if ( $pref === 'wholesale' || $pref === 'retail' ) {
+                if ( function_exists( 'WC' ) && WC()->session ) {
+                    WC()->session->set( 'slw_shopping_context', $pref );
+                }
+                return $pref;
+            }
         }
         return 'retail';
     }
@@ -55,6 +73,9 @@ class SLW_Context_Switcher {
         if ( function_exists( 'WC' ) && WC()->session ) {
             WC()->session->set( 'slw_shopping_context', $context );
         }
+
+        // Persist the choice on the user so it survives logout/login.
+        update_user_meta( get_current_user_id(), 'slw_preferred_context', $context );
 
         // Clear the cart to prevent mixed pricing
         if ( function_exists( 'WC' ) && WC()->cart ) {

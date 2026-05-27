@@ -402,7 +402,8 @@ $products = $all_products; // keep for empty check
                         <input type="number" class="slw-qty-input" min="<?php echo esc_attr( $v_min_input ); ?>" max="999" step="<?php echo esc_attr( $v_step ); ?>" value="<?php echo esc_attr( $v_default ); ?>"
                                data-product-id="<?php echo esc_attr( $product->get_id() ); ?>"
                                data-variation-id="<?php echo esc_attr( $variation->get_id() ); ?>"
-                               data-variation="<?php echo esc_attr( wp_json_encode( $var_attrs ) ); ?>" />
+                               data-variation="<?php echo esc_attr( wp_json_encode( $var_attrs ) ); ?>"
+                               data-price="<?php echo esc_attr( $variation->get_price() ); ?>" />
                     </td>
                     <td class="slw-col-action">
                         <button type="button" class="slw-btn slw-btn-small slw-add-single"
@@ -455,7 +456,7 @@ $products = $all_products; // keep for empty check
                     <td class="slw-col-price"><?php echo $price_html; ?></td>
                     <td class="slw-col-qty">
                         <?php if ( $product->is_in_stock() ) : ?>
-                            <input type="number" class="slw-qty-input" min="<?php echo esc_attr( $min_input ); ?>" max="999" step="<?php echo esc_attr( $step ); ?>" value="<?php echo esc_attr( $default_qty ); ?>" data-product-id="<?php echo esc_attr( $product->get_id() ); ?>" />
+                            <input type="number" class="slw-qty-input" min="<?php echo esc_attr( $min_input ); ?>" max="999" step="<?php echo esc_attr( $step ); ?>" value="<?php echo esc_attr( $default_qty ); ?>" data-product-id="<?php echo esc_attr( $product->get_id() ); ?>" data-price="<?php echo esc_attr( $product->get_price() ); ?>" />
                         <?php else : ?>
                             <span class="slw-out-of-stock">Out of stock</span>
                         <?php endif; ?>
@@ -520,15 +521,33 @@ $products = $all_products; // keep for empty check
     </div>
 
     <div class="slw-order-form-footer">
-        <button type="button" class="slw-btn slw-btn-primary" id="slw-add-all-btn">Add All to Cart</button>
-        <button type="button" class="slw-btn slw-btn-secondary" id="slw-save-template-btn">Save as Template</button>
-        <a href="<?php echo esc_url( wc_get_cart_url() ); ?>" class="slw-btn slw-btn-secondary">View Cart</a>
+        <div class="slw-of-subtotal-block" aria-live="polite">
+            <span class="slw-of-subtotal-label">Subtotal</span>
+            <span class="slw-of-subtotal-value" id="slw-of-subtotal"><?php echo wp_kses_post( wc_price( 0 ) ); ?></span>
+            <span class="slw-of-subtotal-meta" id="slw-of-subtotal-meta">0 items</span>
+        </div>
+        <div class="slw-of-actions">
+            <button type="button" class="slw-btn slw-btn-primary" id="slw-add-all-btn">Add All to Cart</button>
+            <button type="button" class="slw-btn slw-btn-secondary" id="slw-save-template-btn">Save as Template</button>
+            <a href="<?php echo esc_url( wc_get_cart_url() ); ?>" class="slw-btn slw-btn-secondary">View Cart</a>
+        </div>
     </div>
 
     <?php endif; ?>
 </div>
 
 <style>
+.slw-order-form-footer { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; padding: 16px 20px; background: #F7F6F3; border: 1px solid #E8E2D6; border-radius: 10px; margin-top: 24px; }
+.slw-of-subtotal-block { display: flex; align-items: baseline; gap: 8px; font-family: Georgia, 'Times New Roman', serif; }
+.slw-of-subtotal-label { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #628393; font-weight: 600; }
+.slw-of-subtotal-value { font-size: 22px; font-weight: 700; color: #2C2C2C; }
+.slw-of-subtotal-meta { font-size: 12px; color: #628393; font-style: italic; }
+.slw-of-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+@media (max-width: 600px) {
+    .slw-order-form-footer { flex-direction: column; align-items: stretch; }
+    .slw-of-subtotal-block { justify-content: space-between; }
+    .slw-of-actions { justify-content: flex-end; }
+}
 .slw-of-toast {
     position: fixed;
     bottom: 80px;
@@ -589,6 +608,57 @@ $products = $all_products; // keep for empty check
     var msgEl = document.getElementById('slw-order-message');
 
     var cartUrl = <?php echo wp_json_encode( wc_get_cart_url() ); ?>;
+
+    // Live order subtotal in the footer. Reads data-price + quantity off
+    // every .slw-qty-input row and renders running totals so the wholesale
+    // customer doesn't have to bounce to the cart page to know what they
+    // are about to spend.
+    var subtotalEl = document.getElementById('slw-of-subtotal');
+    var subtotalMetaEl = document.getElementById('slw-of-subtotal-meta');
+    var currencySymbol = <?php echo wp_json_encode( html_entity_decode( get_woocommerce_currency_symbol() ) ); ?>;
+    var decimalSep = <?php echo wp_json_encode( wc_get_price_decimal_separator() ); ?>;
+    var thousandsSep = <?php echo wp_json_encode( wc_get_price_thousand_separator() ); ?>;
+    var decimals = <?php echo (int) wc_get_price_decimals(); ?>;
+
+    function formatPrice(amount) {
+        var sign = amount < 0 ? '-' : '';
+        var abs = Math.abs(amount).toFixed(decimals);
+        var parts = abs.split('.');
+        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, thousandsSep);
+        var joined = parts.join(decimalSep);
+        return sign + currencySymbol + joined;
+    }
+
+    function updateSubtotal() {
+        if (!subtotalEl) return;
+        var total = 0;
+        var lineCount = 0;
+        var itemCount = 0;
+        document.querySelectorAll('.slw-qty-input').forEach(function(input) {
+            var qty = parseInt(input.value, 10) || 0;
+            if (qty <= 0) return;
+            var price = parseFloat(input.getAttribute('data-price')) || 0;
+            total += qty * price;
+            lineCount++;
+            itemCount += qty;
+        });
+        subtotalEl.textContent = formatPrice(total);
+        if (subtotalMetaEl) {
+            if (itemCount === 0) {
+                subtotalMetaEl.textContent = '0 items';
+            } else if (lineCount === 1) {
+                subtotalMetaEl.textContent = itemCount + ' item' + (itemCount === 1 ? '' : 's');
+            } else {
+                subtotalMetaEl.textContent = itemCount + ' items across ' + lineCount + ' products';
+            }
+        }
+    }
+
+    document.querySelectorAll('.slw-qty-input').forEach(function(input) {
+        input.addEventListener('input', updateSubtotal);
+        input.addEventListener('change', updateSubtotal);
+    });
+    updateSubtotal();
 
     // Errors get the persistent inline notice + scroll (user must see).
     // Success/info show as a corner toast with a View Cart link, so the
@@ -682,6 +752,7 @@ $products = $all_products; // keep for empty check
                 document.querySelectorAll('.slw-qty-input').forEach(function(input) {
                     input.value = '0';
                 });
+                updateSubtotal();
             } else {
                 var msg = (resp && resp.data && resp.data.message) ? resp.data.message : 'Could not add items to cart.';
                 showMessage(msg, 'error');
