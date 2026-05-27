@@ -107,17 +107,17 @@ class SLW_Wholesale_Role {
             if (isProduct) {
                 var banner = document.createElement('div');
                 banner.innerHTML =
-                    '<div style="background:#F7F6F3;border:1px solid #D8D2C7;border-radius:8px;'
-                    + 'padding:16px 20px;margin:18px 0;'
+                    '<div style="background:#386174;border-radius:8px;padding:18px 22px;margin:18px 0;'
+                    + 'box-shadow:0 2px 12px rgba(56,97,116,0.25);'
                     + 'font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Helvetica,Arial,sans-serif;">'
-                    + '<p style="margin:0 0 12px;font-size:14px;color:#386174;font-weight:600;line-height:1.4;">'
-                    + 'You\'re on the retail page'
+                    + '<p style="margin:0 0 4px;font-size:13px;color:rgba(247,246,243,0.7);font-weight:500;letter-spacing:0.3px;text-transform:uppercase;">'
+                    + 'Wholesale account'
                     + '</p>'
-                    + '<p style="margin:0 0 14px;font-size:13.5px;color:#4A4A4A;line-height:1.5;">'
-                    + 'Your wholesale pricing and order form are in your partner portal.'
+                    + '<p style="margin:0 0 14px;font-size:15px;color:#F7F6F3;font-weight:600;line-height:1.4;">'
+                    + 'You\'re on the retail page &mdash; your order form is over here.'
                     + '</p>'
-                    + '<a href="' + orderForm + '" style="display:inline-block;background:#386174;'
-                    + 'color:#F7F6F3;padding:9px 20px;border-radius:6px;font-size:13px;font-weight:600;'
+                    + '<a href="' + orderForm + '" style="display:inline-block;background:#F7F6F3;'
+                    + 'color:#386174;padding:9px 20px;border-radius:6px;font-size:13px;font-weight:700;'
                     + 'text-decoration:none;letter-spacing:0.2px;">'
                     + 'Go to my order form &rarr;</a>'
                     + '</div>';
