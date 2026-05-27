@@ -75,64 +75,64 @@ class SLW_Wholesale_Role {
         add_action( 'admin_notices', array( __CLASS__, 'bulk_net30_notice' ) );
 
         // Product page redirect banner + account icon JS fix for wholesale users
-        add_action( 'woocommerce_single_product_summary', array( __CLASS__, 'product_page_wholesale_banner' ), 1 );
-        add_action( 'wp_footer', array( __CLASS__, 'account_icon_js_redirect' ) );
+        // Both injected via wp_footer JS to avoid Elementor bypassing WC hooks.
+        add_action( 'wp_footer', array( __CLASS__, 'product_page_and_account_js' ) );
     }
 
     /**
-     * Banner on every single product page for wholesale users.
-     * The retail product page shows retail pricing and the normal WC add-to-cart
-     * flow, which breaks for wholesale (wrong price, no minimums, wrong context).
-     * This banner redirects them to the wholesale order form cleanly.
+     * Single wp_footer script for wholesale users that:
+     * 1. On product pages: injects a banner before the add-to-cart form
+     *    directing them to the wholesale order form. Done in JS so it works
+     *    with Elementor, which bypasses woocommerce_single_product_summary.
+     * 2. Rewrites any My Account link to /wholesale-portal (catches Elementor
+     *    account icon hrefs that bypass the PHP page_link filter).
      */
-    public static function product_page_wholesale_banner() {
+    public static function product_page_and_account_js() {
         if ( is_admin() ) return;
         if ( ! is_user_logged_in() || ! slw_is_wholesale_user() ) return;
 
-        $order_form_url = home_url( '/wholesale-order' );
-        echo '<div style="'
-           . 'background:#386174;color:#F7F6F3;padding:12px 20px;border-radius:8px;'
-           . 'margin:0 0 20px;display:flex;align-items:center;justify-content:space-between;'
-           . 'flex-wrap:wrap;gap:10px;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Helvetica,Arial,sans-serif;'
-           . 'font-size:14px;line-height:1.4;">'
-           . '<span>'
-           . '<strong style="color:#F7F6F3;">This page shows retail pricing.</strong> '
-           . 'Wholesale customers, please place orders through your order form.'
-           . '</span>'
-           . '<a href="' . esc_url( $order_form_url ) . '" style="'
-           . 'display:inline-block;background:#F7F6F3;color:#386174;padding:7px 16px;'
-           . 'border-radius:999px;font-size:13px;font-weight:700;text-decoration:none;'
-           . 'white-space:nowrap;flex-shrink:0;">'
-           . '&rarr; Wholesale Order Form'
-           . '</a>'
-           . '</div>';
-    }
-
-    /**
-     * JS fallback to rewrite the account icon link for wholesale users.
-     * Elementor themes sometimes hardcode the My Account URL as an href
-     * that bypasses the page_link PHP filter (already applied in nav-menu.php).
-     * This catches whatever slips through by rewriting the DOM after render.
-     */
-    public static function account_icon_js_redirect() {
-        if ( is_admin() ) return;
-        if ( ! is_user_logged_in() || ! slw_is_wholesale_user() ) return;
-
-        $account_url    = esc_js( trailingslashit( get_permalink( get_option( 'woocommerce_myaccount_page_id' ) ) ) );
-        $portal_url     = esc_js( home_url( '/wholesale-portal/' ) );
+        $is_product     = is_product() ? 'true' : 'false';
+        $order_form_url = esc_js( home_url( '/wholesale-order' ) );
+        $acct_url       = get_permalink( get_option( 'woocommerce_myaccount_page_id' ) );
+        $portal_url     = home_url( '/wholesale-portal' );
         ?>
         <script>
         (function(){
-            var acct = <?php echo wp_json_encode( get_permalink( get_option( 'woocommerce_myaccount_page_id' ) ) ); ?>;
-            var portal = <?php echo wp_json_encode( home_url( '/wholesale-portal' ) ); ?>;
-            if (!acct || !portal) return;
-            // Normalise: strip trailing slash for comparison
-            var acctNorm = acct.replace(/\/$/, '');
-            document.querySelectorAll('a[href]').forEach(function(a) {
-                if (a.href.replace(/\/$/, '') === acctNorm) {
-                    a.href = portal;
+            var isProduct  = <?php echo $is_product; ?>;
+            var orderForm  = <?php echo wp_json_encode( home_url( '/wholesale-order' ) ); ?>;
+            var acct       = <?php echo wp_json_encode( $acct_url ); ?>;
+            var portal     = <?php echo wp_json_encode( $portal_url ); ?>;
+
+            // 1. Product page banner
+            if (isProduct) {
+                var banner = document.createElement('div');
+                banner.innerHTML =
+                    '<div style="background:#386174;color:#F7F6F3;padding:12px 20px;border-radius:8px;'
+                    + 'margin:0 0 20px;display:flex;align-items:center;justify-content:space-between;'
+                    + 'flex-wrap:wrap;gap:10px;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\','
+                    + 'Helvetica,Arial,sans-serif;font-size:14px;line-height:1.4;">'
+                    + '<span><strong style="color:#F7F6F3;">This page shows retail pricing.</strong> '
+                    + 'Wholesale customers, please place orders through your order form.</span>'
+                    + '<a href="' + orderForm + '" style="display:inline-block;background:#F7F6F3;'
+                    + 'color:#386174;padding:7px 16px;border-radius:999px;font-size:13px;font-weight:700;'
+                    + 'text-decoration:none;white-space:nowrap;flex-shrink:0;">'
+                    + '&rarr; Wholesale Order Form</a></div>';
+                // Try to insert before the add-to-cart form; fall back to before the product title
+                var target = document.querySelector('form.cart, .elementor-add-to-cart form, .product_title');
+                if (target) {
+                    target.parentNode.insertBefore(banner.firstElementChild, target);
                 }
-            });
+            }
+
+            // 2. Account icon rewrite
+            if (acct && portal) {
+                var acctNorm = acct.replace(/\/$/, '');
+                document.querySelectorAll('a[href]').forEach(function(a) {
+                    if (a.href.replace(/\/$/, '') === acctNorm) {
+                        a.href = portal;
+                    }
+                });
+            }
         })();
         </script>
         <?php
