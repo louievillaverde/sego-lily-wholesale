@@ -24,13 +24,15 @@ class SLW_Context_Switcher {
 
     /**
      * Get the current shopping context from WC session.
-     * Returns 'wholesale' or 'retail'. Default: 'wholesale'.
+     * Returns 'wholesale' or 'retail'. Default: 'retail' so wholesale
+     * customers casually browsing don't get hit with minimums until they
+     * intentionally opt INTO wholesale mode via the toggle.
      */
     public static function get_context() {
         if ( function_exists( 'WC' ) && WC()->session ) {
-            return WC()->session->get( 'slw_shopping_context', 'wholesale' );
+            return WC()->session->get( 'slw_shopping_context', 'retail' );
         }
-        return 'wholesale';
+        return 'retail';
     }
 
     /**
@@ -83,39 +85,50 @@ class SLW_Context_Switcher {
         <style>
         #slw-context-bar {
             position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
+            bottom: 18px;
+            right: 18px;
             z-index: 99999;
-            background: rgba(30, 42, 48, 0.85);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            border-radius: 28px;
+            background: rgba(30, 42, 48, 0.78);
+            backdrop-filter: blur(14px) saturate(140%);
+            -webkit-backdrop-filter: blur(14px) saturate(140%);
+            border: 1px solid rgba(247,246,243,0.08);
+            border-radius: 999px;
             display: inline-flex;
             align-items: center;
-            gap: 4px;
-            padding: 4px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-            font-family: Georgia, 'Times New Roman', serif;
-            opacity: 0.55;
-            transition: opacity 0.3s;
+            gap: 2px;
+            padding: 3px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+            opacity: 0.45;
+            transition: opacity 0.25s, transform 0.25s;
+            transform: scale(0.96);
         }
-        #slw-context-bar:hover { opacity: 1; }
+        #slw-context-bar:hover { opacity: 1; transform: scale(1); }
         #slw-context-bar .slw-ctx-btn {
             border: none !important;
             cursor: pointer;
-            padding: 10px 20px !important;
-            border-radius: 24px !important;
-            font-size: 13px !important;
+            padding: 6px 12px !important;
+            border-radius: 999px !important;
+            font-size: 11.5px !important;
             font-weight: 600 !important;
-            font-family: Georgia, 'Times New Roman', serif !important;
+            letter-spacing: 0.2px !important;
+            font-family: inherit !important;
             display: inline-flex !important;
             align-items: center !important;
-            gap: 6px;
-            transition: all 0.2s;
+            gap: 5px;
+            transition: background 0.18s, color 0.18s;
             white-space: nowrap;
             appearance: none;
             -webkit-appearance: none;
+            line-height: 1.2 !important;
+            height: auto !important;
+            min-height: 0 !important;
+            text-transform: none !important;
+        }
+        #slw-context-bar .slw-ctx-btn svg {
+            width: 11px;
+            height: 11px;
+            flex: 0 0 auto;
         }
         #slw-context-bar .slw-ctx-btn--active-wholesale {
             background: #386174 !important;
@@ -127,29 +140,36 @@ class SLW_Context_Switcher {
         }
         #slw-context-bar .slw-ctx-btn--inactive {
             background: transparent !important;
-            color: rgba(247,246,243,0.5) !important;
+            color: rgba(247,246,243,0.45) !important;
         }
         #slw-context-bar .slw-ctx-btn--inactive:hover {
             color: rgba(247,246,243,0.85) !important;
         }
         @media (max-width: 480px) {
-            #slw-context-bar .slw-ctx-btn { padding: 8px 14px !important; font-size: 12px !important; }
+            #slw-context-bar { bottom: 12px; right: 12px; opacity: 0.55; }
+            #slw-context-bar .slw-ctx-btn { padding: 5px 10px !important; font-size: 11px !important; }
+            #slw-context-bar .slw-ctx-btn svg { width: 10px; height: 10px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            #slw-context-bar { transition: none; transform: none; }
         }
         </style>
-        <div id="slw-context-bar">
-            <button type="button"
-                    id="slw-ctx-wholesale"
-                    data-context="wholesale"
-                    class="slw-ctx-btn <?php echo $current === 'wholesale' ? 'slw-ctx-btn--active-wholesale' : 'slw-ctx-btn--inactive'; ?>">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-                For My Store
-            </button>
+        <div id="slw-context-bar" role="group" aria-label="Shopping mode">
             <button type="button"
                     id="slw-ctx-retail"
                     data-context="retail"
+                    aria-pressed="<?php echo $current === 'retail' ? 'true' : 'false'; ?>"
                     class="slw-ctx-btn <?php echo $current === 'retail' ? 'slw-ctx-btn--active-retail' : 'slw-ctx-btn--inactive'; ?>">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
-                For Myself
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                Myself
+            </button>
+            <button type="button"
+                    id="slw-ctx-wholesale"
+                    data-context="wholesale"
+                    aria-pressed="<?php echo $current === 'wholesale' ? 'true' : 'false'; ?>"
+                    class="slw-ctx-btn <?php echo $current === 'wholesale' ? 'slw-ctx-btn--active-wholesale' : 'slw-ctx-btn--inactive'; ?>">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                My Store
             </button>
         </div>
 
@@ -189,8 +209,7 @@ class SLW_Context_Switcher {
                 });
             });
 
-            // Add bottom padding to body so the toggle bar doesn't overlap content
-            document.body.style.paddingBottom = (parseInt(getComputedStyle(document.body).paddingBottom) || 0) + 56 + 'px';
+            // Corner-anchored toggle doesn't need body padding adjustment.
         })();
         </script>
         <?php

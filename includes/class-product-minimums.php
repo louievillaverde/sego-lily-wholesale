@@ -127,6 +127,14 @@ class SLW_Product_Minimums {
 	 * @return array
 	 */
 	public static function add_minimum_to_order_form( $data, $product ) {
+		// In retail context the order form should not surface wholesale
+		// minimums or case packs to the customer, even if those values
+		// exist on the product.
+		if ( ! slw_is_wholesale_context() ) {
+			$data['minimum_qty']    = 0;
+			$data['case_pack_size'] = 0;
+			return $data;
+		}
 		$min = self::get_product_minimum( $product->get_id() );
 		$data['minimum_qty'] = $min;
 		$data['case_pack_size'] = self::get_case_pack_size( $product->get_id() );

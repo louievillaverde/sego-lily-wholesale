@@ -3,7 +3,7 @@
  * Plugin Name:       Wholesale Portal
  * Plugin URI:        https://github.com/louievillaverde/sego-lily-wholesale
  * Description:       All-in-one B2B wholesale portal for WooCommerce. Customer portal, tiered pricing, application workflow, PDF invoices, email sequences with multi-provider support, NET payment terms, lead capture, trade show tools, and automated order reminders. Built by Lead Piranha.
- * Version:           4.6.18
+ * Version:           4.6.19
  * Author:            Lead Piranha
  * Author URI:        https://leadpiranha.com
  * Requires at least: 6.0
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SLW_VERSION', '4.6.18' );
+define( 'SLW_VERSION', '4.6.19' );
 define( 'SLW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SLW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -554,12 +554,15 @@ function slw_is_wholesale_context( $user_id = null ) {
     if ( ! in_array( 'wholesale_customer', (array) $user->roles, true ) ) {
         return false;
     }
-    // Check WC session context
+    // Check WC session context. Default to retail so wholesale_customer
+    // users start in their casual-browsing state and opt INTO wholesale
+    // mode explicitly via the context switcher. Avoids surprising minimums
+    // / wholesale pricing for someone just browsing a product page.
     if ( function_exists( 'WC' ) && WC()->session ) {
-        $context = WC()->session->get( 'slw_shopping_context', 'wholesale' );
+        $context = WC()->session->get( 'slw_shopping_context', 'retail' );
         return $context === 'wholesale';
     }
-    return true; // Default to wholesale if no session available
+    return false; // Default to retail if no session available
 }
 
 /**
