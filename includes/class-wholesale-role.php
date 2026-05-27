@@ -109,11 +109,11 @@ class SLW_Wholesale_Role {
                 var style = document.createElement('style');
                 style.textContent =
                     '@keyframes slwBannerIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}'
-                    + '@keyframes slwBtnShine{0%,100%{outline:2px solid rgba(212,175,55,0);outline-offset:0px;transform:scale(1)}50%{outline:3px solid rgba(212,175,55,0.9);outline-offset:4px;transform:scale(1.04)}}'
+                    + '@keyframes slwBtnShine{0%,100%{outline:2px solid rgba(212,175,55,0);outline-offset:0px;transform:scale(1)}30%,70%{outline:3px solid rgba(212,175,55,0.9);outline-offset:4px;transform:scale(1.04)}}'
                     + '.slw-wholesale-banner{animation:slwBannerIn 0.35s ease both}'
                     + '.slw-order-btn{'
                     +   'background:#F7F6F3!important;'
-                    +   'animation:slwBtnShine 1s ease 0.5s 3!important'
+                    +   'animation:slwBtnShine 2s ease-in-out 0.5s 3!important'
                     + '}';
                 document.head.appendChild(style);
 
