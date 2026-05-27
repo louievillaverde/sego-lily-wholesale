@@ -93,8 +93,13 @@ class SLW_Context_Switcher {
     /**
      * Render the floating toggle bar in the site footer.
      * Only visible to logged-in wholesale users, hidden in admin.
+     *
+     * Toggle is disabled: wholesale customers default to wholesale context
+     * and are directed to the order form for B2B purchases. Dual-context
+     * retail shopping from the main site is scoped for a future release.
      */
     public static function render_toggle_bar() {
+        return; // Toggle hidden until dual-context retail shopping is scoped
         // Only show for wholesale users on the frontend
         if ( is_admin() ) return;
         if ( ! is_user_logged_in() || ! slw_is_wholesale_user() ) return;
