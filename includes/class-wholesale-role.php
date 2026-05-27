@@ -105,12 +105,20 @@ class SLW_Wholesale_Role {
 
             // 1. Product page banner
             if (isProduct) {
+                // Keyframe animations
+                var style = document.createElement('style');
+                style.textContent =
+                    '@keyframes slwSlideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}'
+                    + '@keyframes slwPulse{0%,100%{box-shadow:0 0 0 0 rgba(247,246,243,0.4)}60%{box-shadow:0 0 0 6px rgba(247,246,243,0)}}';
+                document.head.appendChild(style);
+
                 var banner = document.createElement('div');
                 banner.innerHTML =
                     '<div style="background:#386174;border-radius:8px;padding:18px 22px;margin:18px 0;'
-                    + 'box-shadow:0 2px 12px rgba(56,97,116,0.25);'
-                    + 'font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Helvetica,Arial,sans-serif;">'
-                    + '<p style="margin:0 0 4px;font-size:13px;color:rgba(247,246,243,0.7);font-weight:500;letter-spacing:0.3px;text-transform:uppercase;">'
+                    + 'box-shadow:0 4px 16px rgba(56,97,116,0.3);'
+                    + 'font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Helvetica,Arial,sans-serif;'
+                    + 'animation:slwSlideUp 0.35s ease both;">'
+                    + '<p style="margin:0 0 4px;font-size:12px;color:rgba(247,246,243,0.65);font-weight:500;letter-spacing:0.5px;text-transform:uppercase;">'
                     + 'Wholesale account'
                     + '</p>'
                     + '<p style="margin:0 0 14px;font-size:15px;color:#F7F6F3;font-weight:600;line-height:1.4;">'
@@ -118,7 +126,7 @@ class SLW_Wholesale_Role {
                     + '</p>'
                     + '<a href="' + orderForm + '" style="display:inline-block;background:#F7F6F3;'
                     + 'color:#386174;padding:9px 20px;border-radius:6px;font-size:13px;font-weight:700;'
-                    + 'text-decoration:none;letter-spacing:0.2px;">'
+                    + 'text-decoration:none;letter-spacing:0.2px;animation:slwPulse 1.8s ease 0.4s 3;">'
                     + 'Go to my order form &rarr;</a>'
                     + '</div>';
                 // Insert after the add-to-cart form
