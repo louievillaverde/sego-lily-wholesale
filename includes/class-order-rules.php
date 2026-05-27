@@ -45,6 +45,22 @@ class SLW_Order_Rules {
         $user_id = get_current_user_id();
         $has_ordered = get_user_meta( $user_id, 'slw_first_order_placed', true );
 
+        // Retroactive backfill: customers who placed orders before the plugin
+        // tracked this flag would otherwise always hit the first-order minimum.
+        // Check WC order history once and cache the result permanently.
+        if ( ! $has_ordered && $user_id ) {
+            $prior_orders = wc_get_orders( array(
+                'customer_id' => $user_id,
+                'limit'       => 1,
+                'status'      => array( 'wc-processing', 'wc-completed' ),
+                'return'      => 'ids',
+            ) );
+            if ( ! empty( $prior_orders ) ) {
+                $has_ordered = current_time( 'mysql' );
+                update_user_meta( $user_id, 'slw_first_order_placed', $has_ordered );
+            }
+        }
+
         if ( $has_ordered ) {
             $minimum = (float) slw_get_option( 'reorder_minimum', 0 );
             $label = 'reorder';
@@ -83,6 +99,13 @@ class SLW_Order_Rules {
 
         $user_id = get_current_user_id();
         $has_ordered = get_user_meta( $user_id, 'slw_first_order_placed', true );
+        if ( ! $has_ordered && $user_id ) {
+            $prior = wc_get_orders( array( 'customer_id' => $user_id, 'limit' => 1, 'status' => array( 'wc-processing', 'wc-completed' ), 'return' => 'ids' ) );
+            if ( ! empty( $prior ) ) {
+                $has_ordered = current_time( 'mysql' );
+                update_user_meta( $user_id, 'slw_first_order_placed', $has_ordered );
+            }
+        }
 
         if ( ! $has_ordered ) {
             $minimum = (float) slw_get_option( 'first_order_minimum', 300 );
