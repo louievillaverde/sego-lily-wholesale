@@ -108,10 +108,24 @@ class SLW_Order_Rules {
         }
 
         if ( ! $has_ordered ) {
-            $minimum = (float) slw_get_option( 'first_order_minimum', 300 );
+            $minimum    = (float) slw_get_option( 'first_order_minimum', 300 );
             $cart_total = (float) WC()->cart->get_subtotal();
-            if ( $cart_total < $minimum ) {
-                echo '<div class="slw-notice slw-notice-info">Your first wholesale order has a $' . number_format( $minimum, 0 ) . ' minimum. You\'re at $' . number_format( $cart_total, 2 ) . ' so far.</div>';
+            if ( $minimum > 0 ) {
+                $pct   = min( 100, round( ( $cart_total / $minimum ) * 100 ) );
+                $met   = $cart_total >= $minimum;
+                $color = $met ? '#2e7d32' : '#386174';
+                $msg   = $met
+                    ? 'First order minimum met!'
+                    : 'First order minimum: $' . number_format( $cart_total, 2 ) . ' / $' . number_format( $minimum, 0 );
+                echo '<div class="slw-cart-minimum-bar" style="margin:12px 0 4px;padding:14px 16px;background:#f7f6f3;border:1px solid #e0dbd0;border-radius:8px;">'
+                   . '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">'
+                   . '<span style="font-size:13px;font-weight:600;color:' . $color . ';">' . esc_html( $msg ) . '</span>'
+                   . '<span style="font-size:12px;color:#628393;">' . $pct . '%</span>'
+                   . '</div>'
+                   . '<div style="background:#e0dbd0;border-radius:999px;height:6px;overflow:hidden;">'
+                   . '<div style="height:100%;width:' . $pct . '%;background:' . $color . ';border-radius:999px;transition:width 0.3s;"></div>'
+                   . '</div>'
+                   . '</div>';
             }
         }
     }

@@ -24,6 +24,26 @@ class SLW_Nav_Menu {
         // Redirect wholesale users to portal after login
         add_filter( 'woocommerce_login_redirect', array( __CLASS__, 'login_redirect' ), 10, 2 );
         add_filter( 'login_redirect', array( __CLASS__, 'login_redirect' ), 10, 3 );
+
+        // Rewrite the My Account page URL to wholesale portal for wholesale users.
+        // This covers the account icon in the header and any other page_link call.
+        add_filter( 'page_link', array( __CLASS__, 'rewrite_account_link' ), 10, 2 );
+    }
+
+    /**
+     * Point the My Account page link at the wholesale portal for logged-in
+     * wholesale users, so the header account icon goes to the right place.
+     */
+    public static function rewrite_account_link( $link, $post_id ) {
+        if ( is_admin() ) {
+            return $link;
+        }
+        $account_page_id = (int) get_option( 'woocommerce_myaccount_page_id' );
+        if ( $account_page_id && (int) $post_id === $account_page_id
+             && is_user_logged_in() && function_exists( 'slw_is_wholesale_user' ) && slw_is_wholesale_user() ) {
+            return home_url( '/wholesale-portal' );
+        }
+        return $link;
     }
 
     /**
