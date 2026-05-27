@@ -105,28 +105,33 @@ class SLW_Wholesale_Role {
 
             // 1. Product page banner
             if (isProduct) {
-                // Keyframe animations
+                // Scoped keyframe animations -- class-based so they cannot bleed onto other elements
                 var style = document.createElement('style');
                 style.textContent =
-                    '@keyframes slwSlideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}'
-                    + '@keyframes slwPulse{0%,100%{box-shadow:0 0 0 0 rgba(247,246,243,0.4)}60%{box-shadow:0 0 0 6px rgba(247,246,243,0)}}';
+                    '@keyframes slwBannerIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}'
+                    + '@keyframes slwBtnShine{0%{background-position:0% 0}100%{background-position:100% 0}}'
+                    + '.slw-wholesale-banner{animation:slwBannerIn 0.35s ease both}'
+                    + '.slw-order-btn{'
+                    +   'background:linear-gradient(100deg,#F7F6F3 25%,#fffdf5 45%,#fff8e0 50%,#fffdf5 55%,#F7F6F3 75%)!important;'
+                    +   'background-size:300% 100%!important;'
+                    +   'animation:slwBtnShine 1.4s linear 0.5s 3!important'
+                    + '}';
                 document.head.appendChild(style);
 
                 var banner = document.createElement('div');
                 banner.innerHTML =
-                    '<div style="background:#386174;border-radius:8px;padding:18px 22px;margin:18px 0;'
+                    '<div class="slw-wholesale-banner" style="background:#386174;border-radius:8px;padding:18px 22px;margin:18px 0;'
                     + 'box-shadow:0 4px 16px rgba(56,97,116,0.3);'
-                    + 'font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Helvetica,Arial,sans-serif;'
-                    + 'animation:slwSlideUp 0.35s ease both;">'
+                    + 'font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Helvetica,Arial,sans-serif;">'
                     + '<p style="margin:0 0 4px;font-size:12px;color:rgba(247,246,243,0.65);font-weight:500;letter-spacing:0.5px;text-transform:uppercase;">'
                     + 'Wholesale account'
                     + '</p>'
                     + '<p style="margin:0 0 14px;font-size:15px;color:#F7F6F3;font-weight:600;line-height:1.4;">'
                     + 'Psst! You\'re on the retail page. Your order form is over here.'
                     + '</p>'
-                    + '<a href="' + orderForm + '" style="display:inline-block;background:#F7F6F3;'
+                    + '<a href="' + orderForm + '" class="slw-order-btn" style="display:inline-block;'
                     + 'color:#386174;padding:9px 20px;border-radius:6px;font-size:13px;font-weight:700;'
-                    + 'text-decoration:none;letter-spacing:0.2px;animation:slwPulse 1.8s ease 0.4s 3;">'
+                    + 'text-decoration:none;letter-spacing:0.2px;">'
                     + 'Go to my order form &rarr;</a>'
                     + '</div>';
                 // Insert after the add-to-cart form
