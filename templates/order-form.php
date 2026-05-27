@@ -528,18 +528,108 @@ $products = $all_products; // keep for empty check
     <?php endif; ?>
 </div>
 
+<style>
+.slw-of-toast {
+    position: fixed;
+    bottom: 80px;
+    right: 18px;
+    z-index: 99998;
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 18px;
+    border-radius: 10px;
+    background: #1E2A30;
+    color: #F7F6F3;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.4;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.22);
+    max-width: 360px;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.22s ease, transform 0.22s ease;
+}
+.slw-of-toast--in { opacity: 1; transform: translateY(0); }
+.slw-of-toast--success { background: #1F5D3A; }
+.slw-of-toast--info { background: #386174; }
+.slw-of-toast__msg { flex: 1 1 auto; }
+.slw-of-toast__cta {
+    flex: 0 0 auto;
+    color: #F7F6F3 !important;
+    background: rgba(247,246,243,0.16);
+    padding: 6px 12px;
+    border-radius: 6px;
+    text-decoration: none !important;
+    font-weight: 600;
+    font-size: 13px;
+    white-space: nowrap;
+    transition: background 0.15s;
+}
+.slw-of-toast__cta:hover { background: rgba(247,246,243,0.28); color: #F7F6F3 !important; }
+@media (max-width: 480px) {
+    .slw-of-toast {
+        left: 12px;
+        right: 12px;
+        bottom: 72px;
+        max-width: none;
+        font-size: 13px;
+        padding: 10px 14px;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .slw-of-toast { transition: none; transform: none; }
+}
+</style>
+
 <script>
 (function() {
     var ajaxUrl = '<?php echo esc_js( $ajax_url ); ?>';
     var nonce = '<?php echo esc_js( $nonce ); ?>';
     var msgEl = document.getElementById('slw-order-message');
 
+    var cartUrl = <?php echo wp_json_encode( wc_get_cart_url() ); ?>;
+
+    // Errors get the persistent inline notice + scroll (user must see).
+    // Success/info show as a corner toast with a View Cart link, so the
+    // user isn't yanked away from where they were scrolling.
     function showMessage(text, type) {
-        msgEl.textContent = text;
-        msgEl.className = 'slw-notice slw-notice-' + type;
-        msgEl.style.display = 'block';
-        msgEl.scrollIntoView({ behavior: 'smooth' });
-        setTimeout(function() { msgEl.focus(); }, 300);
+        if (type === 'error') {
+            msgEl.textContent = text;
+            msgEl.className = 'slw-notice slw-notice-' + type;
+            msgEl.style.display = 'block';
+            msgEl.scrollIntoView({ behavior: 'smooth' });
+            setTimeout(function() { msgEl.focus(); }, 300);
+            return;
+        }
+        showToast(text, type);
+    }
+
+    function showToast(text, type) {
+        var prior = document.getElementById('slw-of-toast');
+        if (prior) prior.remove();
+        var toast = document.createElement('div');
+        toast.id = 'slw-of-toast';
+        toast.className = 'slw-of-toast slw-of-toast--' + (type || 'info');
+        toast.setAttribute('role', 'status');
+        toast.setAttribute('aria-live', 'polite');
+        var msg = document.createElement('span');
+        msg.className = 'slw-of-toast__msg';
+        msg.textContent = text;
+        toast.appendChild(msg);
+        if (type === 'success' && cartUrl) {
+            var link = document.createElement('a');
+            link.href = cartUrl;
+            link.className = 'slw-of-toast__cta';
+            link.textContent = 'View Cart →';
+            toast.appendChild(link);
+        }
+        document.body.appendChild(toast);
+        requestAnimationFrame(function() { toast.classList.add('slw-of-toast--in'); });
+        setTimeout(function() {
+            toast.classList.remove('slw-of-toast--in');
+            setTimeout(function() { if (toast.parentNode) toast.remove(); }, 250);
+        }, 6000);
     }
 
     function collectItems(scope) {
