@@ -99,9 +99,10 @@ class SLW_Context_Switcher {
         if ( is_admin() ) return;
         if ( ! is_user_logged_in() || ! slw_is_wholesale_user() ) return;
 
-        $current = self::get_context();
-        $nonce   = wp_create_nonce( 'slw_context_switch' );
-        $ajax_url = admin_url( 'admin-ajax.php' );
+        $current   = self::get_context();
+        $nonce     = wp_create_nonce( 'slw_context_switch' );
+        $ajax_url  = admin_url( 'admin-ajax.php' );
+        $cart_count = ( function_exists( 'WC' ) && WC()->cart ) ? WC()->cart->get_cart_contents_count() : 0;
         ?>
         <style>
         #slw-context-bar {
@@ -196,20 +197,48 @@ class SLW_Context_Switcher {
 
         <script>
         (function() {
-            var ajaxUrl  = <?php echo wp_json_encode( $ajax_url ); ?>;
-            var nonce    = <?php echo wp_json_encode( $nonce ); ?>;
-            var current  = <?php echo wp_json_encode( $current ); ?>;
+            var ajaxUrl   = <?php echo wp_json_encode( $ajax_url ); ?>;
+            var nonce     = <?php echo wp_json_encode( $nonce ); ?>;
+            var current   = <?php echo wp_json_encode( $current ); ?>;
+            var cartCount = <?php echo (int) $cart_count; ?>;
+            var bar       = document.getElementById('slw-context-bar');
+            var btns      = bar ? bar.querySelectorAll('button') : [];
 
-            var btns = document.querySelectorAll('#slw-context-bar button');
+            function setActiveVisualState(target) {
+                // Optimistic UI: paint the new active button immediately
+                // so the click feels responsive while the request flies.
+                btns.forEach(function(b) {
+                    var isTarget = b.getAttribute('data-context') === target;
+                    b.classList.remove('slw-ctx-btn--active-wholesale',
+                                       'slw-ctx-btn--active-retail',
+                                       'slw-ctx-btn--inactive');
+                    if (isTarget) {
+                        b.classList.add(target === 'wholesale'
+                            ? 'slw-ctx-btn--active-wholesale'
+                            : 'slw-ctx-btn--active-retail');
+                        b.setAttribute('aria-pressed', 'true');
+                    } else {
+                        b.classList.add('slw-ctx-btn--inactive');
+                        b.setAttribute('aria-pressed', 'false');
+                    }
+                });
+            }
+
             btns.forEach(function(btn) {
                 btn.addEventListener('click', function() {
                     var target = this.getAttribute('data-context');
                     if (target === current) return;
 
-                    if (!confirm('Switching will clear your current cart. Continue?')) return;
+                    // Only confirm when the cart actually has items.
+                    // Toggle on an empty cart is a no-data-loss action.
+                    if (cartCount > 0) {
+                        var ok = confirm('Switching will clear your current cart (' + cartCount + ' item' + (cartCount === 1 ? '' : 's') + '). Continue?');
+                        if (!ok) return;
+                    }
 
-                    // Disable buttons during request
-                    btns.forEach(function(b) { b.disabled = true; b.style.opacity = '0.6'; });
+                    setActiveVisualState(target);
+                    bar.style.pointerEvents = 'none';
+                    bar.style.opacity = '0.85';
 
                     var formData = new FormData();
                     formData.append('action', 'slw_switch_context');
@@ -219,16 +248,35 @@ class SLW_Context_Switcher {
                     var xhr = new XMLHttpRequest();
                     xhr.open('POST', ajaxUrl);
                     xhr.onload = function() {
-                        // Reload regardless of response to refresh pricing
+                        // Persist target across reload so the new page paints
+                        // with the correct toggle state immediately, no flicker.
+                        try { sessionStorage.setItem('slw_pending_context', target); } catch (e) {}
                         window.location.reload();
                     };
                     xhr.onerror = function() {
+                        bar.style.pointerEvents = '';
+                        bar.style.opacity = '';
+                        setActiveVisualState(current);
                         alert('Network error. Please try again.');
-                        btns.forEach(function(b) { b.disabled = false; b.style.opacity = '1'; });
                     };
                     xhr.send(formData);
                 });
             });
+
+            // After a context-switch reload, briefly highlight the active
+            // pill so the user sees confirmation that the switch happened.
+            try {
+                var pending = sessionStorage.getItem('slw_pending_context');
+                if (pending && pending === current) {
+                    sessionStorage.removeItem('slw_pending_context');
+                    bar.style.opacity = '1';
+                    bar.style.transform = 'scale(1)';
+                    setTimeout(function() {
+                        bar.style.opacity = '';
+                        bar.style.transform = '';
+                    }, 1600);
+                }
+            } catch (e) {}
 
             // Corner-anchored toggle doesn't need body padding adjustment.
         })();

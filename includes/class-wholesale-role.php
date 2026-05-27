@@ -584,9 +584,15 @@ class SLW_Wholesale_Role {
      * Add a "Continue Shopping" link after the add-to-cart button for wholesale users.
      */
     public static function continue_shopping_link() {
-        if ( slw_is_wholesale_context() ) {
-            echo '<a href="' . esc_url( home_url( '/wholesale-portal/?tab=orders' ) ) . '" class="slw-btn slw-btn-secondary slw-continue-shopping" style="margin-left:10px;">Continue Shopping</a>';
+        if ( ! slw_is_wholesale_context() ) {
+            return;
         }
+        // Rendered as a centered block under the Add to Cart button. Points
+        // to the wholesale order form (browse more products) not the orders
+        // history tab, which is what "Continue Shopping" actually implies.
+        echo '<div class="slw-continue-shopping-wrap" style="display:block;width:100%;text-align:center;margin:14px 0 4px;">';
+        echo '<a href="' . esc_url( home_url( '/wholesale-order' ) ) . '" class="slw-continue-shopping" style="display:inline-block;color:#386174;text-decoration:none;font-size:14px;font-weight:600;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',Helvetica,Arial,sans-serif;border-bottom:1px solid transparent;transition:border-color 0.15s;">&larr; Continue shopping</a>';
+        echo '</div>';
     }
 
     /**

@@ -64,28 +64,101 @@ class SLW_Order_Form {
             wp_send_json_error( array( 'message' => 'No items selected.' ) );
         }
 
+        // Snapshot any pre-existing notices so we can read out the new
+        // ones emitted by add_to_cart() failures.
+        if ( function_exists( 'wc_clear_notices' ) ) {
+            wc_clear_notices();
+        }
+
         $added = 0;
+        $failures = array();
+
         foreach ( $items as $item ) {
             $product_id   = absint( $item['product_id'] ?? 0 );
             $quantity     = absint( $item['quantity'] ?? 0 );
             $variation_id = absint( $item['variation_id'] ?? 0 );
             $variation    = isset( $item['variation'] ) && is_array( $item['variation'] ) ? array_map( 'sanitize_text_field', $item['variation'] ) : array();
 
-            if ( $product_id > 0 && $quantity > 0 ) {
+            if ( $product_id <= 0 || $quantity <= 0 ) {
+                continue;
+            }
+
+            $product = wc_get_product( $product_id );
+            if ( ! $product ) {
+                $failures[] = sprintf( '#%d (product not found)', $product_id );
+                continue;
+            }
+
+            $type = $product->get_type();
+            $result = false;
+
+            if ( $type === 'grouped' ) {
+                // Grouped products must be added child-by-child. Apply
+                // quantity to each child so the gift-set/bundle adds
+                // every component.
+                $children = $product->get_children();
+                $any_child_added = false;
+                foreach ( $children as $child_id ) {
+                    $child = wc_get_product( $child_id );
+                    if ( ! $child ) continue;
+                    $child_result = WC()->cart->add_to_cart( $child_id, $quantity );
+                    if ( $child_result ) {
+                        $any_child_added = true;
+                    }
+                }
+                $result = $any_child_added;
+            } elseif ( $type === 'bundle' && class_exists( 'WC_Product_Bundle' ) ) {
+                // WC Product Bundles plugin requires bundle config to add.
+                // Without bundle config we can't add cleanly from the
+                // simplified order form, so surface a meaningful error.
+                $failures[] = sprintf( '%s (bundles must be added from their product page)', $product->get_name() );
+                continue;
+            } else {
                 $result = WC()->cart->add_to_cart( $product_id, $quantity, $variation_id, $variation );
-                if ( $result ) {
-                    $added++;
+            }
+
+            if ( $result ) {
+                $added++;
+            } else {
+                // Capture WC's actual error notice if present.
+                $err = '';
+                if ( function_exists( 'wc_get_notices' ) ) {
+                    $notices = wc_get_notices( 'error' );
+                    if ( ! empty( $notices ) && isset( $notices[0]['notice'] ) ) {
+                        $err = wp_strip_all_tags( $notices[0]['notice'] );
+                    }
+                    wc_clear_notices();
+                }
+                $failures[] = $product->get_name() . ( $err ? ': ' . $err : '' );
+                if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                    error_log( sprintf(
+                        '[SLW order-form] add_to_cart failed for product %d (type=%s, var=%d): %s',
+                        $product_id, $type, $variation_id, $err ?: 'no WC notice captured'
+                    ) );
                 }
             }
         }
 
-        if ( $added > 0 ) {
+        if ( $added > 0 && empty( $failures ) ) {
             wp_send_json_success( array(
                 'message'  => $added . ' product(s) added to your cart.',
                 'cart_url' => wc_get_cart_url(),
             ));
+        } elseif ( $added > 0 ) {
+            wp_send_json_success( array(
+                'message'  => sprintf(
+                    '%d added, %d skipped: %s',
+                    $added,
+                    count( $failures ),
+                    implode( '; ', $failures )
+                ),
+                'cart_url' => wc_get_cart_url(),
+            ));
         } else {
-            wp_send_json_error( array( 'message' => 'Could not add items to cart. Please check quantities and try again.' ) );
+            $msg = empty( $failures )
+                ? 'Could not add items to cart. Please check quantities and try again.'
+                : 'Could not add: ' . implode( '; ', $failures );
+            wp_send_json_error( array( 'message' => $msg ) );
         }
     }
 }
