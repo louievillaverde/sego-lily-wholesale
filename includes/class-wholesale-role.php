@@ -75,7 +75,7 @@ class SLW_Wholesale_Role {
         add_action( 'admin_notices', array( __CLASS__, 'bulk_net30_notice' ) );
 
         // Product page redirect banner + account icon JS fix for wholesale users
-        add_action( 'woocommerce_before_single_product', array( __CLASS__, 'product_page_wholesale_banner' ) );
+        add_action( 'woocommerce_single_product_summary', array( __CLASS__, 'product_page_wholesale_banner' ), 1 );
         add_action( 'wp_footer', array( __CLASS__, 'account_icon_js_redirect' ) );
     }
 
