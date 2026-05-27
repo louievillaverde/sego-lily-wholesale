@@ -92,7 +92,32 @@ class SLW_Order_Form {
             $type = $product->get_type();
             $result = false;
 
-            if ( $type === 'grouped' ) {
+            if ( $type === 'variable' ) {
+                // Variable products: the order form renders one row per
+                // variation, so $variation_id MUST be set for the add to
+                // succeed. If it's missing, fall back to the variation
+                // whose attributes match $variation, or fail with a clear
+                // message instead of silently dropping the click.
+                if ( $variation_id <= 0 ) {
+                    if ( ! empty( $variation ) ) {
+                        $data_store = WC_Data_Store::load( 'product' );
+                        $variation_id = (int) $data_store->find_matching_product_variation( $product, $variation );
+                    }
+                    if ( $variation_id <= 0 ) {
+                        $failures[] = sprintf(
+                            '%s (no variation selected, pick a scent/size first)',
+                            $product->get_name()
+                        );
+                        error_log( sprintf(
+                            '[SLW order-form] variable product %d (%s) sent without variation_id and no matching variation found',
+                            $product_id,
+                            $product->get_name()
+                        ) );
+                        continue;
+                    }
+                }
+                $result = WC()->cart->add_to_cart( $product_id, $quantity, $variation_id, $variation );
+            } elseif ( $type === 'grouped' ) {
                 // Grouped products must be added child-by-child. Apply
                 // quantity to each child so the gift-set/bundle adds
                 // every component.
@@ -130,12 +155,12 @@ class SLW_Order_Form {
                     wc_clear_notices();
                 }
                 $failures[] = $product->get_name() . ( $err ? ': ' . $err : '' );
-                if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                    error_log( sprintf(
-                        '[SLW order-form] add_to_cart failed for product %d (type=%s, var=%d): %s',
-                        $product_id, $type, $variation_id, $err ?: 'no WC notice captured'
-                    ) );
-                }
+                // Always log failures (not only WP_DEBUG) so admins can
+                // diagnose without flipping debug mode on the live site.
+                error_log( sprintf(
+                    '[SLW order-form] add_to_cart failed for product %d (type=%s, var=%d, qty=%d): %s',
+                    $product_id, $type, $variation_id, $quantity, $err ?: 'no WC notice captured'
+                ) );
             }
         }
 

@@ -430,16 +430,26 @@ class SLW_Wholesale_Role {
             return $price;
         }
 
+        $debug = ! empty( $_GET['slw_price_debug'] ) && current_user_can( 'manage_woocommerce' );
+
         // 1. Per-product override (highest priority)
         // Check the product itself, then fall back to parent for variations
         $override = $product->get_meta( '_slw_wholesale_price' );
+        $override_source = 'product';
         if ( $override === '' || ! is_numeric( $override ) ) {
             $parent_id = $product->get_parent_id();
             if ( $parent_id ) {
                 $override = get_post_meta( $parent_id, '_slw_wholesale_price', true );
+                $override_source = 'parent';
             }
         }
         if ( $override !== '' && is_numeric( $override ) && (float) $override >= 0 ) {
+            if ( $debug ) {
+                error_log( sprintf(
+                    '[SLW price] product %d (%s): override from %s = %s (input price: %s)',
+                    $product->get_id(), $product->get_name(), $override_source, $override, $price
+                ) );
+            }
             return round( (float) $override, 2 );
         }
 
@@ -447,6 +457,12 @@ class SLW_Wholesale_Role {
         // chance to resolve the price. Returning non-null short-circuits.
         $resolved = apply_filters( 'slw_resolve_wholesale_price', null, (float) $price, $product );
         if ( $resolved !== null && is_numeric( $resolved ) ) {
+            if ( $debug ) {
+                error_log( sprintf(
+                    '[SLW price] product %d (%s): slw_resolve_wholesale_price filter returned %s',
+                    $product->get_id(), $product->get_name(), $resolved
+                ) );
+            }
             return round( (float) $resolved, 2 );
         }
 
@@ -461,8 +477,16 @@ class SLW_Wholesale_Role {
 
         $discount = (float) slw_get_option( 'discount_percent', 50 );
         $multiplier = 1 - ( $discount / 100 );
+        $final = round( $base_price * $multiplier, 2 );
 
-        return round( $base_price * $multiplier, 2 );
+        if ( $debug ) {
+            error_log( sprintf(
+                '[SLW price] product %d (%s): regular=%s, input_price=%s, base=%s, discount=%s%%, final=%s',
+                $product->get_id(), $product->get_name(), $regular, $price, $base_price, $discount, $final
+            ) );
+        }
+
+        return $final;
     }
 
     /**
