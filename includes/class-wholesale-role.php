@@ -41,8 +41,13 @@ class SLW_Wholesale_Role {
         add_action( 'pre_get_posts', array( __CLASS__, 'filter_wholesale_only_products' ) );
         add_filter( 'woocommerce_product_query_meta_query', array( __CLASS__, 'filter_wholesale_only_meta' ), 10, 2 );
 
-        // Per-product price override (admin can set a custom wholesale price per product)
-        add_action( 'woocommerce_product_options_pricing', array( __CLASS__, 'add_product_pricing_field' ) );
+        // Per-product price override (admin can set a custom wholesale price per product).
+        // Hooked to woocommerce_product_options_general_product_data so the fields render
+        // for ALL product types (simple, variable, variable-subscription, etc.) instead
+        // of being trapped inside the pricing options_group which is hidden for variable
+        // products. That was why Gift Set could never have its wholesale override set --
+        // the field was simply not visible on variable-subscription products.
+        add_action( 'woocommerce_product_options_general_product_data', array( __CLASS__, 'add_product_pricing_field' ) );
         add_action( 'woocommerce_admin_process_product_object', array( __CLASS__, 'save_product_pricing_field' ) );
 
         // Admin user list column showing wholesale status
@@ -248,34 +253,43 @@ class SLW_Wholesale_Role {
      */
     public static function add_product_pricing_field() {
         global $post;
+        $show_for_all = 'show_if_simple show_if_external show_if_variable show_if_variable-subscription show_if_subscription';
+
+        echo '<div class="options_group">';
+        echo '<p class="form-field" style="padding-left:12px;"><strong>Wholesale settings</strong></p>';
         woocommerce_wp_text_input( array(
-            'id'          => '_slw_retail_price',
-            'label'       => 'True Retail Price (' . get_woocommerce_currency_symbol() . ')',
-            'desc_tip'    => true,
-            'description' => 'Optional. The actual one-time retail price for this product, used as the base for wholesale discount calculations and the strikethrough on the Price List. Set this when a subscription plugin has overwritten the standard Regular Price field with a recurring rate. Leave blank to auto-detect from the non-recurring variation.',
-            'type'        => 'number',
+            'id'                => '_slw_retail_price',
+            'wrapper_class'     => $show_for_all,
+            'label'             => 'True Retail Price (' . get_woocommerce_currency_symbol() . ')',
+            'desc_tip'          => true,
+            'description'       => 'Optional. The actual one-time retail price for this product, used as the base for the wholesale discount calculation and the strikethrough on the Price List. Set this when a subscription plugin has overwritten the standard Regular Price field with a recurring rate. Leave blank to auto-detect from the non-recurring variation.',
+            'type'              => 'number',
             'custom_attributes' => array( 'step' => '0.01', 'min' => '0' ),
         ));
         woocommerce_wp_text_input( array(
-            'id'          => '_slw_wholesale_price',
-            'label'       => 'Wholesale Price (' . get_woocommerce_currency_symbol() . ')',
-            'desc_tip'    => true,
-            'description' => 'Override the default wholesale discount for this product. Leave blank to use the global discount.',
-            'type'        => 'number',
+            'id'                => '_slw_wholesale_price',
+            'wrapper_class'     => $show_for_all,
+            'label'             => 'Wholesale Price (' . get_woocommerce_currency_symbol() . ')',
+            'desc_tip'          => true,
+            'description'       => 'Override the default wholesale discount for this product. Leave blank to use the global discount.',
+            'type'              => 'number',
             'custom_attributes' => array( 'step' => '0.01', 'min' => '0' ),
         ));
         woocommerce_wp_checkbox( array(
-            'id'          => '_slw_wholesale_only',
-            'label'       => 'Wholesale only',
-            'description' => 'Hide this product from retail customers. Only wholesale users can see and buy it.',
+            'id'            => '_slw_wholesale_only',
+            'wrapper_class' => $show_for_all,
+            'label'         => 'Wholesale only',
+            'description'   => 'Hide this product from retail customers. Only wholesale users can see and buy it.',
         ));
         woocommerce_wp_text_input( array(
-            'id'          => '_slw_tiered_pricing',
-            'label'       => 'Tiered Pricing (wholesale)',
-            'desc_tip'    => true,
-            'description' => 'Quantity:price pairs, comma-separated. Example: 12:15.00,24:12.00,48:10.00 means 12+ = $15 each, 24+ = $12 each, 48+ = $10 each. Applied to wholesale users only. Leave blank to use the standard wholesale price.',
-            'placeholder' => '12:15.00,24:12.00,48:10.00',
+            'id'            => '_slw_tiered_pricing',
+            'wrapper_class' => $show_for_all,
+            'label'         => 'Tiered Pricing (wholesale)',
+            'desc_tip'      => true,
+            'description'   => 'Quantity:price pairs, comma-separated. Example: 12:15.00,24:12.00,48:10.00 means 12+ = $15 each, 24+ = $12 each, 48+ = $10 each. Applied to wholesale users only. Leave blank to use the standard wholesale price.',
+            'placeholder'   => '12:15.00,24:12.00,48:10.00',
         ));
+        echo '</div>';
     }
 
     public static function save_product_pricing_field( $product ) {
@@ -594,9 +608,9 @@ class SLW_Wholesale_Role {
         // override via the Wholesale Price field on the product edit page to
         // skip this fallback entirely.
         $base_price = (float) $price;
-        $regular = slw_get_true_regular_price( $product );
-        if ( $regular > 0 ) {
-            $base_price = $regular;
+        $regular = $product->get_regular_price();
+        if ( $regular !== '' && is_numeric( $regular ) && (float) $regular > 0 ) {
+            $base_price = (float) $regular;
         }
 
         $discount = (float) slw_get_option( 'discount_percent', 50 );
@@ -639,20 +653,13 @@ class SLW_Wholesale_Role {
             return $price_html;
         }
 
-        // For simple products, show the retail price struck through.
-        // Compute wholesale via the same filter the order form/cart use,
-        // then derive retail from wholesale + global discount so the
-        // strikethrough math always advertises the configured % off (and
-        // is immune to subscription plugins that inject recurring rates
-        // into _regular_price).
+        // For simple products, show the retail price struck through
         if ( $product->is_type( 'simple' ) || $product->is_type( 'variation' ) ) {
-            $wholesale = (float) $product->get_price();
+            $regular = (float) $product->get_regular_price();
             $discount = (float) slw_get_option( 'discount_percent', 50 );
-            $regular = ( $discount > 0 && $discount < 100 && $wholesale > 0 )
-                ? round( $wholesale / ( 1 - $discount / 100 ), 2 )
-                : slw_get_true_regular_price( $product );
+            $wholesale = round( $regular * ( 1 - $discount / 100 ), 2 );
 
-            if ( $regular > 0 && $wholesale > 0 ) {
+            if ( $regular > 0 ) {
                 return '<del>' . wc_price( $regular ) . '</del> <span class="slw-wholesale-label">Wholesale: ' . wc_price( $wholesale ) . '</span>';
             }
         }
