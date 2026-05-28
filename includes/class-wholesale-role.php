@@ -254,39 +254,39 @@ class SLW_Wholesale_Role {
     public static function add_product_pricing_field() {
         global $post;
         $show_for_all = 'show_if_simple show_if_external show_if_variable show_if_variable-subscription show_if_subscription';
+        $sym = get_woocommerce_currency_symbol();
 
         echo '<div class="options_group slw-wholesale-fields">';
         woocommerce_wp_text_input( array(
             'id'                => '_slw_retail_price',
             'wrapper_class'     => $show_for_all,
-            'label'             => 'Wholesale: True Retail (' . get_woocommerce_currency_symbol() . ')',
+            'label'             => 'Wholesale: True Retail (' . $sym . ')',
             'desc_tip'          => true,
-            'description'       => 'Optional one-time retail price used as the base for wholesale discount + the Price List strikethrough. Set this when the standard Regular Price is actually a subscription rate. Leave blank to auto-detect.',
+            'description'       => 'Override the one-time retail price used by the Price List.',
             'type'              => 'number',
             'custom_attributes' => array( 'step' => '0.01', 'min' => '0' ),
         ));
         woocommerce_wp_text_input( array(
             'id'                => '_slw_wholesale_price',
             'wrapper_class'     => $show_for_all,
-            'label'             => 'Wholesale: Price (' . get_woocommerce_currency_symbol() . ')',
+            'label'             => 'Wholesale: Price (' . $sym . ')',
             'desc_tip'          => true,
-            'description'       => 'Override the default wholesale discount for this product. Leave blank to use the global discount.',
+            'description'       => 'Per-product wholesale price. Overrides the global discount.',
             'type'              => 'number',
             'custom_attributes' => array( 'step' => '0.01', 'min' => '0' ),
         ));
         woocommerce_wp_checkbox( array(
             'id'            => '_slw_wholesale_only',
             'wrapper_class' => $show_for_all,
-            'label'         => 'Wholesale: Wholesale-only',
-            'description'   => 'Hide this product from retail customers.',
+            'label'         => 'Wholesale-only',
         ));
         woocommerce_wp_text_input( array(
             'id'            => '_slw_tiered_pricing',
             'wrapper_class' => $show_for_all,
-            'label'         => 'Wholesale: Tiered Pricing',
+            'label'         => 'Wholesale: Tiered',
             'desc_tip'      => true,
-            'description'   => 'qty:price pairs comma-separated, e.g. 12:15.00,24:12.00,48:10.00 means 12+ = $15 each.',
-            'placeholder'   => '12:15.00,24:12.00,48:10.00',
+            'description'   => 'qty:price pairs, e.g. 12:15.00,24:12.00',
+            'placeholder'   => '12:15.00,24:12.00',
         ));
         echo '</div>';
     }

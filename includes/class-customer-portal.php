@@ -76,9 +76,16 @@ class SLW_Customer_Portal {
      * Render the portal. Non-wholesale users get redirected.
      */
     public static function render( $atts = array() ) {
-        $is_admin_preview = isset( $_GET['slw_preview'] ) && current_user_can( 'manage_woocommerce' );
+        // Admins viewing the portal auto-enter preview context: no ?slw_preview
+        // required. The portal-render global also flips slw_is_wholesale_context
+        // to true so order form prices reflect wholesale rates while admin browses.
+        $GLOBALS['slw_in_portal_render'] = true;
+        $is_admin_preview = current_user_can( 'manage_woocommerce' ) && (
+            isset( $_GET['slw_preview'] ) || ! slw_is_wholesale_user()
+        );
 
         if ( ! $is_admin_preview && ( ! is_user_logged_in() || ! slw_is_wholesale_user() ) ) {
+            $GLOBALS['slw_in_portal_render'] = false;
             if ( ! is_admin() ) {
                 wp_redirect( home_url( '/wholesale-partners' ) );
                 exit;
@@ -198,6 +205,7 @@ class SLW_Customer_Portal {
         </div>
         <?php
 
+        $GLOBALS['slw_in_portal_render'] = false;
         return ob_get_clean();
     }
 
