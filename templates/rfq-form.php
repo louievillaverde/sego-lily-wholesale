@@ -75,7 +75,7 @@ $products = wc_get_products( array(
 			</div>
 		</div>
 
-		<button type="button" class="slw-btn slw-btn-small slw-rfq-add-row" id="slw-rfq-add-row">+ Add Another Product</button>
+		<button type="button" class="slw-btn slw-btn-small slw-btn-ghost slw-rfq-add-row" id="slw-rfq-add-row">+ Add Another Product</button>
 
 		<hr style="margin: 28px 0; border: none; border-top: 1px solid #e0ddd8;" />
 
