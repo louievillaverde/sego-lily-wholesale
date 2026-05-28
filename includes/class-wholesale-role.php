@@ -652,11 +652,16 @@ class SLW_Wholesale_Role {
             return $price_html;
         }
 
-        // For simple products, show the retail price struck through
+        // Strikethrough retail above the wholesale price. Use the helper so
+        // variable-subscription variations report the one-time price (the
+        // MAX-priced sibling), not the recurring rate stored in
+        // _regular_price.
         if ( $product->is_type( 'simple' ) || $product->is_type( 'variation' ) ) {
-            $regular = (float) $product->get_regular_price();
+            $regular = slw_get_true_regular_price( $product );
             $discount = (float) slw_get_option( 'discount_percent', 50 );
-            $wholesale = round( $regular * ( 1 - $discount / 100 ), 2 );
+            $wholesale = ( $discount > 0 && $discount < 100 )
+                ? round( $regular * ( 1 - $discount / 100 ), 2 )
+                : $regular;
 
             if ( $regular > 0 ) {
                 return '<del>' . wc_price( $regular ) . '</del> <span class="slw-wholesale-label">Wholesale: ' . wc_price( $wholesale ) . '</span>';

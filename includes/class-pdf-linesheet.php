@@ -83,41 +83,23 @@ class SLW_PDF_Linesheet {
 
 		$products = wc_get_products( $args );
 
-		// Include simple, variable, subscription, variable-subscription
 		$products = array_filter( $products, function( $p ) {
 			return $p->is_type( 'simple' ) || $p->is_type( 'variable' )
 				|| $p->is_type( 'subscription' ) || $p->is_type( 'variable-subscription' );
 		} );
 
 		$grouped  = array();
+		$discount_pct = (float) slw_get_option( 'discount_percent', 50 );
 
-		// We need to temporarily disable the wholesale price filter to get retail prices
 		remove_filter( 'woocommerce_product_get_price', array( 'SLW_Wholesale_Role', 'apply_wholesale_price' ), 99 );
 		remove_filter( 'woocommerce_product_get_sale_price', array( 'SLW_Wholesale_Role', 'apply_wholesale_price' ), 99 );
 
 		foreach ( $products as $product ) {
-			// Get categories
 			$terms = get_the_terms( $product->get_id(), 'product_cat' );
 			$category_name = ( $terms && ! is_wp_error( $terms ) )
 				? $terms[0]->name
 				: 'Uncategorized';
 
-			// Wholesale price first (respects per-product override or global discount).
-			$wholesale_price = self::calculate_wholesale_price( $product, slw_get_true_regular_price( $product ) );
-
-			// Retail derived from wholesale + global discount so the line
-			// sheet stays internally consistent (wholesale is always the
-			// advertised % off retail). Sidesteps the case where stored
-			// _regular_price is a subscription rate, since we never display
-			// it directly here.
-			$discount_pct = (float) slw_get_option( 'discount_percent', 50 );
-			if ( $discount_pct > 0 && $discount_pct < 100 && $wholesale_price > 0 ) {
-				$retail_price = round( $wholesale_price / ( 1 - $discount_pct / 100 ), 2 );
-			} else {
-				$retail_price = slw_get_true_regular_price( $product );
-			}
-
-			// Get minimum quantity if set via tiered pricing
 			$tiers_string = $product->get_meta( '_slw_tiered_pricing' );
 			$min_qty = '';
 			if ( $tiers_string ) {
@@ -127,21 +109,15 @@ class SLW_PDF_Linesheet {
 				}
 			}
 
-			// Get thumbnail
-			$image_url = '';
 			$image_id  = $product->get_image_id();
-			if ( $image_id ) {
-				$image_url = wp_get_attachment_image_url( $image_id, 'thumbnail' );
-			}
+			$image_url = $image_id ? wp_get_attachment_image_url( $image_id, 'thumbnail' ) : '';
 
-			$grouped[ $category_name ][] = array(
-				'name'            => $product->get_name(),
-				'sku'             => $product->get_sku(),
-				'retail_price'    => $retail_price,
-				'wholesale_price' => $wholesale_price,
-				'min_qty'         => $min_qty,
-				'image_url'       => $image_url,
-			);
+			$rows = self::build_rows_for_product( $product, $discount_pct );
+			foreach ( $rows as $row ) {
+				$row['min_qty']   = $row['min_qty']   ?? $min_qty;
+				$row['image_url'] = $row['image_url'] ?? $image_url;
+				$grouped[ $category_name ][] = $row;
+			}
 		}
 
 		// Restore the wholesale price filter
@@ -150,6 +126,115 @@ class SLW_PDF_Linesheet {
 
 		ksort( $grouped );
 		return $grouped;
+	}
+
+	/**
+	 * Build one or more rows for a product. Simple products yield a single
+	 * row. Variable / variable-subscription products are expanded into one
+	 * row per unique size/scent variation, mirroring the order form: the
+	 * payment-frequency attribute is stripped from the label, variations
+	 * are deduplicated by the remaining attribute label, and the MAX-priced
+	 * sibling per label wins (= the one-time charge).
+	 *
+	 * @param WC_Product $product
+	 * @param float      $discount_pct Global discount percentage.
+	 * @return array<int,array> Each row has name, sku, retail_price, wholesale_price, min_qty, image_url.
+	 */
+	private static function build_rows_for_product( $product, $discount_pct ) {
+		$is_variable = $product->is_type( 'variable' ) || $product->is_type( 'variable-subscription' );
+
+		if ( ! $is_variable ) {
+			$retail    = (float) $product->get_price();
+			if ( $retail <= 0 ) {
+				$retail = slw_get_true_regular_price( $product );
+			}
+			$wholesale = self::calculate_wholesale_price( $product, $retail );
+			if ( $discount_pct > 0 && $discount_pct < 100 && $wholesale > 0 ) {
+				$retail = round( $wholesale / ( 1 - $discount_pct / 100 ), 2 );
+			}
+			return array( array(
+				'name'            => $product->get_name(),
+				'sku'             => $product->get_sku(),
+				'retail_price'    => $retail,
+				'wholesale_price' => $wholesale,
+			) );
+		}
+
+		// Variable / variable-subscription: walk variations and group by
+		// non-payment attribute label, picking max-priced per group.
+		$variations = $product->get_available_variations();
+		$groups = array(); // label_key => array of variation rows
+		foreach ( $variations as $var_data ) {
+			$variation = wc_get_product( $var_data['variation_id'] ?? 0 );
+			if ( ! $variation || ! $variation->is_in_stock() ) {
+				continue;
+			}
+			$attrs = $var_data['attributes'] ?? array();
+			$label_parts = array();
+			foreach ( $attrs as $attr_key => $attr_val ) {
+				if ( ! $attr_val ) continue;
+				$taxonomy  = str_replace( 'attribute_', '', $attr_key );
+				$term      = get_term_by( 'slug', $attr_val, $taxonomy );
+				$term_name = $term ? $term->name : ucfirst( str_replace( array( '-', '_' ), ' ', $attr_val ) );
+				$lower = strtolower( $term_name );
+				if ( preg_match( '/\d+\s*\/\s*mo|\d+\s*month|monthly|yearly|weekly|every\s*\d|one.?time|subscribe|subscription/i', $lower ) ) {
+					continue;
+				}
+				$label_parts[] = $term_name;
+			}
+			$label = ! empty( $label_parts ) ? implode( ' / ', $label_parts ) : '';
+			$label_key = strtolower( trim( $label ) );
+
+			$var_price = (float) $variation->get_price();
+			if ( $var_price <= 0 ) continue;
+
+			if ( ! isset( $groups[ $label_key ] ) ) {
+				$groups[ $label_key ] = array(
+					'label'       => $label,
+					'best_price'  => 0.0,
+					'best_var'    => null,
+				);
+			}
+			if ( $var_price > $groups[ $label_key ]['best_price'] ) {
+				$groups[ $label_key ]['best_price'] = $var_price;
+				$groups[ $label_key ]['best_var']   = $variation;
+			}
+		}
+
+		if ( empty( $groups ) ) {
+			// Fall back: treat as a single row using the parent's helper price.
+			$retail    = slw_get_true_regular_price( $product );
+			$wholesale = self::calculate_wholesale_price( $product, $retail );
+			if ( $discount_pct > 0 && $discount_pct < 100 && $wholesale > 0 ) {
+				$retail = round( $wholesale / ( 1 - $discount_pct / 100 ), 2 );
+			}
+			return array( array(
+				'name'            => $product->get_name(),
+				'sku'             => $product->get_sku(),
+				'retail_price'    => $retail,
+				'wholesale_price' => $wholesale,
+			) );
+		}
+
+		$rows = array();
+		foreach ( $groups as $g ) {
+			/** @var WC_Product_Variation $variation */
+			$variation = $g['best_var'];
+			$retail    = (float) $g['best_price'];
+			$wholesale = self::calculate_wholesale_price( $variation, $retail );
+			if ( $discount_pct > 0 && $discount_pct < 100 && $wholesale > 0 ) {
+				$retail = round( $wholesale / ( 1 - $discount_pct / 100 ), 2 );
+			}
+			$var_image_id = $variation->get_image_id();
+			$rows[] = array(
+				'name'            => $product->get_name() . ( $g['label'] !== '' ? ', ' . $g['label'] : '' ),
+				'sku'             => $variation->get_sku() ?: $product->get_sku(),
+				'retail_price'    => $retail,
+				'wholesale_price' => $wholesale,
+				'image_url'       => $var_image_id ? wp_get_attachment_image_url( $var_image_id, 'thumbnail' ) : null,
+			);
+		}
+		return $rows;
 	}
 
 	/**
