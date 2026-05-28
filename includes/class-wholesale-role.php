@@ -109,12 +109,14 @@ class SLW_Wholesale_Role {
                 var style = document.createElement('style');
                 style.textContent =
                     '@keyframes slwBannerIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}'
-                    + '@keyframes slwBtnShine{0%,100%{outline:2px solid rgba(212,175,55,0);outline-offset:0px;transform:scale(1)}30%,70%{outline:3px solid rgba(212,175,55,0.9);outline-offset:4px;transform:scale(1.04)}}'
+                    + '@keyframes slwBtnBreath{0%,100%{box-shadow:0 2px 6px rgba(56,97,116,0.15)}50%{box-shadow:0 0 16px 3px rgba(212,175,55,0.4)}}'
+                    + '@keyframes slwArrowNudge{0%,70%,100%{transform:translateX(0)}35%{transform:translateX(5px)}}'
                     + '.slw-wholesale-banner{animation:slwBannerIn 0.35s ease both}'
                     + '.slw-order-btn{'
                     +   'background:#F7F6F3!important;'
-                    +   'animation:slwBtnShine 2s ease-in-out 0.5s 3!important'
-                    + '}';
+                    +   'animation:slwBtnBreath 3s ease-in-out 0.6s infinite!important'
+                    + '}'
+                    + '.slw-order-btn .slw-arrow{display:inline-block;animation:slwArrowNudge 2.4s ease-in-out 0.6s infinite}';
                 document.head.appendChild(style);
 
                 var banner = document.createElement('div');
@@ -131,7 +133,7 @@ class SLW_Wholesale_Role {
                     + '<a href="' + orderForm + '" class="slw-order-btn" style="display:inline-block;'
                     + 'color:#386174;padding:9px 20px;border-radius:6px;font-size:13px;font-weight:700;'
                     + 'text-decoration:none;letter-spacing:0.2px;">'
-                    + 'Go to my order form &rarr;</a>'
+                    + 'Go to my order form <span class="slw-arrow">&rarr;</span></a>'
                     + '</div>';
                 // Insert after the add-to-cart form
                 var target = document.querySelector('.elementor-add-to-cart, form.cart');
