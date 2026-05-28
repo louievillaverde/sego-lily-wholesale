@@ -3,7 +3,7 @@
  * Plugin Name:       Wholesale Portal
  * Plugin URI:        https://github.com/louievillaverde/sego-lily-wholesale
  * Description:       All-in-one B2B wholesale portal for WooCommerce. Customer portal, tiered pricing, application workflow, PDF invoices, email sequences with multi-provider support, NET payment terms, lead capture, trade show tools, and automated order reminders. Built by Lead Piranha.
- * Version:           4.6.53
+ * Version:           4.6.54
  * Author:            Lead Piranha
  * Author URI:        https://leadpiranha.com
  * Requires at least: 6.0
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SLW_VERSION', '4.6.53' );
+define( 'SLW_VERSION', '4.6.54' );
 define( 'SLW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SLW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -613,10 +613,8 @@ function slw_get_true_regular_price( $product ) {
     $product_id = $product->get_id();
     $parent_id  = method_exists( $product, 'get_parent_id' ) ? (int) $product->get_parent_id() : 0;
 
-    // 0. Manual admin override -- ultimate escape hatch when auto-detection
-    // cannot find the right one-time retail (e.g. all variations are
-    // subscription-only, or the data was entered in a non-standard way).
-    // Checks the product itself, then its parent for variations.
+    // 0. Manual admin override -- escape hatch when auto-detection cannot
+    // find the right one-time retail. Checks product, then parent for variations.
     $override = get_post_meta( $product_id, '_slw_retail_price', true );
     if ( ( $override === '' || ! is_numeric( $override ) ) && $parent_id ) {
         $override = get_post_meta( $parent_id, '_slw_retail_price', true );
@@ -625,10 +623,11 @@ function slw_get_true_regular_price( $product ) {
         return (float) $override;
     }
 
-    // 1. Variable + variable-subscription parents: walk children. Prefer the
-    // non-recurring (one-time) variation since its _regular_price is the
-    // true retail. Fall back to recurring variations if no non-recurring
-    // variation has a usable price -- better than returning $0.
+    // 1. Variable + variable-subscription parents: walk children. Use the
+    // FILTERED price (what the website shows) since subscription plugins
+    // produce the right one-time price for non-recurring variations even
+    // when _regular_price meta itself contains the recurring rate. Order
+    // form does the same thing and gets correct numbers, so this matches.
     if ( method_exists( $product, 'get_children' ) && (
             $product->is_type( 'variable' ) ||
             $product->is_type( 'variable-subscription' )
@@ -637,16 +636,16 @@ function slw_get_true_regular_price( $product ) {
         $non_recurring   = array();
         $all_variations  = array();
         foreach ( $variation_ids as $var_id ) {
-            $raw = get_post_meta( (int) $var_id, '_regular_price', true );
-            if ( $raw === '' || ! is_numeric( $raw ) || (float) $raw <= 0 ) {
-                continue;
-            }
-            $all_variations[] = (float) $raw;
+            $variation = wc_get_product( (int) $var_id );
+            if ( ! $variation ) continue;
+            $price = (float) $variation->get_price();
+            if ( $price <= 0 ) continue;
+            $all_variations[] = $price;
 
             $sub_period   = get_post_meta( (int) $var_id, '_subscription_period', true );
             $sub_interval = get_post_meta( (int) $var_id, '_subscription_period_interval', true );
             if ( empty( $sub_period ) || empty( $sub_interval ) ) {
-                $non_recurring[] = (float) $raw;
+                $non_recurring[] = $price;
             }
         }
         if ( ! empty( $non_recurring ) ) {
@@ -657,7 +656,8 @@ function slw_get_true_regular_price( $product ) {
         }
     }
 
-    // 2. Direct recurring variation: walk siblings to find a non-recurring one.
+    // 2. Direct variation: prefer filtered price; if this variation is
+    // recurring, look for a non-recurring sibling.
     if ( $product->is_type( 'variation' ) ) {
         $sub_period   = get_post_meta( $product_id, '_subscription_period', true );
         $sub_interval = get_post_meta( $product_id, '_subscription_period_interval', true );
@@ -671,10 +671,10 @@ function slw_get_true_regular_price( $product ) {
                 $sp = get_post_meta( $sid, '_subscription_period', true );
                 $si = get_post_meta( $sid, '_subscription_period_interval', true );
                 if ( ! empty( $sp ) && ! empty( $si ) ) continue;
-                $r = get_post_meta( $sid, '_regular_price', true );
-                if ( $r !== '' && is_numeric( $r ) && (float) $r > 0 ) {
-                    $prices[] = (float) $r;
-                }
+                $sibling = wc_get_product( (int) $sid );
+                if ( ! $sibling ) continue;
+                $sp_price = (float) $sibling->get_price();
+                if ( $sp_price > 0 ) $prices[] = $sp_price;
             }
             if ( ! empty( $prices ) ) {
                 return (float) min( $prices );
@@ -682,16 +682,15 @@ function slw_get_true_regular_price( $product ) {
         }
     }
 
-    // 3. Raw meta on the post itself.
+    // 3. Simple / subscription: filtered get_price first (matches what the
+    // website shows), then raw _regular_price meta as fallback.
+    $filtered_price = (float) $product->get_price();
+    if ( $filtered_price > 0 ) {
+        return $filtered_price;
+    }
     $raw = get_post_meta( $product_id, '_regular_price', true );
     if ( $raw !== '' && is_numeric( $raw ) && (float) $raw > 0 ) {
         return (float) $raw;
-    }
-
-    // 4. Filtered API as a last resort.
-    $filtered = $product->get_regular_price();
-    if ( $filtered !== '' && is_numeric( $filtered ) ) {
-        return (float) $filtered;
     }
 
     return 0.0;
