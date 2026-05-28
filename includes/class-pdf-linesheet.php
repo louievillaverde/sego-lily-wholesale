@@ -282,6 +282,16 @@ class SLW_PDF_Linesheet {
 		$products_by_cat = self::get_products_by_category();
 		$today           = date_i18n( 'F j, Y' );
 
+		// Personalize for the logged-in wholesale customer (their business name
+		// + account manager so the printout is recognizable as theirs, not a
+		// generic catalog).
+		$current_user      = wp_get_current_user();
+		$customer_business = $current_user->ID ? get_user_meta( $current_user->ID, 'slw_business_name', true ) : '';
+		$customer_label    = $customer_business ?: trim( $current_user->first_name . ' ' . $current_user->last_name );
+		if ( ! $customer_label ) {
+			$customer_label = $current_user->display_name ?: '';
+		}
+
 		header( 'Content-Type: text/html; charset=utf-8' );
 		?>
 <!DOCTYPE html>
@@ -347,9 +357,20 @@ body {
 	margin-bottom: 4px;
 }
 
-.linesheet-header-right .date {
+.linesheet-header-right .customer {
 	font-size: 13px;
+	color: #1E2A30;
+	font-weight: 600;
+	margin-top: 6px;
+	letter-spacing: 0.2px;
+}
+
+.linesheet-header-right .date {
+	font-size: 12px;
 	color: #628393;
+	margin-top: 4px;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
 }
 
 /* Body */
@@ -536,19 +557,19 @@ body {
 	}
 
 	.linesheet-header {
-		padding: 16px 24px;
+		padding: 12px 20px 14px;
 	}
 
 	.linesheet-body {
-		padding: 16px 24px;
+		padding: 14px 20px 18px;
 	}
 
 	.linesheet-footer {
-		padding: 12px 24px;
+		padding: 10px 20px;
 	}
 
 	.linesheet-confidential {
-		padding: 8px 24px;
+		padding: 6px 20px;
 	}
 
 	.linesheet-actions {
@@ -557,20 +578,46 @@ body {
 
 	.linesheet-category {
 		page-break-inside: avoid;
+		margin-bottom: 18px;
+	}
+
+	.linesheet-category-header {
+		font-size: 15px;
+		padding: 6px 0;
 	}
 
 	.linesheet-table tbody tr {
 		page-break-inside: avoid;
 	}
 
+	.linesheet-table tbody tr:hover {
+		background: transparent;
+	}
+
+	.linesheet-table tbody td {
+		padding: 6px 6px;
+		font-size: 11px;
+	}
+
 	.linesheet-product-img,
 	.linesheet-product-img-placeholder {
-		width: 36px;
-		height: 36px;
+		width: 32px;
+		height: 32px;
+	}
+
+	.linesheet-wholesale-price {
+		font-size: 12px;
 	}
 
 	@page {
-		margin: 0.4in;
+		margin: 0.4in 0.4in 0.55in;
+		size: letter portrait;
+		@bottom-center {
+			content: "Page " counter(page) " of " counter(pages);
+			font-family: Inter, system-ui, sans-serif;
+			font-size: 9px;
+			color: #8A9499;
+		}
 	}
 }
 </style>
@@ -594,6 +641,9 @@ body {
 		</div>
 		<div class="linesheet-header-right">
 			<div class="title">Wholesale Price List</div>
+			<?php if ( $customer_label ) : ?>
+				<div class="customer">Prepared for <?php echo esc_html( $customer_label ); ?></div>
+			<?php endif; ?>
 			<div class="date"><?php echo esc_html( $today ); ?></div>
 		</div>
 	</div>
@@ -624,7 +674,7 @@ body {
 									<?php if ( $product['image_url'] ) : ?>
 										<img class="linesheet-product-img" src="<?php echo esc_url( $product['image_url'] ); ?>" alt="" />
 									<?php else : ?>
-										<div class="linesheet-product-img-placeholder">&mdash;</div>
+										<div class="linesheet-product-img-placeholder">-</div>
 									<?php endif; ?>
 								</td>
 								<td>
@@ -643,7 +693,7 @@ body {
 									<?php if ( $product['min_qty'] ) : ?>
 										<span class="linesheet-min-qty"><?php echo esc_html( $product['min_qty'] ); ?>+</span>
 									<?php else : ?>
-										<span class="linesheet-min-qty">&mdash;</span>
+										<span class="linesheet-min-qty">-</span>
 									<?php endif; ?>
 								</td>
 							</tr>
