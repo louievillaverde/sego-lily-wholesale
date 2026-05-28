@@ -102,17 +102,11 @@ class SLW_PDF_Linesheet {
 				? $terms[0]->name
 				: 'Uncategorized';
 
-			// Get retail price (regular price before wholesale discount).
-			// Variable + variable-subscription products don't carry a top-level
-			// regular_price -- pull the min variation regular price so the line
-			// sheet doesn't show $0 for multi-scent products like gift boxes.
-			$retail_price = (float) $product->get_regular_price();
-			if ( ! $retail_price && ( $product->is_type( 'variable' ) || $product->is_type( 'variable-subscription' ) ) && method_exists( $product, 'get_variation_regular_price' ) ) {
-				$min_variation = $product->get_variation_regular_price( 'min' );
-				if ( $min_variation !== '' && is_numeric( $min_variation ) ) {
-					$retail_price = (float) $min_variation;
-				}
-			}
+			// True retail (one-time, non-subscription) price. Reads raw
+			// `_regular_price` meta to bypass subscription plugins that would
+			// otherwise filter this back to the recurring billing rate.
+			// See slw_get_true_regular_price() for full rationale.
+			$retail_price = slw_get_true_regular_price( $product );
 
 			// Calculate wholesale price using the same logic as the pricing engine
 			$wholesale_price = self::calculate_wholesale_price( $product, $retail_price );

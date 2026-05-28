@@ -409,7 +409,9 @@ class SLW_PDF_Invoices {
 			$discount = absint( get_option( 'slw_discount_percent', 50 ) );
 			$i = 0;
 			foreach ( $real_products as $prod ) {
-				$retail = (float) $prod->get_regular_price();
+				$retail = function_exists( 'slw_get_true_regular_price' )
+					? slw_get_true_regular_price( $prod )
+					: (float) $prod->get_regular_price();
 				if ( ! $retail ) $retail = (float) $prod->get_price();
 				if ( ! $retail ) continue;
 				$wholesale_price = round( $retail * ( 1 - $discount / 100 ), 2 );

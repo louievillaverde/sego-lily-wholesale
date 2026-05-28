@@ -3,7 +3,7 @@
  * Plugin Name:       Wholesale Portal
  * Plugin URI:        https://github.com/louievillaverde/sego-lily-wholesale
  * Description:       All-in-one B2B wholesale portal for WooCommerce. Customer portal, tiered pricing, application workflow, PDF invoices, email sequences with multi-provider support, NET payment terms, lead capture, trade show tools, and automated order reminders. Built by Lead Piranha.
- * Version:           4.6.46
+ * Version:           4.6.47
  * Author:            Lead Piranha
  * Author URI:        https://leadpiranha.com
  * Requires at least: 6.0
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SLW_VERSION', '4.6.46' );
+define( 'SLW_VERSION', '4.6.47' );
 define( 'SLW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SLW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -580,6 +580,68 @@ function slw_is_wholesale_context( $user_id = null ) {
 function slw_get_option( $key, $default = '' ) {
     $value = get_option( 'slw_' . $key );
     return ( $value !== false && $value !== '' ) ? $value : $default;
+}
+
+/**
+ * Get the TRUE retail (one-time, non-subscription, non-wholesale) regular
+ * price of a product by reading raw `_regular_price` post meta directly.
+ *
+ * Why this exists: WooCommerce Subscriptions and "All Products for
+ * Subscriptions" filter `woocommerce_product_get_regular_price` to return
+ * the recurring billing rate when a product has a subscription scheme
+ * attached. Calling $product->get_regular_price() in that environment
+ * silently returns the subscription rate as "regular", which then becomes
+ * the base for wholesale discount calculations and the displayed retail
+ * price on the line sheet. End result: gift sets show $43.20 retail when
+ * the actual one-time retail is $54.
+ *
+ * Reading raw meta with get_post_meta() bypasses all filters and returns
+ * the value stored when the product was edited in WP admin.
+ *
+ * For variable + variable-subscription parents, walks the variations and
+ * returns the min raw regular price (so a "Gift Box" parent reports the
+ * lowest of its scent variants, matching how the line sheet renders).
+ *
+ * @param WC_Product|WC_Product_Variation|null $product
+ * @return float Retail price, or 0.0 if unknown.
+ */
+function slw_get_true_regular_price( $product ) {
+    if ( ! $product || ! is_object( $product ) ) {
+        return 0.0;
+    }
+
+    // Variable + variable-subscription parents store prices on children.
+    if ( method_exists( $product, 'get_children' ) && (
+            $product->is_type( 'variable' ) ||
+            $product->is_type( 'variable-subscription' )
+    ) ) {
+        $variation_ids = (array) $product->get_children();
+        $prices = array();
+        foreach ( $variation_ids as $var_id ) {
+            $raw = get_post_meta( (int) $var_id, '_regular_price', true );
+            if ( $raw !== '' && is_numeric( $raw ) && (float) $raw > 0 ) {
+                $prices[] = (float) $raw;
+            }
+        }
+        if ( ! empty( $prices ) ) {
+            return (float) min( $prices );
+        }
+    }
+
+    // Simple, variation, subscription: raw meta on the post itself.
+    $raw = get_post_meta( $product->get_id(), '_regular_price', true );
+    if ( $raw !== '' && is_numeric( $raw ) && (float) $raw > 0 ) {
+        return (float) $raw;
+    }
+
+    // Last resort: the filtered API. May be wrong on subscription products,
+    // but at least returns something instead of 0 on legacy data.
+    $filtered = $product->get_regular_price();
+    if ( $filtered !== '' && is_numeric( $filtered ) ) {
+        return (float) $filtered;
+    }
+
+    return 0.0;
 }
 
 /**

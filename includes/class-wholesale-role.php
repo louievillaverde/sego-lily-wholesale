@@ -578,12 +578,15 @@ class SLW_Wholesale_Role {
         }
 
         // 3. Fall back to global percentage discount.
-        // Use the regular price as the base to avoid discounting a subscription
-        // or sale price that WCS/other plugins may have injected.
+        // Use the TRUE retail (one-time) regular price as the base. Reading
+        // raw _regular_price meta bypasses subscription plugin filters that
+        // would otherwise inject the recurring billing rate as the "regular
+        // price" -- which caused gift sets to wholesale-price off $43.20
+        // (sub rate) instead of $54 (true retail). See slw_get_true_regular_price.
         $base_price = (float) $price;
-        $regular = $product->get_regular_price();
-        if ( $regular !== '' && is_numeric( $regular ) && (float) $regular > 0 ) {
-            $base_price = (float) $regular;
+        $regular = slw_get_true_regular_price( $product );
+        if ( $regular > 0 ) {
+            $base_price = $regular;
         }
 
         $discount = (float) slw_get_option( 'discount_percent', 50 );
@@ -626,9 +629,11 @@ class SLW_Wholesale_Role {
             return $price_html;
         }
 
-        // For simple products, show the retail price struck through
+        // For simple products, show the retail price struck through.
+        // Use true regular price (raw meta) to avoid showing subscription
+        // rates as "retail" on wholesale product pages.
         if ( $product->is_type( 'simple' ) || $product->is_type( 'variation' ) ) {
-            $regular = (float) $product->get_regular_price();
+            $regular = slw_get_true_regular_price( $product );
             $discount = (float) slw_get_option( 'discount_percent', 50 );
             $wholesale = round( $regular * ( 1 - $discount / 100 ), 2 );
 
