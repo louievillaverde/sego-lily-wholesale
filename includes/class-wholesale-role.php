@@ -434,6 +434,36 @@ class SLW_Wholesale_Role {
                         <option value="90" <?php selected( $net_terms, 90 ); ?>>NET 90</option>
                     </select>
                     <p class="description">Grant this customer NET payment terms at checkout. They can place orders and pay within the selected number of days.</p>
+
+                    <?php
+                    // Live diagnostic: show whether this customer will actually
+                    // see the NET gateway at checkout right now. Catches the
+                    // common case where per-user terms are set but the global
+                    // plugin toggle is off (gateway never registered with WC).
+                    if ( $net_terms > 0 && $is_wholesale ) :
+                        $global_enabled = (bool) get_option( 'slw_net30_enabled', false );
+                        $ctx_pref       = get_user_meta( $user->ID, 'slw_preferred_context', true );
+                        $ctx_blocked    = ( $ctx_pref === 'retail' );
+
+                        if ( $global_enabled && ! $ctx_blocked ) {
+                            $badge_bg    = '#e7f5ec'; $badge_fg = '#2e7d32'; $badge_border = '#b6dec1';
+                            $badge_text  = '&#10004; NET ' . $net_terms . ' will appear at checkout for this customer.';
+                        } else {
+                            $badge_bg    = '#fff4e0'; $badge_fg = '#996800'; $badge_border = '#f0d9a8';
+                            $reasons = array();
+                            if ( ! $global_enabled ) {
+                                $reasons[] = '<strong>The global "Enable NET Payment Terms" setting is OFF</strong> (Wholesale &rarr; Settings). Turn it on or the gateway will not be registered with WooCommerce.';
+                            }
+                            if ( $ctx_blocked ) {
+                                $reasons[] = 'This user has manually chosen retail shopping mode (<code>slw_preferred_context = retail</code>). They will not see wholesale gateways until they switch back.';
+                            }
+                            $badge_text = '&#9888; NET ' . $net_terms . ' is granted but <strong>will not appear at checkout</strong>. Reason: ' . implode( ' Also: ', $reasons );
+                        }
+                        ?>
+                        <p style="margin-top:10px;padding:10px 12px;background:<?php echo esc_attr( $badge_bg ); ?>;color:<?php echo esc_attr( $badge_fg ); ?>;border:1px solid <?php echo esc_attr( $badge_border ); ?>;border-radius:6px;font-size:13px;line-height:1.5;">
+                            <?php echo wp_kses_post( $badge_text ); ?>
+                        </p>
+                    <?php endif; ?>
                 </td>
             </tr>
         </table>

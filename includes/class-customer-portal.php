@@ -444,8 +444,10 @@ class SLW_Customer_Portal {
             <p>Logos, product photos, shelf talkers, and marketing materials for your retail displays. Need something specific that's not here? <a href="?tab=help">Just ask</a>.</p>
 
             <?php if ( empty( $assets ) ) : ?>
-                <div class="slw-notice slw-notice-info" style="margin-top:16px;">
-                    No assets available yet. We'll add them shortly. In the meantime, reach out via the Help tab and we'll send what you need by email.
+                <div class="slw-assets-empty">
+                    <div class="slw-assets-empty__icon" aria-hidden="true">&#128230;</div>
+                    <h4>Your asset library is being prepared</h4>
+                    <p>Logos, product photos, shelf talkers, and marketing materials will show up here as we curate them for your store. In the meantime, head to the <a href="?tab=help">Help tab</a> and we'll send what you need by email.</p>
                 </div>
             <?php else : ?>
                 <div class="slw-dashboard-grid" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr));">
@@ -494,25 +496,93 @@ class SLW_Customer_Portal {
     }
 
     /**
-     * Price List tab. Download link for the line sheet.
+     * Price List tab. Shows live wholesale pricing grouped by category, plus
+     * a PDF download for the printable version. Pricing renders live from
+     * WooCommerce so this view stays in sync with whatever is set on each
+     * product (no stale catalog files).
      */
     private static function render_price_list_tab() {
-        $linesheet_url = '';
+        $linesheet_url   = '';
+        $products_by_cat = array();
         if ( class_exists( 'SLW_PDF_Linesheet' ) ) {
-            $linesheet_url = SLW_PDF_Linesheet::get_linesheet_url();
+            $linesheet_url   = SLW_PDF_Linesheet::get_linesheet_url();
+            $products_by_cat = SLW_PDF_Linesheet::get_products_by_category();
         }
+
+        $total_products   = 0;
+        $total_categories = count( $products_by_cat );
+        foreach ( $products_by_cat as $items ) {
+            $total_products += count( $items );
+        }
+
+        $discount_pct = (float) slw_get_option( 'discount_percent', 50 );
         ?>
         <div class="slw-price-list-tab">
-            <h3>Price List / Line Sheet</h3>
-            <p>Download our current wholesale price list as a printable PDF. This includes all products, wholesale pricing, minimum quantities, and case pack sizes.</p>
-
-            <?php if ( $linesheet_url ) : ?>
-                <div style="margin-top:20px;">
-                    <a href="<?php echo esc_url( $linesheet_url ); ?>" class="slw-btn slw-btn-primary" target="_blank">Download Price List (PDF)</a>
+            <div class="slw-price-list-header">
+                <div class="slw-price-list-header__intro">
+                    <h3>Price List</h3>
+                    <p>Your live wholesale pricing across all products. Updated in real time as products and pricing change.</p>
                 </div>
-                <p class="slw-help-text" style="margin-top:12px;">This document is confidential and intended for approved wholesale partners only.</p>
+                <?php if ( $linesheet_url ) : ?>
+                    <div class="slw-price-list-header__actions">
+                        <a href="<?php echo esc_url( $linesheet_url ); ?>" class="slw-btn slw-btn-primary" target="_blank">Download PDF</a>
+                    </div>
+                <?php endif; ?>
+            </div>
+
+            <?php if ( ! empty( $products_by_cat ) ) : ?>
+                <div class="slw-price-list-stats">
+                    <div class="slw-price-list-stat">
+                        <span class="slw-price-list-stat__number"><?php echo esc_html( $total_products ); ?></span>
+                        <span class="slw-price-list-stat__label">Products</span>
+                    </div>
+                    <div class="slw-price-list-stat">
+                        <span class="slw-price-list-stat__number"><?php echo esc_html( $total_categories ); ?></span>
+                        <span class="slw-price-list-stat__label">Categories</span>
+                    </div>
+                    <div class="slw-price-list-stat">
+                        <span class="slw-price-list-stat__number"><?php echo esc_html( (int) $discount_pct ); ?>%</span>
+                        <span class="slw-price-list-stat__label">Off Retail</span>
+                    </div>
+                    <div class="slw-price-list-stat">
+                        <span class="slw-price-list-stat__number" style="font-size:22px;">Live</span>
+                        <span class="slw-price-list-stat__label">Always Current</span>
+                    </div>
+                </div>
+
+                <?php foreach ( $products_by_cat as $category_name => $items ) : ?>
+                    <div class="slw-price-list-section">
+                        <h4 class="slw-price-list-section__title"><?php echo esc_html( $category_name ); ?> <span class="slw-price-list-section__count"><?php echo count( $items ); ?></span></h4>
+                        <div class="slw-price-list-table-wrap">
+                            <table class="slw-price-list-table">
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th class="slw-price-list-table__sku">SKU</th>
+                                        <th class="slw-price-list-table__qty">Min Qty</th>
+                                        <th class="slw-price-list-table__price">Retail</th>
+                                        <th class="slw-price-list-table__price">Wholesale</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ( $items as $item ) : ?>
+                                        <tr>
+                                            <td class="slw-price-list-table__name"><?php echo esc_html( $item['name'] ); ?></td>
+                                            <td class="slw-price-list-table__sku"><?php echo $item['sku'] ? esc_html( $item['sku'] ) : '&mdash;'; ?></td>
+                                            <td class="slw-price-list-table__qty"><?php echo $item['min_qty'] ? esc_html( $item['min_qty'] ) : '&mdash;'; ?></td>
+                                            <td class="slw-price-list-table__price slw-price-list-table__price--retail"><?php echo wp_kses_post( wc_price( $item['retail_price'] ) ); ?></td>
+                                            <td class="slw-price-list-table__price slw-price-list-table__price--wholesale"><?php echo wp_kses_post( wc_price( $item['wholesale_price'] ) ); ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+
+                <p class="slw-help-text slw-price-list-footnote">Prices reflect your current wholesale tier and update automatically. Confidential. For approved wholesale partners only.</p>
             <?php else : ?>
-                <div class="slw-notice slw-notice-info">The price list is not currently available. Please contact us for pricing information.</div>
+                <div class="slw-notice slw-notice-info">No products are currently set up for wholesale. Please contact us for pricing information.</div>
             <?php endif; ?>
         </div>
         <?php
