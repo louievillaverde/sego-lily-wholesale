@@ -406,7 +406,7 @@ $products = $all_products; // keep for empty check
                                data-price="<?php echo esc_attr( $variation->get_price() ); ?>" />
                     </td>
                     <td class="slw-col-action">
-                        <button type="button" class="slw-btn slw-btn-small slw-add-single"
+                        <button type="button" class="slw-btn slw-btn-small slw-btn-primary slw-add-single"
                                 data-product-id="<?php echo esc_attr( $product->get_id() ); ?>"
                                 data-variation-id="<?php echo esc_attr( $variation->get_id() ); ?>">Add</button>
                     </td>
@@ -463,7 +463,7 @@ $products = $all_products; // keep for empty check
                     </td>
                     <td class="slw-col-action">
                         <?php if ( $product->is_in_stock() ) : ?>
-                            <button type="button" class="slw-btn slw-btn-small slw-add-single" data-product-id="<?php echo esc_attr( $product->get_id() ); ?>">Add</button>
+                            <button type="button" class="slw-btn slw-btn-small slw-btn-primary slw-add-single" data-product-id="<?php echo esc_attr( $product->get_id() ); ?>">Add</button>
                         <?php endif; ?>
                     </td>
                 </tr>

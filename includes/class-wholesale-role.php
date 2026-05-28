@@ -578,11 +578,11 @@ class SLW_Wholesale_Role {
         }
 
         // 3. Fall back to global percentage discount.
-        // Use the TRUE retail (one-time) regular price as the base. Reading
-        // raw _regular_price meta bypasses subscription plugin filters that
-        // would otherwise inject the recurring billing rate as the "regular
-        // price" -- which caused gift sets to wholesale-price off $43.20
-        // (sub rate) instead of $54 (true retail). See slw_get_true_regular_price.
+        // Use the regular price as the base when available. If the product
+        // also has a subscription scheme attached, _regular_price may itself
+        // be the recurring rate -- in that case set a per-product wholesale
+        // override via the Wholesale Price field on the product edit page to
+        // skip this fallback entirely.
         $base_price = (float) $price;
         $regular = slw_get_true_regular_price( $product );
         if ( $regular > 0 ) {
@@ -630,14 +630,19 @@ class SLW_Wholesale_Role {
         }
 
         // For simple products, show the retail price struck through.
-        // Use true regular price (raw meta) to avoid showing subscription
-        // rates as "retail" on wholesale product pages.
+        // Compute wholesale via the same filter the order form/cart use,
+        // then derive retail from wholesale + global discount so the
+        // strikethrough math always advertises the configured % off (and
+        // is immune to subscription plugins that inject recurring rates
+        // into _regular_price).
         if ( $product->is_type( 'simple' ) || $product->is_type( 'variation' ) ) {
-            $regular = slw_get_true_regular_price( $product );
+            $wholesale = (float) $product->get_price();
             $discount = (float) slw_get_option( 'discount_percent', 50 );
-            $wholesale = round( $regular * ( 1 - $discount / 100 ), 2 );
+            $regular = ( $discount > 0 && $discount < 100 && $wholesale > 0 )
+                ? round( $wholesale / ( 1 - $discount / 100 ), 2 )
+                : slw_get_true_regular_price( $product );
 
-            if ( $regular > 0 ) {
+            if ( $regular > 0 && $wholesale > 0 ) {
                 return '<del>' . wc_price( $regular ) . '</del> <span class="slw-wholesale-label">Wholesale: ' . wc_price( $wholesale ) . '</span>';
             }
         }

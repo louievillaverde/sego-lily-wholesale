@@ -3,7 +3,7 @@
  * Plugin Name:       Wholesale Portal
  * Plugin URI:        https://github.com/louievillaverde/sego-lily-wholesale
  * Description:       All-in-one B2B wholesale portal for WooCommerce. Customer portal, tiered pricing, application workflow, PDF invoices, email sequences with multi-provider support, NET payment terms, lead capture, trade show tools, and automated order reminders. Built by Lead Piranha.
- * Version:           4.6.49
+ * Version:           4.6.50
  * Author:            Lead Piranha
  * Author URI:        https://leadpiranha.com
  * Requires at least: 6.0
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SLW_VERSION', '4.6.49' );
+define( 'SLW_VERSION', '4.6.50' );
 define( 'SLW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SLW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -610,28 +610,7 @@ function slw_get_true_regular_price( $product ) {
         return 0.0;
     }
 
-    $product_id = $product->get_id();
-    $parent_id  = method_exists( $product, 'get_parent_id' ) ? (int) $product->get_parent_id() : 0;
-
-    // Preferred source: derive retail from the per-product wholesale override.
-    // The order form already trusts _slw_wholesale_price as the canonical
-    // wholesale price for the product. If it's set, the implied retail is
-    // simply wholesale / (1 - discount%) -- and crucially, this sidesteps
-    // any subscription plugin contamination of the stored _regular_price.
-    $w_override = get_post_meta( $product_id, '_slw_wholesale_price', true );
-    if ( ( $w_override === '' || ! is_numeric( $w_override ) ) && $parent_id ) {
-        $w_override = get_post_meta( $parent_id, '_slw_wholesale_price', true );
-    }
-    if ( $w_override !== '' && is_numeric( $w_override ) && (float) $w_override > 0 ) {
-        $discount = (float) slw_get_option( 'discount_percent', 50 );
-        if ( $discount > 0 && $discount < 100 ) {
-            return round( (float) $w_override / ( 1 - $discount / 100 ), 2 );
-        }
-        return (float) $w_override;
-    }
-
-    // No wholesale override: fall back to raw _regular_price meta.
-    // Variable parents store prices on children.
+    // Variable + variable-subscription parents store prices on children.
     if ( method_exists( $product, 'get_children' ) && (
             $product->is_type( 'variable' ) ||
             $product->is_type( 'variable-subscription' )
@@ -649,12 +628,11 @@ function slw_get_true_regular_price( $product ) {
         }
     }
 
-    $raw = get_post_meta( $product_id, '_regular_price', true );
+    $raw = get_post_meta( $product->get_id(), '_regular_price', true );
     if ( $raw !== '' && is_numeric( $raw ) && (float) $raw > 0 ) {
         return (float) $raw;
     }
 
-    // Last resort: the filtered API.
     $filtered = $product->get_regular_price();
     if ( $filtered !== '' && is_numeric( $filtered ) ) {
         return (float) $filtered;

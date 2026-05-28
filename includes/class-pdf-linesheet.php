@@ -102,14 +102,20 @@ class SLW_PDF_Linesheet {
 				? $terms[0]->name
 				: 'Uncategorized';
 
-			// True retail (one-time, non-subscription) price. Reads raw
-			// `_regular_price` meta to bypass subscription plugins that would
-			// otherwise filter this back to the recurring billing rate.
-			// See slw_get_true_regular_price() for full rationale.
-			$retail_price = slw_get_true_regular_price( $product );
+			// Wholesale price first (respects per-product override or global discount).
+			$wholesale_price = self::calculate_wholesale_price( $product, slw_get_true_regular_price( $product ) );
 
-			// Calculate wholesale price using the same logic as the pricing engine
-			$wholesale_price = self::calculate_wholesale_price( $product, $retail_price );
+			// Retail derived from wholesale + global discount so the line
+			// sheet stays internally consistent (wholesale is always the
+			// advertised % off retail). Sidesteps the case where stored
+			// _regular_price is a subscription rate, since we never display
+			// it directly here.
+			$discount_pct = (float) slw_get_option( 'discount_percent', 50 );
+			if ( $discount_pct > 0 && $discount_pct < 100 && $wholesale_price > 0 ) {
+				$retail_price = round( $wholesale_price / ( 1 - $discount_pct / 100 ), 2 );
+			} else {
+				$retail_price = slw_get_true_regular_price( $product );
+			}
 
 			// Get minimum quantity if set via tiered pricing
 			$tiers_string = $product->get_meta( '_slw_tiered_pricing' );
