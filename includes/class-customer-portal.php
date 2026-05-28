@@ -441,7 +441,7 @@ class SLW_Customer_Portal {
         ?>
         <div class="slw-assets-tab">
             <h3>Brand Assets &amp; Resources</h3>
-            <p>Logos, product photos, shelf talkers, and marketing materials for your retail displays. Need something specific that's not here? <a href="?tab=help">Just ask</a>.</p>
+            <p>Logos, product photos, shelf talkers, and marketing materials for your retail displays. Need something specific that's not here? <a href="?tab=help" class="slw-text-link">Just ask</a>.</p>
 
             <?php if ( empty( $assets ) ) : ?>
                 <div class="slw-assets-empty">
@@ -450,30 +450,34 @@ class SLW_Customer_Portal {
                     <p>Logos, product photos, shelf talkers, and marketing materials will show up here as we curate them for your store. In the meantime, head to the <a href="?tab=help">Help tab</a> and we'll send what you need by email.</p>
                 </div>
             <?php else : ?>
-                <div class="slw-dashboard-grid" style="grid-template-columns:repeat(auto-fill,minmax(240px,1fr));">
+                <div class="slw-asset-grid">
                     <?php foreach ( $assets as $asset ) :
                         $type  = $asset['type'] ?? 'link';
                         $icon  = $type_icons[ $type ] ?? $type_icons['link'];
                         $label = $type_labels[ $type ] ?? $type_labels['link'];
                         $thumb = $asset['thumbnail'] ?? '';
                     ?>
-                        <div class="slw-dashboard-card slw-asset-card" style="display:flex;flex-direction:column;gap:8px;">
+                        <div class="slw-asset-card">
                             <?php if ( $thumb ) : ?>
-                                <div class="slw-asset-card__thumb" style="width:100%;aspect-ratio:16/10;background:#f0eee9 url('<?php echo esc_url( $thumb ); ?>') center/cover no-repeat;border-radius:6px;"></div>
+                                <div class="slw-asset-card__thumb slw-asset-card__thumb--photo" style="background-image:url('<?php echo esc_url( $thumb ); ?>');">
+                                    <span class="slw-asset-card__badge"><?php echo esc_html( $label ); ?></span>
+                                </div>
                             <?php else : ?>
-                                <div class="slw-asset-card__thumb" style="width:100%;aspect-ratio:16/10;background:#F7F6F3;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:42px;color:#386174;">
-                                    <?php echo $icon; ?>
+                                <div class="slw-asset-card__thumb slw-asset-card__thumb--placeholder slw-asset-card__thumb--<?php echo esc_attr( $type ); ?>">
+                                    <span class="slw-asset-card__badge"><?php echo esc_html( $label ); ?></span>
+                                    <span class="slw-asset-card__icon" aria-hidden="true"><?php echo $icon; ?></span>
                                 </div>
                             <?php endif; ?>
-                            <div style="font-size:11px;text-transform:uppercase;letter-spacing:0.05em;color:#628393;font-weight:600;"><?php echo esc_html( $label ); ?></div>
-                            <h4 style="margin:0;font-size:16px;"><?php echo esc_html( $asset['title'] ?? '' ); ?></h4>
-                            <?php if ( ! empty( $asset['description'] ) ) : ?>
-                                <p style="margin:0;font-size:13px;color:#628393;line-height:1.45;"><?php echo esc_html( $asset['description'] ); ?></p>
-                            <?php endif; ?>
-                            <div style="margin-top:auto;padding-top:8px;">
-                                <a href="<?php echo esc_url( $asset['url'] ?? '#' ); ?>" target="_blank" rel="noopener" class="slw-btn slw-btn-small slw-btn-primary">
-                                    <?php echo $type === 'video' || $type === 'link' ? 'Open' : 'Download'; ?>
-                                </a>
+                            <div class="slw-asset-card__body">
+                                <h4 class="slw-asset-card__title"><?php echo esc_html( $asset['title'] ?? '' ); ?></h4>
+                                <?php if ( ! empty( $asset['description'] ) ) : ?>
+                                    <p class="slw-asset-card__description"><?php echo esc_html( $asset['description'] ); ?></p>
+                                <?php endif; ?>
+                                <div class="slw-asset-card__actions">
+                                    <a href="<?php echo esc_url( $asset['url'] ?? '#' ); ?>" target="_blank" rel="noopener" class="slw-btn slw-btn-small slw-btn-primary">
+                                        <?php echo $type === 'video' || $type === 'link' ? 'Open' : 'Download'; ?>
+                                    </a>
+                                </div>
                             </div>
                         </div>
                     <?php endforeach; ?>
@@ -505,8 +509,15 @@ class SLW_Customer_Portal {
         $linesheet_url   = '';
         $products_by_cat = array();
         if ( class_exists( 'SLW_PDF_Linesheet' ) ) {
-            $linesheet_url   = SLW_PDF_Linesheet::get_linesheet_url();
-            $products_by_cat = SLW_PDF_Linesheet::get_products_by_category();
+            $linesheet_url = SLW_PDF_Linesheet::get_linesheet_url();
+            try {
+                $products_by_cat = SLW_PDF_Linesheet::get_products_by_category();
+            } catch ( \Throwable $e ) {
+                if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                    error_log( 'SLW Price List: get_products_by_category failed: ' . $e->getMessage() );
+                }
+                $products_by_cat = array();
+            }
         }
 
         $total_products   = 0;

@@ -107,10 +107,10 @@ class SLW_PDF_Linesheet {
 			// regular_price -- pull the min variation regular price so the line
 			// sheet doesn't show $0 for multi-scent products like gift boxes.
 			$retail_price = (float) $product->get_regular_price();
-			if ( ! $retail_price && ( $product->is_type( 'variable' ) || $product->is_type( 'variable-subscription' ) ) ) {
-				$variation_prices = $product->get_variation_regular_prices( true );
-				if ( ! empty( $variation_prices ) ) {
-					$retail_price = (float) min( $variation_prices );
+			if ( ! $retail_price && ( $product->is_type( 'variable' ) || $product->is_type( 'variable-subscription' ) ) && method_exists( $product, 'get_variation_regular_price' ) ) {
+				$min_variation = $product->get_variation_regular_price( 'min' );
+				if ( $min_variation !== '' && is_numeric( $min_variation ) ) {
+					$retail_price = (float) $min_variation;
 				}
 			}
 
