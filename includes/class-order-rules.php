@@ -22,6 +22,14 @@ class SLW_Order_Rules {
         // Register the NET 30 payment gateway
         add_filter( 'woocommerce_payment_gateways', array( __CLASS__, 'register_net30_gateway' ) );
 
+        // One-shot migration: flip the global slw_net30_enabled toggle ON.
+        // This setting was the silent gate that kept the gateway from
+        // registering with WC even when individual users had NET terms
+        // granted (confirmed root cause for BBar 2026-05-26). Per-user
+        // NET term grants are the real approval, so the global flag is
+        // safe to default ON. Marked done with a flag so it only runs once.
+        add_action( 'admin_init', array( __CLASS__, 'maybe_enable_net_globally' ) );
+
         // NOTE: the NET 30 toggle on user profiles is rendered by
         // SLW_Wholesale_Role::render_user_profile_section (consolidated
         // with the other wholesale fields). We intentionally do NOT hook
@@ -162,6 +170,18 @@ class SLW_Order_Rules {
             'order_id'      => $order_id,
             'order_total'   => $order->get_total(),
         ));
+    }
+
+    /**
+     * Flip the global slw_net30_enabled option ON the first time this
+     * runs after the v4.6.45 update. Idempotent via the autoenabled flag.
+     */
+    public static function maybe_enable_net_globally() {
+        if ( get_option( 'slw_net30_autoenabled' ) ) {
+            return;
+        }
+        update_option( 'slw_net30_enabled', true );
+        update_option( 'slw_net30_autoenabled', '1', true );
     }
 
     /**
