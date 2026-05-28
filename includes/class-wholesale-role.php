@@ -109,7 +109,7 @@ class SLW_Wholesale_Role {
                 var style = document.createElement('style');
                 style.textContent =
                     '@keyframes slwBannerIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}'
-                    + '@keyframes slwBtnBreath{0%,100%{box-shadow:0 2px 6px rgba(56,97,116,0.15)}50%{box-shadow:0 0 16px 3px rgba(212,175,55,0.4)}}'
+                    + '@keyframes slwBtnBreath{0%,100%{box-shadow:0 2px 6px rgba(56,97,116,0.18),0 0 0 0 rgba(212,175,55,0)}50%{box-shadow:0 0 0 2px rgba(212,175,55,0.55),0 0 28px 8px rgba(212,175,55,0.65),0 4px 14px rgba(212,175,55,0.35)}}'
                     + '@keyframes slwArrowNudge{0%,70%,100%{transform:translateX(0)}35%{transform:translateX(5px)}}'
                     + '.slw-wholesale-banner{animation:slwBannerIn 0.35s ease both}'
                     + '.slw-order-btn{'
@@ -131,8 +131,8 @@ class SLW_Wholesale_Role {
                     + 'Psst! You\'re on the retail page. Your order form is over here.'
                     + '</p>'
                     + '<a href="' + orderForm + '" class="slw-order-btn" style="display:inline-block;'
-                    + 'color:#386174;padding:9px 20px;border-radius:6px;font-size:13px;font-weight:700;'
-                    + 'text-decoration:none;letter-spacing:0.2px;">'
+                    + 'color:#386174;padding:12px 22px;border-radius:6px;font-size:14px;font-weight:700;'
+                    + 'text-decoration:none;letter-spacing:0.2px;line-height:1.3;">'
                     + 'Go to my order form <span class="slw-arrow">&rarr;</span></a>'
                     + '</div>';
                 // Insert after the add-to-cart form
