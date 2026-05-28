@@ -260,32 +260,32 @@ class SLW_Wholesale_Role {
         woocommerce_wp_text_input( array(
             'id'                => '_slw_retail_price',
             'wrapper_class'     => $show_for_all,
-            'label'             => 'Wholesale: True Retail (' . $sym . ')',
+            'label'             => 'WS: True Retail (' . $sym . ')',
             'desc_tip'          => true,
-            'description'       => 'Override the one-time retail price used by the Price List.',
+            'description'       => 'One-time retail price used by the Price List.',
             'type'              => 'number',
             'custom_attributes' => array( 'step' => '0.01', 'min' => '0' ),
         ));
         woocommerce_wp_text_input( array(
             'id'                => '_slw_wholesale_price',
             'wrapper_class'     => $show_for_all,
-            'label'             => 'Wholesale: Price (' . $sym . ')',
+            'label'             => 'WS: Price (' . $sym . ')',
             'desc_tip'          => true,
-            'description'       => 'Per-product wholesale price. Overrides the global discount.',
+            'description'       => 'Per-product wholesale price.',
             'type'              => 'number',
             'custom_attributes' => array( 'step' => '0.01', 'min' => '0' ),
         ));
         woocommerce_wp_checkbox( array(
             'id'            => '_slw_wholesale_only',
             'wrapper_class' => $show_for_all,
-            'label'         => 'Wholesale-only',
+            'label'         => 'WS: Wholesale-only',
         ));
         woocommerce_wp_text_input( array(
             'id'            => '_slw_tiered_pricing',
             'wrapper_class' => $show_for_all,
-            'label'         => 'Wholesale: Tiered',
+            'label'         => 'WS: Tiered',
             'desc_tip'      => true,
-            'description'   => 'qty:price pairs, e.g. 12:15.00,24:12.00',
+            'description'   => 'qty:price pairs.',
             'placeholder'   => '12:15.00,24:12.00',
         ));
         echo '</div>';

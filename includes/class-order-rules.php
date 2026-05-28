@@ -30,13 +30,6 @@ class SLW_Order_Rules {
         // safe to default ON. Marked done with a flag so it only runs once.
         add_action( 'admin_init', array( __CLASS__, 'maybe_enable_net_globally' ) );
 
-        // One-shot Sego Lily price seed: stamps per-product wholesale +
-        // retail overrides for every known SKU using Holly's confirmed
-        // prices. Runs once on admin_init then sets a flag.
-        add_action( 'admin_init', array( __CLASS__, 'maybe_seed_sego_lily_prices' ) );
-
-        // Surface the seed result as an admin notice.
-        add_action( 'admin_notices', array( __CLASS__, 'sego_seed_notice' ) );
 
         // NOTE: the NET 30 toggle on user profiles is rendered by
         // SLW_Wholesale_Role::render_user_profile_section (consolidated
@@ -190,80 +183,6 @@ class SLW_Order_Rules {
         }
         update_option( 'slw_net30_enabled', true );
         update_option( 'slw_net30_autoenabled', '1', true );
-    }
-
-    /**
-     * One-shot Sego Lily price seed. Sets per-product wholesale + retail
-     * overrides for every product whose name matches a known SKU pattern,
-     * using the prices Holly confirmed in her 2026-05-26 email. After this
-     * runs, slw_get_true_regular_price returns the correct one-time retail
-     * and apply_wholesale_price short-circuits to the wholesale value at
-     * step 1, regardless of how the product's _regular_price meta was
-     * stored or filtered by subscription plugins. Idempotent via flag.
-     */
-    public static function maybe_seed_sego_lily_prices() {
-        if ( get_option( 'slw_sego_prices_seeded' ) ) {
-            return;
-        }
-        if ( ! function_exists( 'wc_get_products' ) ) {
-            return;
-        }
-
-        // Each entry: [match_callback, wholesale, retail]
-        $catalog = array(
-            array( function( $n ) { return ( strpos( $n, 'gift' ) !== false ) || ( strpos( $n, 'variety' ) !== false ); }, 27, 54 ),
-            array( function( $n ) { return ( strpos( $n, 'lip balm' ) !== false ); }, 7, 14 ),
-            array( function( $n ) { return ( strpos( $n, 'deodorant' ) !== false ); }, 8, 16 ),
-            array( function( $n ) { return ( strpos( $n, 'butter' ) !== false ) && ( strpos( $n, '4 oz' ) !== false || strpos( $n, '4oz' ) !== false || strpos( $n, '4-oz' ) !== false ); }, 27, 54 ),
-            array( function( $n ) { return ( strpos( $n, 'butter' ) !== false ) && ( strpos( $n, '2 oz' ) !== false || strpos( $n, '2oz' ) !== false || strpos( $n, '2-oz' ) !== false ); }, 18, 36 ),
-        );
-
-        $products = wc_get_products( array( 'limit' => -1, 'status' => 'publish', 'return' => 'objects' ) );
-        $updated = array();
-        foreach ( $products as $product ) {
-            $name = strtolower( $product->get_name() );
-            foreach ( $catalog as $rule ) {
-                list( $cb, $wholesale, $retail ) = $rule;
-                if ( $cb( $name ) ) {
-                    $existing_w = $product->get_meta( '_slw_wholesale_price' );
-                    if ( $existing_w === '' || ! is_numeric( $existing_w ) ) {
-                        $product->update_meta_data( '_slw_wholesale_price', (string) $wholesale );
-                    }
-                    $existing_r = $product->get_meta( '_slw_retail_price' );
-                    if ( $existing_r === '' || ! is_numeric( $existing_r ) ) {
-                        $product->update_meta_data( '_slw_retail_price', (string) $retail );
-                    }
-                    $product->save();
-                    $updated[] = sprintf( '%s ($%d / $%d)', $product->get_name(), $retail, $wholesale );
-                    break;
-                }
-            }
-        }
-
-        update_option( 'slw_sego_prices_seeded', '1', true );
-        if ( ! empty( $updated ) ) {
-            update_option( 'slw_sego_prices_seeded_summary', $updated, true );
-        }
-    }
-
-    /**
-     * Show a one-time admin notice listing the products the seed touched.
-     * Dismissable; cleared after first view.
-     */
-    public static function sego_seed_notice() {
-        $summary = get_option( 'slw_sego_prices_seeded_summary' );
-        if ( empty( $summary ) || ! is_array( $summary ) ) {
-            return;
-        }
-        if ( ! current_user_can( 'manage_woocommerce' ) ) {
-            return;
-        }
-        echo '<div class="notice notice-success is-dismissible"><p><strong>Sego Lily wholesale prices seeded</strong> on ' . count( $summary ) . ' product(s):</p><ul style="margin:6px 0 0 20px;">';
-        foreach ( $summary as $line ) {
-            echo '<li>' . esc_html( $line ) . '</li>';
-        }
-        echo '</ul><p style="margin-top:8px;color:#628393;">Edit any product to adjust its Wholesale + True Retail fields.</p></div>';
-        delete_option( 'slw_sego_prices_seeded_summary' );
     }
 
     /**

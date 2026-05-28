@@ -3,7 +3,7 @@
  * Plugin Name:       Wholesale Portal
  * Plugin URI:        https://github.com/louievillaverde/sego-lily-wholesale
  * Description:       All-in-one B2B wholesale portal for WooCommerce. Customer portal, tiered pricing, application workflow, PDF invoices, email sequences with multi-provider support, NET payment terms, lead capture, trade show tools, and automated order reminders. Built by Lead Piranha.
- * Version:           4.6.57
+ * Version:           4.6.58
  * Author:            Lead Piranha
  * Author URI:        https://leadpiranha.com
  * Requires at least: 6.0
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SLW_VERSION', '4.6.57' );
+define( 'SLW_VERSION', '4.6.58' );
 define( 'SLW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SLW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -617,8 +617,7 @@ function slw_get_true_regular_price( $product ) {
     $product_id = $product->get_id();
     $parent_id  = method_exists( $product, 'get_parent_id' ) ? (int) $product->get_parent_id() : 0;
 
-    // 0. Manual admin override -- escape hatch when auto-detection cannot
-    // find the right one-time retail. Checks product, then parent for variations.
+    // 0. Manual admin override -- ultimate escape hatch.
     $override = get_post_meta( $product_id, '_slw_retail_price', true );
     if ( ( $override === '' || ! is_numeric( $override ) ) && $parent_id ) {
         $override = get_post_meta( $parent_id, '_slw_retail_price', true );
@@ -627,67 +626,51 @@ function slw_get_true_regular_price( $product ) {
         return (float) $override;
     }
 
-    // 1. Variable + variable-subscription parents: walk children. Use the
-    // FILTERED price (what the website shows) since subscription plugins
-    // produce the right one-time price for non-recurring variations even
-    // when _regular_price meta itself contains the recurring rate. Order
-    // form does the same thing and gets correct numbers, so this matches.
+    // 1. Variable / variable-subscription parents: walk children and take
+    // the MAX get_price() across variations. The one-time / single-cycle
+    // variation is always the highest priced one (subscriptions and
+    // multi-cycle plans are by definition discounted). Sego Lily's variety
+    // pack has a "1-cycle" variation that acts as one-time -- it has
+    // _subscription_period set so any "skip recurring" filter wrongly
+    // discards it, but its price IS the highest, so MAX picks it up.
     if ( method_exists( $product, 'get_children' ) && (
             $product->is_type( 'variable' ) ||
             $product->is_type( 'variable-subscription' )
     ) ) {
-        $variation_ids   = (array) $product->get_children();
-        $non_recurring   = array();
-        $all_variations  = array();
-        foreach ( $variation_ids as $var_id ) {
+        $prices = array();
+        foreach ( (array) $product->get_children() as $var_id ) {
             $variation = wc_get_product( (int) $var_id );
             if ( ! $variation ) continue;
             $price = (float) $variation->get_price();
-            if ( $price <= 0 ) continue;
-            $all_variations[] = $price;
-
-            $sub_period   = get_post_meta( (int) $var_id, '_subscription_period', true );
-            $sub_interval = get_post_meta( (int) $var_id, '_subscription_period_interval', true );
-            if ( empty( $sub_period ) || empty( $sub_interval ) ) {
-                $non_recurring[] = $price;
+            if ( $price > 0 ) {
+                $prices[] = $price;
             }
         }
-        if ( ! empty( $non_recurring ) ) {
-            return (float) min( $non_recurring );
-        }
-        if ( ! empty( $all_variations ) ) {
-            return (float) min( $all_variations );
+        if ( ! empty( $prices ) ) {
+            return (float) max( $prices );
         }
     }
 
-    // 2. Direct variation: prefer filtered price; if this variation is
-    // recurring, look for a non-recurring sibling.
-    if ( $product->is_type( 'variation' ) ) {
-        $sub_period   = get_post_meta( $product_id, '_subscription_period', true );
-        $sub_interval = get_post_meta( $product_id, '_subscription_period_interval', true );
-        if ( ! empty( $sub_period ) && ! empty( $sub_interval ) && $parent_id ) {
-            $sibling_ids = wp_list_pluck(
-                get_children( array( 'post_parent' => $parent_id, 'post_type' => 'product_variation', 'numberposts' => -1 ) ),
-                'ID'
-            );
-            $prices = array();
-            foreach ( $sibling_ids as $sid ) {
-                $sp = get_post_meta( $sid, '_subscription_period', true );
-                $si = get_post_meta( $sid, '_subscription_period_interval', true );
-                if ( ! empty( $sp ) && ! empty( $si ) ) continue;
-                $sibling = wc_get_product( (int) $sid );
-                if ( ! $sibling ) continue;
-                $sp_price = (float) $sibling->get_price();
-                if ( $sp_price > 0 ) $prices[] = $sp_price;
-            }
-            if ( ! empty( $prices ) ) {
-                return (float) min( $prices );
-            }
+    // 2. Direct variation: report the highest-priced sibling so all rows
+    // for the same product roll up to the one-time price.
+    if ( $product->is_type( 'variation' ) && $parent_id ) {
+        $sibling_ids = (array) wp_list_pluck(
+            get_children( array( 'post_parent' => $parent_id, 'post_type' => 'product_variation', 'numberposts' => -1 ) ),
+            'ID'
+        );
+        $prices = array();
+        foreach ( $sibling_ids as $sid ) {
+            $sibling = wc_get_product( (int) $sid );
+            if ( ! $sibling ) continue;
+            $p = (float) $sibling->get_price();
+            if ( $p > 0 ) $prices[] = $p;
+        }
+        if ( ! empty( $prices ) ) {
+            return (float) max( $prices );
         }
     }
 
-    // 3. Simple / subscription: filtered get_price first (matches what the
-    // website shows), then raw _regular_price meta as fallback.
+    // 3. Simple / subscription: filtered get_price (what the website shows).
     $filtered_price = (float) $product->get_price();
     if ( $filtered_price > 0 ) {
         return $filtered_price;
