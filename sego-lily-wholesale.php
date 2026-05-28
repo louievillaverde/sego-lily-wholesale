@@ -3,7 +3,7 @@
  * Plugin Name:       Wholesale Portal
  * Plugin URI:        https://github.com/louievillaverde/sego-lily-wholesale
  * Description:       All-in-one B2B wholesale portal for WooCommerce. Customer portal, tiered pricing, application workflow, PDF invoices, email sequences with multi-provider support, NET payment terms, lead capture, trade show tools, and automated order reminders. Built by Lead Piranha.
- * Version:           4.6.50
+ * Version:           4.6.51
  * Author:            Lead Piranha
  * Author URI:        https://leadpiranha.com
  * Requires at least: 6.0
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SLW_VERSION', '4.6.50' );
+define( 'SLW_VERSION', '4.6.51' );
 define( 'SLW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SLW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -611,6 +611,10 @@ function slw_get_true_regular_price( $product ) {
     }
 
     // Variable + variable-subscription parents store prices on children.
+    // Skip variations that have a subscription billing period set, since
+    // their _regular_price is the recurring rate, not the one-time retail.
+    // The order form template uses the same filter when deciding which
+    // variation to display.
     if ( method_exists( $product, 'get_children' ) && (
             $product->is_type( 'variable' ) ||
             $product->is_type( 'variable-subscription' )
@@ -618,6 +622,11 @@ function slw_get_true_regular_price( $product ) {
         $variation_ids = (array) $product->get_children();
         $prices = array();
         foreach ( $variation_ids as $var_id ) {
+            $sub_period   = get_post_meta( (int) $var_id, '_subscription_period', true );
+            $sub_interval = get_post_meta( (int) $var_id, '_subscription_period_interval', true );
+            if ( ! empty( $sub_period ) && ! empty( $sub_interval ) ) {
+                continue; // recurring variation, skip
+            }
             $raw = get_post_meta( (int) $var_id, '_regular_price', true );
             if ( $raw !== '' && is_numeric( $raw ) && (float) $raw > 0 ) {
                 $prices[] = (float) $raw;
@@ -625,6 +634,37 @@ function slw_get_true_regular_price( $product ) {
         }
         if ( ! empty( $prices ) ) {
             return (float) min( $prices );
+        }
+    }
+
+    // Simple variation: if this specific variation IS a subscription variation,
+    // its raw _regular_price is the recurring rate. Refuse to return it; the
+    // caller can fall back to filtered API or treat the product as missing.
+    if ( $product->is_type( 'variation' ) ) {
+        $sub_period   = get_post_meta( $product->get_id(), '_subscription_period', true );
+        $sub_interval = get_post_meta( $product->get_id(), '_subscription_period_interval', true );
+        if ( ! empty( $sub_period ) && ! empty( $sub_interval ) ) {
+            // Try to find a sibling non-recurring variation under the same parent.
+            $parent_id = (int) $product->get_parent_id();
+            if ( $parent_id ) {
+                $sibling_ids = wp_list_pluck(
+                    get_children( array( 'post_parent' => $parent_id, 'post_type' => 'product_variation', 'numberposts' => -1 ) ),
+                    'ID'
+                );
+                $prices = array();
+                foreach ( $sibling_ids as $sid ) {
+                    $sp = get_post_meta( $sid, '_subscription_period', true );
+                    $si = get_post_meta( $sid, '_subscription_period_interval', true );
+                    if ( ! empty( $sp ) && ! empty( $si ) ) continue;
+                    $r = get_post_meta( $sid, '_regular_price', true );
+                    if ( $r !== '' && is_numeric( $r ) && (float) $r > 0 ) {
+                        $prices[] = (float) $r;
+                    }
+                }
+                if ( ! empty( $prices ) ) {
+                    return (float) min( $prices );
+                }
+            }
         }
     }
 
