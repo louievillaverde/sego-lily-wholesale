@@ -249,6 +249,14 @@ class SLW_Wholesale_Role {
     public static function add_product_pricing_field() {
         global $post;
         woocommerce_wp_text_input( array(
+            'id'          => '_slw_retail_price',
+            'label'       => 'True Retail Price (' . get_woocommerce_currency_symbol() . ')',
+            'desc_tip'    => true,
+            'description' => 'Optional override for the one-time retail price shown on the wholesale Price List and strikethrough. Use this when a subscription plugin has stored a recurring rate in the standard Regular Price field. Leave blank to use the standard Regular Price.',
+            'type'        => 'number',
+            'custom_attributes' => array( 'step' => '0.01', 'min' => '0' ),
+        ));
+        woocommerce_wp_text_input( array(
             'id'          => '_slw_wholesale_price',
             'label'       => 'Wholesale Price (' . get_woocommerce_currency_symbol() . ')',
             'desc_tip'    => true,
@@ -271,8 +279,10 @@ class SLW_Wholesale_Role {
     }
 
     public static function save_product_pricing_field( $product ) {
+        $retail_override = isset( $_POST['_slw_retail_price'] ) ? wc_clean( $_POST['_slw_retail_price'] ) : '';
         $price = isset( $_POST['_slw_wholesale_price'] ) ? wc_clean( $_POST['_slw_wholesale_price'] ) : '';
         $only  = isset( $_POST['_slw_wholesale_only'] ) ? '1' : '0';
+        $product->update_meta_data( '_slw_retail_price', $retail_override );
         $product->update_meta_data( '_slw_wholesale_price', $price );
         $product->update_meta_data( '_slw_wholesale_only', $only );
 
