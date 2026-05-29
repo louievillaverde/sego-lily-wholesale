@@ -19,6 +19,7 @@ class SLW_Order_Form {
 
         // AJAX handler for adding items to cart from the order form
         add_action( 'wp_ajax_slw_add_to_cart', array( __CLASS__, 'ajax_add_to_cart' ) );
+        add_action( 'wp_ajax_slw_reorder_last', array( __CLASS__, 'ajax_reorder_last' ) );
     }
 
     /**
@@ -239,6 +240,73 @@ class SLW_Order_Form {
      * @param int        $variation_id The matched variation, if any.
      * @return array Completed attribute map.
      */
+    /**
+     * AJAX: reorder the customer's most recent completed/processing order.
+     * Pushes every line item back into the cart at the same qty + variation,
+     * then returns the checkout URL so the dashboard JS can redirect.
+     */
+    public static function ajax_reorder_last() {
+        check_ajax_referer( 'slw_reorder_last', 'nonce' );
+        if ( ! is_user_logged_in() ) {
+            wp_send_json_error( array( 'message' => 'Sign in first.' ) );
+        }
+        $user_id = get_current_user_id();
+        $orders = wc_get_orders( array(
+            'customer_id' => $user_id,
+            'status'      => array( 'wc-processing', 'wc-completed', 'wc-on-hold' ),
+            'limit'       => 1,
+            'orderby'     => 'date',
+            'order'       => 'DESC',
+        ) );
+        if ( empty( $orders ) ) {
+            wp_send_json_error( array( 'message' => 'No previous order found to reorder.' ) );
+        }
+        $order = $orders[0];
+
+        if ( ! function_exists( 'WC' ) || ! WC()->cart ) {
+            wp_send_json_error( array( 'message' => 'Cart is not available right now.' ) );
+        }
+
+        $added = 0;
+        $failed = array();
+        foreach ( $order->get_items() as $item ) {
+            $product_id   = (int) $item->get_product_id();
+            $variation_id = (int) $item->get_variation_id();
+            $qty          = (int) $item->get_quantity();
+            $variation    = $variation_id ? $item->get_variation() : array();
+
+            if ( $qty < 1 || $product_id < 1 ) continue;
+            $product = wc_get_product( $variation_id ?: $product_id );
+            if ( ! $product || ! $product->is_in_stock() ) {
+                $failed[] = $item->get_name();
+                continue;
+            }
+            $ok = WC()->cart->add_to_cart( $product_id, $qty, $variation_id, (array) $variation );
+            if ( $ok ) {
+                $added++;
+            } else {
+                $failed[] = $item->get_name();
+            }
+        }
+
+        if ( $added < 1 ) {
+            wp_send_json_error( array(
+                'message' => empty( $failed )
+                    ? 'No items from your last order are still available.'
+                    : 'Could not re-add: ' . implode( ', ', $failed ),
+            ) );
+        }
+
+        $wholesale_checkout = get_page_by_path( 'wholesale-checkout' );
+        $checkout_url       = $wholesale_checkout ? get_permalink( $wholesale_checkout->ID ) : wc_get_checkout_url();
+
+        wp_send_json_success( array(
+            'message'      => $added . ' item' . ( $added === 1 ? '' : 's' ) . ' added to cart from your last order'
+                              . ( ! empty( $failed ) ? '. Skipped: ' . implode( ', ', $failed ) : '' ),
+            'checkout_url' => $checkout_url,
+        ) );
+    }
+
     private static function prime_variation_attributes( $product, $variation, $variation_id ) {
         // Customer-friendly aliases that should satisfy specific attribute
         // names even when the actual terms don't include them. Holly will

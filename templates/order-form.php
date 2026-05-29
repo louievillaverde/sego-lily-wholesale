@@ -13,6 +13,9 @@ $user = wp_get_current_user();
 $first_name = $user->first_name ?: $user->display_name;
 $has_ordered = get_user_meta( $user->ID, 'slw_first_order_placed', true );
 $minimum = (float) slw_get_option( 'first_order_minimum', 300 );
+$reorder_minimum = (float) slw_get_option( 'reorder_minimum', 0 );
+$active_minimum  = $has_ordered ? $reorder_minimum : $minimum;
+$active_min_label = $has_ordered ? 'reorder minimum' : 'first-order minimum';
 $nonce = wp_create_nonce( 'slw_order_form' );
 $ajax_url = admin_url( 'admin-ajax.php' );
 
@@ -76,6 +79,40 @@ $products = $all_products; // keep for empty check
     <div class="slw-order-form-header">
         <h2>Wholesale Order Form</h2>
         <p>Hey <?php echo esc_html( $first_name ); ?>! Set your quantities and add items to your cart. All prices shown are your wholesale rate.</p>
+
+        <div class="slw-order-header-tools">
+            <div class="slw-order-search">
+                <svg class="slw-order-search__icon" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="7" cy="7" r="5"/><path d="M11 11l3.5 3.5"/>
+                </svg>
+                <input type="search"
+                       id="slw-order-search-input"
+                       class="slw-order-search__input"
+                       placeholder="Search by product name or SKU..."
+                       aria-label="Search products"
+                       autocomplete="off" />
+                <button type="button" class="slw-order-search__clear" id="slw-order-search-clear" aria-label="Clear search" hidden>×</button>
+            </div>
+            <button type="button" class="slw-btn slw-btn-secondary slw-bulk-import-btn" id="slw-bulk-import-btn">
+                <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-right:6px;vertical-align:middle;">
+                    <path d="M2 10v3h12v-3M8 2v9M4 6l4-4 4 4"/>
+                </svg>Bulk Import SKUs
+            </button>
+        </div>
+
+        <div class="slw-bulk-import-modal" id="slw-bulk-import-modal" hidden>
+            <div class="slw-bulk-import-modal__inner">
+                <button type="button" class="slw-bulk-import-modal__close" id="slw-bulk-import-close" aria-label="Close">×</button>
+                <h3>Bulk Import SKUs</h3>
+                <p>Paste SKUs and quantities, one per line. Example: <code>TLB-COCO 12</code></p>
+                <textarea id="slw-bulk-import-input" rows="8" placeholder="SKU-A 12&#10;SKU-B 24&#10;SKU-C 6"></textarea>
+                <div class="slw-bulk-import-modal__actions">
+                    <button type="button" class="slw-btn slw-btn-secondary" id="slw-bulk-import-cancel">Cancel</button>
+                    <button type="button" class="slw-btn slw-btn-primary" id="slw-bulk-import-apply">Apply to Form</button>
+                </div>
+                <div class="slw-bulk-import-modal__result" id="slw-bulk-import-result" aria-live="polite"></div>
+            </div>
+        </div>
         <?php if ( ! $has_ordered && $minimum > 0 ) : ?>
             <p class="slw-minimum-note">Your first order has a $<?php echo number_format( $minimum, 0 ); ?> minimum.</p>
         <?php elseif ( $has_ordered ) :
@@ -404,7 +441,7 @@ $products = $all_products; // keep for empty check
 
                             $v_price_html = wc_price( $variation->get_price() );
                 ?>
-                <tr data-product-id="<?php echo esc_attr( $product->get_id() ); ?>" data-variation-id="<?php echo esc_attr( $variation->get_id() ); ?>" data-category="<?php echo esc_attr( $cat_slug ); ?>" id="slw-product-<?php echo esc_attr( $variation->get_id() ); ?>">
+                <tr data-product-id="<?php echo esc_attr( $product->get_id() ); ?>" data-variation-id="<?php echo esc_attr( $variation->get_id() ); ?>" data-category="<?php echo esc_attr( $cat_slug ); ?>" data-search="<?php echo esc_attr( strtolower( $product->get_name() . ' ' . $var_label . ' ' . $variation->get_sku() . ' ' . $product->get_sku() ) ); ?>" id="slw-product-<?php echo esc_attr( $variation->get_id() ); ?>">
                     <?php
                     // Larger lightbox image (full-size if available, else thumbnail).
                     $var_image_full = $variation->get_image_id() ? wp_get_attachment_image_url( $variation->get_image_id(), 'large' ) : '';
@@ -460,31 +497,95 @@ $products = $all_products; // keep for empty check
                         $scent_desc = substr( $scent_desc, 0, 317 ) . '...';
                     }
                     ?>
+                    <?php
+                    // Stock badge data. WC's get_stock_quantity returns null
+                    // for unmanaged stock; treat null as 'in stock' without a
+                    // number. Low-stock threshold = WC setting or 20 default.
+                    $v_stock_qty    = $variation->get_stock_quantity();
+                    $v_stock_status = $variation->get_stock_status();
+                    $low_threshold  = (int) get_option( 'woocommerce_notify_low_stock_amount', 20 );
+                    $v_stock_class  = '';
+                    $v_stock_text   = '';
+                    if ( $v_stock_status === 'outofstock' ) {
+                        if ( $variation->backorders_allowed() ) {
+                            $v_stock_class = 'slw-stock-badge--backorder';
+                            $v_stock_text  = 'Backorder';
+                        } else {
+                            $v_stock_class = 'slw-stock-badge--out';
+                            $v_stock_text  = 'Out of stock';
+                        }
+                    } elseif ( $v_stock_qty !== null && $v_stock_qty > 0 ) {
+                        if ( $v_stock_qty <= $low_threshold ) {
+                            $v_stock_class = 'slw-stock-badge--low';
+                            $v_stock_text  = 'Only ' . (int) $v_stock_qty . ' left';
+                        } else {
+                            $v_stock_class = 'slw-stock-badge--in';
+                            $v_stock_text  = (int) $v_stock_qty . ' in stock';
+                        }
+                    } elseif ( $v_stock_status === 'instock' ) {
+                        $v_stock_class = 'slw-stock-badge--in';
+                        $v_stock_text  = 'In stock';
+                    }
+                    ?>
                     <td class="slw-col-product">
                         <strong class="slw-product-name<?php echo $product_desc ? ' slw-has-hover' : ''; ?>"
                                 <?php if ( $product_desc ) : ?>
                                 data-hover-title="<?php echo esc_attr( $product->get_name() ); ?>"
                                 data-hover-desc="<?php echo esc_attr( $product_desc ); ?>"
                                 <?php endif; ?>><?php echo esc_html( $product->get_name() ); ?></strong>
+                        <?php if ( $v_stock_text ) : ?>
+                            <span class="slw-stock-badge <?php echo esc_attr( $v_stock_class ); ?>"><?php echo esc_html( $v_stock_text ); ?></span>
+                        <?php endif; ?>
                         <br><span class="slw-product-meta<?php echo $scent_desc ? ' slw-has-hover' : ''; ?>"
                                   <?php if ( $scent_desc ) : ?>
                                   data-hover-title="<?php echo esc_attr( $var_label ); ?>"
                                   data-hover-desc="<?php echo esc_attr( $scent_desc ); ?>"
                                   <?php endif; ?>><?php echo esc_html( $var_label ); ?></span>
                         <?php if ( $v_case_pack > 0 && class_exists( 'SLW_Product_Minimums' ) && SLW_Product_Minimums::case_packs_enabled() ) : ?>
-                            <br><span class="slw-case-pack-label">Case of <?php echo esc_html( $v_case_pack ); ?></span>
+                            <br><span class="slw-case-pack-label" data-case-pack="<?php echo esc_attr( $v_case_pack ); ?>">
+                                Case of <?php echo esc_html( $v_case_pack ); ?>
+                                <span class="slw-case-math" data-row-case-math="<?php echo esc_attr( $variation->get_id() ); ?>"></span>
+                            </span>
+                        <?php endif; ?>
+                        <?php
+                        $v_tiers_raw = $variation->get_meta( '_slw_tiered_pricing' );
+                        if ( ! $v_tiers_raw ) $v_tiers_raw = get_post_meta( $product->get_id(), '_slw_tiered_pricing', true );
+                        if ( $v_tiers_raw && class_exists( 'SLW_Wholesale_Role' ) ) :
+                            $v_tiers = SLW_Wholesale_Role::parse_tiers( $v_tiers_raw );
+                            if ( ! empty( $v_tiers ) ) :
+                                ksort( $v_tiers );
+                                $tier_parts = array();
+                                foreach ( $v_tiers as $qty_key => $unit_price ) {
+                                    $tier_parts[] = $qty_key . '+ for ' . wc_price( $unit_price ) . ' each';
+                                }
+                        ?>
+                            <br><span class="slw-tier-pricing"><?php echo wp_kses_post( implode( ' · ', $tier_parts ) ); ?></span>
+                        <?php endif; endif; ?>
+                        <?php
+                        $v_lead = $variation->get_meta( '_slw_lead_time' );
+                        if ( ! $v_lead ) $v_lead = get_post_meta( $product->get_id(), '_slw_lead_time', true );
+                        if ( $v_lead ) : ?>
+                            <br><span class="slw-lead-time">Ships in <?php echo esc_html( $v_lead ); ?></span>
                         <?php endif; ?>
                         <?php if ( $variation->get_sku() ) : ?>
                             <br><span class="slw-product-sku">SKU: <?php echo esc_html( $variation->get_sku() ); ?></span>
                         <?php endif; ?>
                     </td>
                     <td class="slw-col-price"><?php echo $v_price_html; ?></td>
+                    <?php
+                    // True retail (one-time) for the savings calculation. Uses
+                    // the helper that bypasses subscription contamination.
+                    $v_retail = function_exists( 'slw_get_true_regular_price' )
+                        ? slw_get_true_regular_price( $variation )
+                        : (float) $variation->get_regular_price();
+                    ?>
                     <td class="slw-col-qty">
                         <input type="number" class="slw-qty-input" min="<?php echo esc_attr( $v_min_input ); ?>" max="999" step="<?php echo esc_attr( $v_step ); ?>" value="<?php echo esc_attr( $v_default ); ?>"
                                data-product-id="<?php echo esc_attr( $product->get_id() ); ?>"
                                data-variation-id="<?php echo esc_attr( $variation->get_id() ); ?>"
                                data-variation="<?php echo esc_attr( wp_json_encode( $var_attrs ) ); ?>"
-                               data-price="<?php echo esc_attr( $variation->get_price() ); ?>" />
+                               data-price="<?php echo esc_attr( $variation->get_price() ); ?>"
+                               data-retail-price="<?php echo esc_attr( $v_retail ); ?>" />
                         <?php if ( $v_min_input > 1 ) : ?>
                             <span class="slw-min-badge" aria-label="Minimum quantity">Min <?php echo esc_html( $v_min_input ); ?></span>
                         <?php endif; ?>
@@ -524,7 +625,7 @@ $products = $all_products; // keep for empty check
                             }
                         }
                 ?>
-                <tr data-product-id="<?php echo esc_attr( $product->get_id() ); ?>" data-category="<?php echo esc_attr( $cat_slug ); ?>" id="slw-product-<?php echo esc_attr( $product->get_id() ); ?>">
+                <tr data-product-id="<?php echo esc_attr( $product->get_id() ); ?>" data-category="<?php echo esc_attr( $cat_slug ); ?>" data-search="<?php echo esc_attr( strtolower( $product->get_name() . ' ' . $product->get_sku() ) ); ?>" id="slw-product-<?php echo esc_attr( $product->get_id() ); ?>">
                     <?php $image_full = wp_get_attachment_image_url( $product->get_image_id(), 'large' ); if ( ! $image_full ) $image_full = $image; ?>
                     <td class="slw-col-image">
                         <button type="button"
@@ -544,23 +645,75 @@ $products = $all_products; // keep for empty check
                         $p_desc = substr( $p_desc, 0, 317 ) . '...';
                     }
                     ?>
+                    <?php
+                    $p_stock_qty    = $product->get_stock_quantity();
+                    $p_stock_status = $product->get_stock_status();
+                    $low_threshold  = (int) get_option( 'woocommerce_notify_low_stock_amount', 20 );
+                    $p_stock_class  = ''; $p_stock_text = '';
+                    if ( $p_stock_status === 'outofstock' ) {
+                        if ( $product->backorders_allowed() ) {
+                            $p_stock_class = 'slw-stock-badge--backorder'; $p_stock_text = 'Backorder';
+                        } else {
+                            $p_stock_class = 'slw-stock-badge--out'; $p_stock_text = 'Out of stock';
+                        }
+                    } elseif ( $p_stock_qty !== null && $p_stock_qty > 0 ) {
+                        if ( $p_stock_qty <= $low_threshold ) {
+                            $p_stock_class = 'slw-stock-badge--low';
+                            $p_stock_text  = 'Only ' . (int) $p_stock_qty . ' left';
+                        } else {
+                            $p_stock_class = 'slw-stock-badge--in';
+                            $p_stock_text  = (int) $p_stock_qty . ' in stock';
+                        }
+                    } elseif ( $p_stock_status === 'instock' ) {
+                        $p_stock_class = 'slw-stock-badge--in'; $p_stock_text = 'In stock';
+                    }
+                    ?>
                     <td class="slw-col-product">
                         <strong class="slw-product-name<?php echo $p_desc ? ' slw-has-hover' : ''; ?>"
                                 <?php if ( $p_desc ) : ?>
                                 data-hover-title="<?php echo esc_attr( $product->get_name() ); ?>"
                                 data-hover-desc="<?php echo esc_attr( $p_desc ); ?>"
                                 <?php endif; ?>><?php echo esc_html( $product->get_name() ); ?></strong>
+                        <?php if ( $p_stock_text ) : ?>
+                            <span class="slw-stock-badge <?php echo esc_attr( $p_stock_class ); ?>"><?php echo esc_html( $p_stock_text ); ?></span>
+                        <?php endif; ?>
                         <?php if ( $case_pack > 0 && class_exists( 'SLW_Product_Minimums' ) && SLW_Product_Minimums::case_packs_enabled() ) : ?>
-                            <br><span class="slw-case-pack-label">Case of <?php echo esc_html( $case_pack ); ?></span>
+                            <br><span class="slw-case-pack-label" data-case-pack="<?php echo esc_attr( $case_pack ); ?>">
+                                Case of <?php echo esc_html( $case_pack ); ?>
+                                <span class="slw-case-math" data-row-case-math="<?php echo esc_attr( $product->get_id() ); ?>"></span>
+                            </span>
+                        <?php endif; ?>
+                        <?php
+                        $p_tiers_raw = get_post_meta( $product->get_id(), '_slw_tiered_pricing', true );
+                        if ( $p_tiers_raw && class_exists( 'SLW_Wholesale_Role' ) ) :
+                            $p_tiers = SLW_Wholesale_Role::parse_tiers( $p_tiers_raw );
+                            if ( ! empty( $p_tiers ) ) :
+                                ksort( $p_tiers );
+                                $tier_parts = array();
+                                foreach ( $p_tiers as $qty_key => $unit_price ) {
+                                    $tier_parts[] = $qty_key . '+ for ' . wc_price( $unit_price ) . ' each';
+                                }
+                        ?>
+                            <br><span class="slw-tier-pricing"><?php echo wp_kses_post( implode( ' · ', $tier_parts ) ); ?></span>
+                        <?php endif; endif; ?>
+                        <?php
+                        $p_lead = get_post_meta( $product->get_id(), '_slw_lead_time', true );
+                        if ( $p_lead ) : ?>
+                            <br><span class="slw-lead-time">Ships in <?php echo esc_html( $p_lead ); ?></span>
                         <?php endif; ?>
                         <?php if ( $product->get_sku() ) : ?>
                             <br><span class="slw-product-sku">SKU: <?php echo esc_html( $product->get_sku() ); ?></span>
                         <?php endif; ?>
                     </td>
                     <td class="slw-col-price"><?php echo $price_html; ?></td>
+                    <?php
+                    $p_retail = function_exists( 'slw_get_true_regular_price' )
+                        ? slw_get_true_regular_price( $product )
+                        : (float) $product->get_regular_price();
+                    ?>
                     <td class="slw-col-qty">
                         <?php if ( $product->is_in_stock() ) : ?>
-                            <input type="number" class="slw-qty-input" min="<?php echo esc_attr( $min_input ); ?>" max="999" step="<?php echo esc_attr( $step ); ?>" value="<?php echo esc_attr( $default_qty ); ?>" data-product-id="<?php echo esc_attr( $product->get_id() ); ?>" data-price="<?php echo esc_attr( $product->get_price() ); ?>" />
+                            <input type="number" class="slw-qty-input" min="<?php echo esc_attr( $min_input ); ?>" max="999" step="<?php echo esc_attr( $step ); ?>" value="<?php echo esc_attr( $default_qty ); ?>" data-product-id="<?php echo esc_attr( $product->get_id() ); ?>" data-price="<?php echo esc_attr( $product->get_price() ); ?>" data-retail-price="<?php echo esc_attr( $p_retail ); ?>" />
                             <?php if ( $min_input > 1 ) : ?>
                                 <span class="slw-min-badge" aria-label="Minimum quantity">Min <?php echo esc_html( $min_input ); ?></span>
                             <?php endif; ?>
@@ -651,11 +804,17 @@ $products = $all_products; // keep for empty check
         <div class="slw-os-line slw-os-line--meta">
             <span class="slw-os-shipping" id="slw-of-shipping-line"></span>
         </div>
+        <div class="slw-os-savings" id="slw-of-savings" hidden>
+            <span class="slw-os-savings__label">You're saving</span>
+            <span class="slw-os-savings__value" id="slw-of-savings-value"></span>
+            <span class="slw-os-savings__pct" id="slw-of-savings-pct"></span>
+            <span class="slw-os-savings__hint">vs retail</span>
+        </div>
     </div>
 
     <div class="slw-order-form-footer">
         <div class="slw-of-actions">
-            <button type="button" class="slw-btn slw-btn-primary slw-of-action-btn" id="slw-save-template-btn">Save Order Preset Preset</button>
+            <button type="button" class="slw-btn slw-btn-primary slw-of-action-btn" id="slw-save-template-btn">Save Order Preset</button>
             <button type="button" class="slw-btn slw-btn-cta slw-of-action-btn slw-of-action-btn--cta" id="slw-checkout-btn">Proceed to Checkout</button>
         </div>
     </div>
@@ -663,7 +822,318 @@ $products = $all_products; // keep for empty check
     <?php endif; ?>
 </div>
 
+<!-- Sticky progress + checkout bar. Pinned to the bottom of the
+     viewport so the customer always sees how close they are to the
+     minimum and can hit checkout from anywhere on the page. -->
+<div class="slw-sticky-bar" id="slw-sticky-bar" data-min="<?php echo esc_attr( (float) $active_minimum ); ?>" data-min-label="<?php echo esc_attr( $active_min_label ); ?>">
+    <div class="slw-sticky-bar__inner">
+        <div class="slw-sticky-bar__status">
+            <div class="slw-sticky-bar__line">
+                <span class="slw-sticky-bar__total" id="slw-sticky-total">$0.00</span>
+                <?php if ( $active_minimum > 0 ) : ?>
+                    <span class="slw-sticky-bar__sep">of</span>
+                    <span class="slw-sticky-bar__min">$<?php echo number_format( $active_minimum, 0 ); ?> <?php echo esc_html( $active_min_label ); ?></span>
+                <?php endif; ?>
+                <span class="slw-sticky-bar__pct" id="slw-sticky-pct"></span>
+            </div>
+            <?php if ( $active_minimum > 0 ) : ?>
+                <div class="slw-sticky-bar__bar"><div class="slw-sticky-bar__fill" id="slw-sticky-fill"></div></div>
+            <?php endif; ?>
+            <div class="slw-sticky-bar__status-msg" id="slw-sticky-msg"></div>
+        </div>
+        <button type="button" class="slw-btn slw-btn-cta slw-sticky-bar__cta" id="slw-sticky-checkout">Proceed to Checkout</button>
+    </div>
+</div>
+
 <style>
+/* Header tools row: search + bulk import button side by side */
+.slw-order-header-tools {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-top: 12px;
+    flex-wrap: wrap;
+}
+.slw-order-header-tools .slw-order-search { margin-top: 0; flex: 1; min-width: 240px; }
+.slw-bulk-import-btn { flex-shrink: 0; }
+
+/* Bulk import modal */
+.slw-bulk-import-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(20, 28, 32, 0.72);
+    z-index: 99997;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+.slw-bulk-import-modal[hidden] { display: none; }
+.slw-bulk-import-modal__inner {
+    position: relative;
+    background: #ffffff;
+    border-radius: 12px;
+    max-width: 520px;
+    width: 100%;
+    padding: 24px 26px 22px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.30);
+}
+.slw-bulk-import-modal__inner h3 { margin: 0 0 8px; font-family: Georgia, 'Times New Roman', serif; color: #386174; font-size: 20px; }
+.slw-bulk-import-modal__inner p { margin: 0 0 14px; color: #628393; font-size: 13px; }
+.slw-bulk-import-modal__inner code { background: #faf6e8; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+.slw-bulk-import-modal__inner textarea {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid #d4cebc;
+    border-radius: 8px;
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    resize: vertical;
+    min-height: 140px;
+    box-sizing: border-box;
+}
+.slw-bulk-import-modal__inner textarea:focus { outline: none; border-color: #386174; box-shadow: 0 0 0 3px rgba(56, 97, 116, 0.12); }
+.slw-bulk-import-modal__close {
+    position: absolute;
+    top: 12px;
+    right: 14px;
+    background: transparent;
+    border: none;
+    font-size: 22px;
+    color: #628393;
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    border-radius: 999px;
+}
+.slw-bulk-import-modal__close:hover { background: #f0eee9; color: #386174; }
+.slw-bulk-import-modal__actions {
+    margin-top: 16px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+.slw-bulk-import-modal__result {
+    margin-top: 12px;
+    font-size: 12.5px;
+    color: #2C2C2C;
+    font-weight: 500;
+    min-height: 18px;
+}
+
+/* Search bar */
+.slw-order-search {
+    position: relative;
+    margin-top: 12px;
+    max-width: 460px;
+}
+.slw-order-search__icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #628393;
+    pointer-events: none;
+}
+.slw-order-search__input {
+    width: 100%;
+    padding: 10px 36px 10px 38px !important;
+    background: #ffffff !important;
+    border: 1px solid #d4cebc !important;
+    border-radius: 999px !important;
+    font-size: 14px !important;
+    color: #2C2C2C !important;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+.slw-order-search__input:focus {
+    outline: none;
+    border-color: #386174 !important;
+    box-shadow: 0 0 0 3px rgba(56, 97, 116, 0.12);
+}
+.slw-order-search__clear {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(98, 131, 147, 0.12);
+    color: #628393;
+    border: none;
+    width: 26px;
+    height: 26px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+.slw-order-search__clear:hover { background: rgba(98, 131, 147, 0.25); color: #386174; }
+
+/* Tier pricing inline display */
+.slw-tier-pricing {
+    display: inline-block;
+    font-size: 12px;
+    color: #1d6b2c;
+    font-weight: 500;
+    margin-top: 2px;
+}
+.slw-tier-pricing .woocommerce-Price-amount,
+.slw-tier-pricing bdi { color: inherit; }
+
+/* Lead time chip */
+.slw-lead-time {
+    display: inline-block;
+    font-size: 11px;
+    color: #2c4f5e;
+    background: #e6eef3;
+    border: 1px solid #b9cdd8;
+    padding: 1px 8px;
+    border-radius: 999px;
+    margin-top: 4px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+}
+
+/* Case-pack math inline */
+.slw-case-math { color: #628393; font-style: italic; font-weight: 500; }
+
+/* Stock badge next to product name */
+.slw-stock-badge {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 1px 8px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    border-radius: 999px;
+    line-height: 1.6;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+.slw-stock-badge--in { background: #e3f1e6; color: #1d6b2c; border: 1px solid #b8dbc0; }
+.slw-stock-badge--low { background: #fff3d6; color: #8a6406; border: 1px solid #f0d56a; }
+.slw-stock-badge--out { background: #fbe4e4; color: #963131; border: 1px solid #f2c1c1; }
+.slw-stock-badge--backorder { background: #e6eef3; color: #2c4f5e; border: 1px solid #b9cdd8; }
+
+/* Savings vs retail row on the Order Subtotal card */
+.slw-os-savings {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed #e0dbd0;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 13px;
+}
+.slw-os-savings__label { color: #386174; font-weight: 600; font-family: Georgia, 'Times New Roman', serif; }
+.slw-os-savings__value { color: #1d6b2c; font-weight: 700; font-size: 18px; font-family: Georgia, 'Times New Roman', serif; }
+.slw-os-savings__pct { color: #1d6b2c; font-weight: 600; font-size: 13px; }
+.slw-os-savings__hint { color: #628393; font-size: 12px; font-style: italic; }
+
+/* Sticky progress + checkout bar pinned to viewport bottom */
+.slw-sticky-bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 99996;
+    background: linear-gradient(180deg, rgba(247, 246, 243, 0.97) 0%, rgba(247, 246, 243, 1) 100%);
+    border-top: 1px solid #d4cebc;
+    box-shadow: 0 -4px 16px rgba(56, 97, 116, 0.10);
+    backdrop-filter: blur(8px) saturate(140%);
+    -webkit-backdrop-filter: blur(8px) saturate(140%);
+    padding: 12px 24px;
+    transform: translateY(110%);
+    transition: transform 0.25s ease;
+    pointer-events: none;
+}
+.slw-sticky-bar--visible {
+    transform: translateY(0);
+    pointer-events: auto;
+}
+.slw-sticky-bar__inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+}
+.slw-sticky-bar__status {
+    flex: 1;
+    min-width: 0;
+}
+.slw-sticky-bar__line {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-size: 14px;
+}
+.slw-sticky-bar__total {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: #386174;
+    line-height: 1;
+}
+.slw-sticky-bar__sep { color: #628393; }
+.slw-sticky-bar__min { color: #628393; font-weight: 500; }
+.slw-sticky-bar__pct { color: #386174; font-weight: 600; }
+.slw-sticky-bar__bar {
+    margin-top: 8px;
+    height: 6px;
+    background: #e8e2d4;
+    border-radius: 999px;
+    overflow: hidden;
+}
+.slw-sticky-bar__fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, #D4AF37 0%, #386174 100%);
+    border-radius: 999px;
+    transition: width 0.3s ease;
+}
+.slw-sticky-bar--met .slw-sticky-bar__fill {
+    background: linear-gradient(90deg, #1d6b2c 0%, #2e9a3d 100%);
+}
+.slw-sticky-bar__status-msg {
+    margin-top: 6px;
+    font-size: 12px;
+    color: #628393;
+    font-style: italic;
+}
+.slw-sticky-bar--met .slw-sticky-bar__status-msg {
+    color: #1d6b2c;
+    font-style: normal;
+    font-weight: 600;
+}
+.slw-sticky-bar__cta {
+    flex-shrink: 0;
+    padding: 12px 26px !important;
+    font-size: 14px !important;
+    font-weight: 700 !important;
+    min-height: 46px;
+}
+.slw-sticky-bar__cta:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+/* Clear space at page bottom so the sticky bar doesn't cover content */
+.slw-order-form-wrap { padding-bottom: 120px; }
+@media (max-width: 640px) {
+    .slw-sticky-bar { padding: 10px 14px; }
+    .slw-sticky-bar__inner { gap: 12px; }
+    .slw-sticky-bar__total { font-size: 18px; }
+    .slw-sticky-bar__cta { padding: 10px 18px !important; font-size: 13px !important; min-height: 42px; }
+    .slw-order-form-wrap { padding-bottom: 140px; }
+}
+
 /* Section header used above "Your Most Ordered" / "Quick reorder" so the
    title + hint render as a single tidy pair. */
 .slw-section-header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 16px 0 10px; padding-bottom: 8px; border-bottom: 1px solid #e0ddd8; }
@@ -939,6 +1409,72 @@ $products = $all_products; // keep for empty check
             }
         }
 
+        // Savings vs retail (Tier 1 ROI element). Looks up each staged input's
+        // data-retail-price; for in-cart items uses the same lookup. Skip if
+        // retail isn't priced higher than wholesale (subscription products
+        // sometimes have weird retail values).
+        var retailTotal = 0;
+        var wholesaleTotal = stagedTotal + cartTotal;
+        document.querySelectorAll('.slw-qty-input').forEach(function(input) {
+            var qty = parseInt(input.value, 10) || 0;
+            if (qty <= 0) return;
+            var r = parseFloat(input.getAttribute('data-retail-price')) || 0;
+            retailTotal += qty * r;
+        });
+        inCartItems.forEach(function(ci) {
+            var selector = ci.variation_id
+                ? '.slw-qty-input[data-variation-id="' + ci.variation_id + '"]'
+                : '.slw-qty-input[data-product-id="' + ci.product_id + '"]:not([data-variation-id])';
+            var input = document.querySelector(selector);
+            var r = input ? (parseFloat(input.getAttribute('data-retail-price')) || 0) : 0;
+            retailTotal += ci.qty * r;
+        });
+        var savingsEl = document.getElementById('slw-of-savings');
+        var savings = retailTotal - wholesaleTotal;
+        if (savingsEl) {
+            if (savings > 0 && retailTotal > 0) {
+                savingsEl.hidden = false;
+                document.getElementById('slw-of-savings-value').textContent = formatPrice(savings);
+                var pct = Math.round((savings / retailTotal) * 100);
+                document.getElementById('slw-of-savings-pct').textContent = '(' + pct + '% off)';
+            } else {
+                savingsEl.hidden = true;
+            }
+        }
+
+        // Sticky bar update.
+        var stickyBar    = document.getElementById('slw-sticky-bar');
+        var stickyTotal  = document.getElementById('slw-sticky-total');
+        var stickyPct    = document.getElementById('slw-sticky-pct');
+        var stickyFill   = document.getElementById('slw-sticky-fill');
+        var stickyMsg    = document.getElementById('slw-sticky-msg');
+        var stickyCta    = document.getElementById('slw-sticky-checkout');
+        if (stickyBar) {
+            var grandTotal = stagedTotal + cartTotal;
+            var totalItems = stagedItemCount + cartItemCount;
+            if (stickyTotal) stickyTotal.textContent = formatPrice(grandTotal);
+            var minimum = parseFloat(stickyBar.getAttribute('data-min')) || 0;
+            stickyBar.classList.toggle('slw-sticky-bar--visible', totalItems > 0);
+            if (minimum > 0) {
+                var pct = Math.min(100, Math.round((grandTotal / minimum) * 100));
+                if (stickyPct) stickyPct.textContent = '· ' + pct + '%';
+                if (stickyFill) stickyFill.style.width = pct + '%';
+                if (grandTotal >= minimum) {
+                    stickyBar.classList.add('slw-sticky-bar--met');
+                    if (stickyMsg) stickyMsg.textContent = 'Minimum met. Ready to check out.';
+                    if (stickyCta) stickyCta.disabled = false;
+                } else {
+                    stickyBar.classList.remove('slw-sticky-bar--met');
+                    var diff = minimum - grandTotal;
+                    if (stickyMsg) stickyMsg.textContent = 'Add ' + formatPrice(diff) + ' more to reach the ' + (stickyBar.getAttribute('data-min-label') || 'minimum') + '.';
+                    if (stickyCta) stickyCta.disabled = true;
+                }
+            } else {
+                if (stickyMsg) stickyMsg.textContent = '';
+                if (stickyCta) stickyCta.disabled = totalItems === 0;
+            }
+        }
+
         // Legacy variable consumption below
         var total     = stagedTotal + cartTotal;
         var lineCount = stagedLineCount + inCartItems.length;
@@ -958,8 +1494,119 @@ $products = $all_products; // keep for empty check
     document.querySelectorAll('.slw-qty-input').forEach(function(input) {
         input.addEventListener('input', updateSubtotal);
         input.addEventListener('change', updateSubtotal);
+        // Live case-pack math: "Case of 6 (24 = 4 cases)"
+        input.addEventListener('input', updateCaseMath);
     });
+    function updateCaseMath() {
+        var row = this.closest ? this.closest('tr') : null;
+        if (!row) return;
+        var cell = row.querySelector('.slw-case-pack-label');
+        if (!cell) return;
+        var pack = parseInt(cell.getAttribute('data-case-pack'), 10) || 0;
+        if (pack < 1) return;
+        var qty = parseInt(this.value, 10) || 0;
+        var math = row.querySelector('.slw-case-math');
+        if (!math) return;
+        if (qty < 1) { math.textContent = ''; return; }
+        var cases = qty / pack;
+        if (Math.abs(cases - Math.round(cases)) < 0.001) {
+            math.textContent = ' · ' + qty + ' = ' + Math.round(cases) + ' case' + (Math.round(cases) === 1 ? '' : 's');
+        } else {
+            var full = Math.floor(cases);
+            var leftover = qty - (full * pack);
+            math.textContent = ' · ' + qty + ' = ' + full + ' case' + (full === 1 ? '' : 's') + ' + ' + leftover + ' loose';
+        }
+    }
     updateSubtotal();
+
+    // Live search filter. Hides rows that don't match the typed query
+    // against product name + variation label + SKU. Also collapses any
+    // category section that has zero visible rows.
+    var searchInput = document.getElementById('slw-order-search-input');
+    var searchClear = document.getElementById('slw-order-search-clear');
+    function runSearchFilter() {
+        var q = (searchInput.value || '').toLowerCase().trim();
+        searchClear.hidden = q === '';
+        var visibleSections = 0;
+        document.querySelectorAll('.slw-category-section').forEach(function(section) {
+            var matched = 0;
+            section.querySelectorAll('tr[data-search]').forEach(function(row) {
+                var hay = row.getAttribute('data-search') || '';
+                if (!q || hay.indexOf(q) !== -1) {
+                    row.style.display = '';
+                    matched++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+            section.style.display = (q && matched === 0) ? 'none' : '';
+            if (section.style.display !== 'none') visibleSections++;
+        });
+    }
+    if (searchInput) {
+        searchInput.addEventListener('input', runSearchFilter);
+        searchClear.addEventListener('click', function() {
+            searchInput.value = '';
+            runSearchFilter();
+            searchInput.focus();
+        });
+    }
+
+    // Bulk SKU paste. Reads each line, parses SKU + qty, finds the matching
+    // row (variation SKU or simple product SKU on data-search), populates
+    // the qty input. Reports back which lines matched + which were unknown.
+    var bulkBtn    = document.getElementById('slw-bulk-import-btn');
+    var bulkModal  = document.getElementById('slw-bulk-import-modal');
+    var bulkClose  = document.getElementById('slw-bulk-import-close');
+    var bulkCancel = document.getElementById('slw-bulk-import-cancel');
+    var bulkApply  = document.getElementById('slw-bulk-import-apply');
+    var bulkInput  = document.getElementById('slw-bulk-import-input');
+    var bulkResult = document.getElementById('slw-bulk-import-result');
+    function openBulk()  { if (bulkModal) bulkModal.hidden = false; if (bulkInput) bulkInput.focus(); }
+    function closeBulk() { if (bulkModal) bulkModal.hidden = true; if (bulkResult) bulkResult.textContent = ''; }
+    if (bulkBtn)    bulkBtn.addEventListener('click', openBulk);
+    if (bulkClose)  bulkClose.addEventListener('click', closeBulk);
+    if (bulkCancel) bulkCancel.addEventListener('click', closeBulk);
+    if (bulkApply) {
+        bulkApply.addEventListener('click', function() {
+            var lines = (bulkInput.value || '').split(/\r?\n/);
+            var matched = 0;
+            var unknown = [];
+            lines.forEach(function(raw) {
+                var trimmed = raw.trim();
+                if (!trimmed) return;
+                // Allow "SKU 12", "SKU,12", "SKU\t12", "SKU = 12"
+                var m = trimmed.match(/^([^\s,=\t]+)[\s,=\t]+(\d+)$/);
+                if (!m) { unknown.push(trimmed); return; }
+                var sku = m[1].toLowerCase();
+                var qty = parseInt(m[2], 10) || 0;
+                if (qty < 1) return;
+                // Find an input whose row's data-search contains the SKU.
+                var hit = null;
+                document.querySelectorAll('tr[data-search]').forEach(function(row) {
+                    if (hit) return;
+                    var hay = row.getAttribute('data-search') || '';
+                    if (hay.indexOf(sku) !== -1) {
+                        var input = row.querySelector('.slw-qty-input');
+                        if (input) hit = input;
+                    }
+                });
+                if (hit) {
+                    hit.value = qty;
+                    matched++;
+                } else {
+                    unknown.push(sku);
+                }
+            });
+            updateSubtotal();
+            var msg = matched + ' SKU' + (matched === 1 ? '' : 's') + ' applied.';
+            if (unknown.length) msg += ' Not found: ' + unknown.join(', ');
+            bulkResult.textContent = msg;
+            if (matched > 0 && unknown.length === 0) {
+                setTimeout(closeBulk, 1200);
+            }
+        });
+    }
 
     // Errors get the persistent inline notice + scroll (user must see).
     // Success/info show as a corner toast with a View Cart link, so the
@@ -1211,8 +1858,10 @@ $products = $all_products; // keep for empty check
     // Items already added via per-row buttons live in the WC cart; this
     // path picks up anything still in the on-page quantity inputs.
     var checkoutBtn = document.getElementById('slw-checkout-btn');
-    if (checkoutBtn) {
-        checkoutBtn.addEventListener('click', function() {
+    var stickyCheckoutBtn = document.getElementById('slw-sticky-checkout');
+    function bindCheckout(btn) {
+        if (!btn) return;
+        btn.addEventListener('click', function() {
             var btn = this;
             var items = collectItems(null);
 
@@ -1252,6 +1901,8 @@ $products = $all_products; // keep for empty check
             xhr.send(formData);
         });
     }
+    bindCheckout(checkoutBtn);
+    bindCheckout(stickyCheckoutBtn);
 
     // "Save Order Preset" button
     var saveTemplateBtn = document.getElementById('slw-save-template-btn');

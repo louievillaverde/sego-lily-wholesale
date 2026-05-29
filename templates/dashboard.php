@@ -118,11 +118,77 @@ if ( ! is_array( $saved_carts ) ) {
 			$contact_first = $contact_name ? trim( strtok( $contact_name, ' ' ) ) : '';
 			$help_label    = $contact_first ? 'Help / Contact ' . esc_html( $contact_first ) : 'Help / Contact';
 			?>
+			<?php
+			// Show the Reorder Last Order button only if the customer
+			// actually has a prior order to reorder. Saves them the click
+			// + the "no orders found" error.
+			$has_prior_order = ! empty( wc_get_orders( array(
+				'customer_id' => $user->ID,
+				'status'      => array( 'wc-processing', 'wc-completed', 'wc-on-hold' ),
+				'limit'       => 1,
+				'return'      => 'ids',
+			) ) );
+			$reorder_nonce = wp_create_nonce( 'slw_reorder_last' );
+			?>
 			<ul class="slw-quick-links">
 				<li><a href="<?php echo esc_url( home_url( '/wholesale-order' ) ); ?>" class="slw-btn slw-btn-primary">Place a New Order</a></li>
+				<?php if ( $has_prior_order ) : ?>
+				<li><button type="button" class="slw-btn slw-btn-secondary" id="slw-reorder-last-btn" data-nonce="<?php echo esc_attr( $reorder_nonce ); ?>">
+					<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-right:6px;vertical-align:middle;">
+						<path d="M2.5 8a5.5 5.5 0 1 0 1.62-3.88M2.5 2v3h3"/>
+					</svg>Reorder My Last Order</button></li>
+				<?php endif; ?>
 				<li><a href="<?php echo esc_url( $account_url ); ?>">Edit Account Details</a></li>
 				<li><a href="<?php echo esc_url( $help_url ); ?>"><?php echo $help_label; ?></a></li>
 			</ul>
+			<div id="slw-reorder-status" class="slw-reorder-status" aria-live="polite"></div>
+			<script>
+			(function() {
+				var btn = document.getElementById('slw-reorder-last-btn');
+				if (!btn) return;
+				var status = document.getElementById('slw-reorder-status');
+				btn.addEventListener('click', function() {
+					if (!window.confirm('Add every item from your last order back into your cart?')) return;
+					btn.disabled = true;
+					var origText = btn.innerHTML;
+					btn.textContent = 'Loading your last order...';
+					var fd = new FormData();
+					fd.append('action', 'slw_reorder_last');
+					fd.append('nonce', btn.getAttribute('data-nonce'));
+					var xhr = new XMLHttpRequest();
+					xhr.open('POST', '<?php echo esc_js( admin_url( 'admin-ajax.php' ) ); ?>');
+					xhr.onload = function() {
+						var resp;
+						try { resp = JSON.parse(xhr.responseText); } catch(e) { resp = null; }
+						if (resp && resp.success) {
+							status.textContent = resp.data.message;
+							status.className = 'slw-reorder-status slw-reorder-status--ok';
+							setTimeout(function() {
+								window.location.href = resp.data.checkout_url;
+							}, 800);
+						} else {
+							var m = (resp && resp.data && resp.data.message) ? resp.data.message : 'Could not reorder. Please try again.';
+							status.textContent = m;
+							status.className = 'slw-reorder-status slw-reorder-status--err';
+							btn.disabled = false;
+							btn.innerHTML = origText;
+						}
+					};
+					xhr.onerror = function() {
+						status.textContent = 'Network error. Please try again.';
+						status.className = 'slw-reorder-status slw-reorder-status--err';
+						btn.disabled = false;
+						btn.innerHTML = origText;
+					};
+					xhr.send(fd);
+				});
+			})();
+			</script>
+			<style>
+			.slw-reorder-status { margin-top:10px; font-size:13px; min-height:18px; }
+			.slw-reorder-status--ok { color:#1d6b2c; font-weight:500; }
+			.slw-reorder-status--err { color:#963131; font-weight:500; }
+			</style>
 		</div>
 
 		<!-- Saved Orders -->

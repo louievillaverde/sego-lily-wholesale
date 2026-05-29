@@ -304,6 +304,14 @@ class SLW_Wholesale_Role {
             'description'   => 'qty:price pairs.',
             'placeholder'   => '12:15.00,24:12.00',
         ));
+        woocommerce_wp_text_input( array(
+            'id'            => '_slw_lead_time',
+            'wrapper_class' => $show_for_all,
+            'label'         => 'WS: Lead Time',
+            'desc_tip'      => true,
+            'description'   => 'Free text dispatch estimate. Surfaces as "Ships in ___" on the order form.',
+            'placeholder'   => '2-3 business days',
+        ));
         echo '</div>';
     }
 
@@ -319,6 +327,11 @@ class SLW_Wholesale_Role {
         // Example: "12:15.00,24:12.00,48:10.00" means 12+ = $15 each, 24+ = $12, 48+ = $10
         $tiers = isset( $_POST['_slw_tiered_pricing'] ) ? wc_clean( $_POST['_slw_tiered_pricing'] ) : '';
         $product->update_meta_data( '_slw_tiered_pricing', $tiers );
+
+        // Lead time: free-text estimate shown as "Ships in ___" on the
+        // wholesale order form. Helps wholesale buyers plan inventory.
+        $lead = isset( $_POST['_slw_lead_time'] ) ? wc_clean( $_POST['_slw_lead_time'] ) : '';
+        $product->update_meta_data( '_slw_lead_time', $lead );
     }
 
     /**
