@@ -1261,56 +1261,30 @@ $products = $all_products; // keep for empty check
 .slw-cart-preview__clear:active { transform: translateY(0); }
 .slw-cart-preview__clear[hidden] { display: none; }
 .slw-cart-preview__list { list-style: none; margin: 0; padding: 0; }
-.slw-cart-preview__item { display: grid; grid-template-columns: 110px 1fr auto 28px; gap: 14px; align-items: center; padding: 12px 0; border-bottom: 1px dashed rgba(224, 219, 208, 0.65); font-size: 13.5px; }
+.slw-cart-preview__item { display: grid; grid-template-columns: 80px 1fr auto 28px; gap: 14px; align-items: center; padding: 12px 0; border-bottom: 1px dashed rgba(224, 219, 208, 0.65); font-size: 13.5px; }
 .slw-cart-preview__item:last-child { border-bottom: none; }
-.slw-cart-preview__qty-ctrl {
-    display: inline-flex;
-    align-items: stretch;
-    border: 1.5px solid #386174;
-    border-radius: 8px;
-    overflow: hidden;
-    background: #ffffff;
-    height: 34px;
-    box-shadow: 0 1px 3px rgba(56, 97, 116, 0.08);
-}
-.slw-cart-preview__qty-btn {
-    width: 30px;
-    border: none;
-    background: #ffffff;
-    color: #386174;
-    font-size: 18px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 0.12s, color 0.12s;
-    line-height: 1;
-    padding: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-.slw-cart-preview__qty-btn:hover { background: #386174; color: #F7F6F3; }
-.slw-cart-preview__qty-btn:active { background: #2C4F5E; color: #F7F6F3; }
-.slw-cart-preview__qty-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-.slw-cart-preview__qty-input {
-    width: 42px;
-    border: none;
-    border-left: 1.5px solid #e8e2d4;
-    border-right: 1.5px solid #e8e2d4;
+/* Match the look + behavior of .slw-qty-input on product rows so the
+   Cart Preview qty field reads as part of the same system. */
+.slw-cart-preview__qty-edit {
+    width: 70px;
+    padding: 6px 8px;
     text-align: center;
     font-size: 14px;
-    font-weight: 700;
-    color: #1E2A30;
+    border: 1px solid #d4cebc;
+    border-radius: 6px;
     background: #ffffff;
+    color: #386174;
+    font-weight: 600;
+    transition: border-color 0.15s, box-shadow 0.15s;
     -moz-appearance: textfield;
-    padding: 0 4px;
-    font-family: Georgia, 'Times New Roman', serif;
 }
-.slw-cart-preview__qty-input:focus {
+.slw-cart-preview__qty-edit:focus {
     outline: none;
-    background: #FAF8F2;
+    border-color: #386174;
+    box-shadow: 0 0 0 3px rgba(56, 97, 116, 0.12);
 }
-.slw-cart-preview__qty-input::-webkit-outer-spin-button,
-.slw-cart-preview__qty-input::-webkit-inner-spin-button {
+.slw-cart-preview__qty-edit::-webkit-outer-spin-button,
+.slw-cart-preview__qty-edit::-webkit-inner-spin-button {
     -webkit-appearance: none;
     margin: 0;
 }
@@ -1589,42 +1563,39 @@ body.page-wholesale-order .woocommerce-message .restore-item,
                 });
                 return;
             }
-            var qtyBtn = e.target.closest('.slw-cart-preview__qty-btn');
-            if (qtyBtn) {
-                e.preventDefault();
-                var row = qtyBtn.closest('.slw-cart-preview__item');
-                var input = row && row.querySelector('.slw-cart-preview__qty-input');
-                if (!input) return;
-                var current = parseInt(input.value, 10) || 0;
-                var next = qtyBtn.getAttribute('data-action') === 'increment'
-                    ? current + 1
-                    : Math.max(0, current - 1);
-                input.value = next;
-                qtyBtn.disabled = true;
-                postCartAction('slw_set_cart_qty', {
-                    cart_key:     qtyBtn.getAttribute('data-cart-key')     || '',
-                    product_id:   qtyBtn.getAttribute('data-product-id')   || '0',
-                    variation_id: qtyBtn.getAttribute('data-variation-id') || '0',
-                    qty:          String(next)
-                }).finally(function() { qtyBtn.disabled = false; });
-            }
         });
-        // Direct input edit: debounce, post on blur or Enter
+        // Direct edit: debounce on input, immediate on blur / Enter
         var qtyInputDebounce = null;
+        function commitQty(input) {
+            var next = Math.max(0, parseInt(input.value, 10) || 0);
+            input.value = next;
+            postCartAction('slw_set_cart_qty', {
+                cart_key:     input.getAttribute('data-cart-key')     || '',
+                product_id:   input.getAttribute('data-product-id')   || '0',
+                variation_id: input.getAttribute('data-variation-id') || '0',
+                qty:          String(next)
+            });
+        }
         previewListEl.addEventListener('input', function(e) {
-            var input = e.target.closest('.slw-cart-preview__qty-input');
+            var input = e.target.closest('.slw-cart-preview__qty-edit');
             if (!input) return;
             clearTimeout(qtyInputDebounce);
-            qtyInputDebounce = setTimeout(function() {
-                var next = Math.max(0, parseInt(input.value, 10) || 0);
-                input.value = next;
-                postCartAction('slw_set_cart_qty', {
-                    cart_key:     input.getAttribute('data-cart-key')     || '',
-                    product_id:   input.getAttribute('data-product-id')   || '0',
-                    variation_id: input.getAttribute('data-variation-id') || '0',
-                    qty:          String(next)
-                });
-            }, 500);
+            qtyInputDebounce = setTimeout(function() { commitQty(input); }, 600);
+        });
+        previewListEl.addEventListener('blur', function(e) {
+            var input = e.target.closest('.slw-cart-preview__qty-edit');
+            if (!input) return;
+            clearTimeout(qtyInputDebounce);
+            commitQty(input);
+        }, true);
+        previewListEl.addEventListener('keydown', function(e) {
+            if (e.key !== 'Enter') return;
+            var input = e.target.closest('.slw-cart-preview__qty-edit');
+            if (!input) return;
+            e.preventDefault();
+            clearTimeout(qtyInputDebounce);
+            commitQty(input);
+            input.blur();
         });
     }
     var clearCartBtn = document.getElementById('slw-cart-preview-clear');
@@ -1767,24 +1738,11 @@ body.page-wholesale-order .woocommerce-message .restore-item,
                 var li = document.createElement('li');
                 li.className = 'slw-cart-preview__item slw-cart-preview__item--in-cart';
                 li.innerHTML =
-                    '<div class="slw-cart-preview__qty-ctrl">' +
-                        '<button type="button" class="slw-cart-preview__qty-btn" data-action="decrement"' +
-                            ' data-cart-key="' + (item.cart_key || '') + '"' +
-                            ' data-product-id="' + (item.product_id || 0) + '"' +
-                            ' data-variation-id="' + (item.variation_id || 0) + '"' +
-                            ' aria-label="Decrease quantity">−</button>' +
-                        '<input type="number" min="0" step="1" value="' + item.qty + '"' +
-                            ' class="slw-cart-preview__qty-input"' +
-                            ' data-cart-key="' + (item.cart_key || '') + '"' +
-                            ' data-product-id="' + (item.product_id || 0) + '"' +
-                            ' data-variation-id="' + (item.variation_id || 0) + '"' +
-                            ' aria-label="Quantity" />' +
-                        '<button type="button" class="slw-cart-preview__qty-btn" data-action="increment"' +
-                            ' data-cart-key="' + (item.cart_key || '') + '"' +
-                            ' data-product-id="' + (item.product_id || 0) + '"' +
-                            ' data-variation-id="' + (item.variation_id || 0) + '"' +
-                            ' aria-label="Increase quantity">+</button>' +
-                    '</div>' +
+                    '<input type="number" class="slw-cart-preview__qty-edit" min="0" step="1" value="' + item.qty + '"' +
+                        ' data-cart-key="' + (item.cart_key || '') + '"' +
+                        ' data-product-id="' + (item.product_id || 0) + '"' +
+                        ' data-variation-id="' + (item.variation_id || 0) + '"' +
+                        ' aria-label="Quantity" />' +
                     '<span class="slw-cart-preview__name">' + escapeHtml(item.label) + '</span>' +
                     '<span class="slw-cart-preview__total">' + formatPrice(item.lineTotal) + '</span>' +
                     '<button type="button" class="slw-cart-preview__remove" aria-label="Remove from cart"' +
@@ -1832,7 +1790,11 @@ body.page-wholesale-order .woocommerce-message .restore-item,
         var savingsEl = document.getElementById('slw-of-savings');
         var savings = retailTotal - wholesaleTotal;
         if (savingsEl) {
-            if (savings > 0 && retailTotal > 0) {
+            // Only surface savings when items are actually IN CART --
+            // staged-but-not-added quantities shouldn't drive the savings
+            // display, otherwise an empty cart can show "$54 off" off
+            // numbers the customer never committed to.
+            if (savings > 0 && retailTotal > 0 && cartItemCount > 0) {
                 savingsEl.hidden = false;
                 document.getElementById('slw-of-savings-value').textContent = formatPrice(savings);
                 var pct = Math.round((savings / retailTotal) * 100);

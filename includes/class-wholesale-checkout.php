@@ -24,6 +24,15 @@ class SLW_Wholesale_Checkout {
     }
 
     public static function render() {
+        // Force wholesale shopping context for the checkout. Same
+        // reasoning as the order form -- if a wholesale customer has
+        // a stale "retail" preference in their session, force-set to
+        // wholesale so apply_wholesale_price runs and the cart line
+        // totals match what the order form showed.
+        if ( is_user_logged_in() && function_exists( 'slw_is_wholesale_user' )
+            && slw_is_wholesale_user() && function_exists( 'WC' ) && WC()->session ) {
+            WC()->session->set( 'slw_shopping_context', 'wholesale' );
+        }
         if ( ! is_user_logged_in() ) {
             return '<div class="slw-checkout-gate"><h2 class="slw-balance">Sign in to your wholesale account</h2><p class="slw-pretty"><a href="' . esc_url( wp_login_url( get_permalink() ) ) . '">Log in</a> to access wholesale checkout.</p></div>';
         }
