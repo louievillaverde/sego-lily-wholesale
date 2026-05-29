@@ -1090,9 +1090,23 @@ body {
 		<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
 			<path d="M4 1h8v3H4V1zm-2 3h12a2 2 0 012 2v5h-3v4H3v-4H0V6a2 2 0 012-2zm3 7h6v3H5v-3zm7-4a1 1 0 100 2 1 1 0 000-2z" fill="currentColor"/>
 		</svg>
-		Print / Save as PDF
+		Save as PDF
 	</button>
 </div>
+
+<?php
+// Auto-trigger the browser print dialog when the customer arrived from the
+// 'Download PDF' portal button (?autoprint=1). Skipped in prospect-quote
+// mode so Holly can edit the cover note, valid-through, and customer name
+// before printing. Tiny delay gives images/fonts time to render.
+if ( ! $is_prospect_quote && ! empty( $_GET['autoprint'] ) ) :
+?>
+<script>
+window.addEventListener('load', function() {
+	setTimeout(function() { window.print(); }, 400);
+});
+</script>
+<?php endif; ?>
 
 </body>
 </html>

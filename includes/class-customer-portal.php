@@ -542,9 +542,14 @@ class SLW_Customer_Portal {
                     <h3>Price List</h3>
                     <p>Your live wholesale pricing across all products. Updated in real time as products and pricing change.</p>
                 </div>
-                <?php if ( $linesheet_url ) : ?>
+                <?php if ( $linesheet_url ) :
+                    // Auto-trigger the print dialog for regular wholesale customers
+                    // so 'Download PDF' is a true one-click action. Admins (who get
+                    // the editable quote-mode fields) ignore this flag server-side.
+                    $download_url = add_query_arg( 'autoprint', '1', $linesheet_url );
+                    ?>
                     <div class="slw-price-list-header__actions">
-                        <a href="<?php echo esc_url( $linesheet_url ); ?>" class="slw-btn slw-btn-primary" target="_blank">Download PDF</a>
+                        <a href="<?php echo esc_url( $download_url ); ?>" class="slw-btn slw-btn-primary" target="_blank">Download PDF</a>
                     </div>
                 <?php endif; ?>
             </div>
