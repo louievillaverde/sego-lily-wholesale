@@ -189,7 +189,21 @@ class SLW_PDF_Linesheet {
 			$label = ! empty( $label_parts ) ? implode( ' / ', $label_parts ) : '';
 			$label_key = strtolower( trim( $label ) );
 
-			$var_price = (float) $variation->get_price();
+			// Read raw _regular_price meta to bypass subscription plugin
+			// filters that would otherwise return the recurring discounted
+			// rate. Manual override beats raw. Falls back to filtered get_price
+			// only if neither exists.
+			$var_override = get_post_meta( $variation->get_id(), '_slw_retail_price', true );
+			if ( $var_override !== '' && is_numeric( $var_override ) && (float) $var_override > 0 ) {
+				$var_price = (float) $var_override;
+			} else {
+				$var_raw = get_post_meta( $variation->get_id(), '_regular_price', true );
+				if ( $var_raw !== '' && is_numeric( $var_raw ) && (float) $var_raw > 0 ) {
+					$var_price = (float) $var_raw;
+				} else {
+					$var_price = (float) $variation->get_price();
+				}
+			}
 			if ( $var_price <= 0 ) continue;
 
 			if ( ! isset( $groups[ $label_key ] ) ) {
