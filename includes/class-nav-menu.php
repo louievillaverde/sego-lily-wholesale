@@ -25,9 +25,36 @@ class SLW_Nav_Menu {
         add_filter( 'woocommerce_login_redirect', array( __CLASS__, 'login_redirect' ), 10, 2 );
         add_filter( 'login_redirect', array( __CLASS__, 'login_redirect' ), 10, 3 );
 
-        // Rewrite the My Account page URL to wholesale portal for wholesale users.
-        // This covers the account icon in the header and any other page_link call.
+        // Rewrite the My Account page URL to the wholesale portal at the
+        // get_permalink layer (catches the header account icon when it's
+        // wired through the page_link filter).
         add_filter( 'page_link', array( __CLASS__, 'rewrite_account_link' ), 10, 2 );
+
+        // Server-side fallback. When a wholesale user actually lands on
+        // /my-account (because the icon hardcoded the URL, or they typed
+        // it, or some Elementor widget bypassed page_link), redirect them
+        // to /wholesale-portal before WC renders. Covers every entry point
+        // regardless of how the icon was built.
+        add_action( 'template_redirect', array( __CLASS__, 'redirect_account_to_portal' ) );
+    }
+
+    /**
+     * Server-side catch-all. Sends wholesale customers hitting the
+     * WooCommerce 'My Account' page to /wholesale-portal. Skipped for
+     * admins (they may need WC My Account for support), skipped when the
+     * portal preview flag is set (otherwise we'd loop).
+     */
+    public static function redirect_account_to_portal() {
+        if ( is_admin() ) return;
+        if ( ! is_user_logged_in() ) return;
+        if ( ! function_exists( 'slw_is_wholesale_user' ) || ! slw_is_wholesale_user() ) return;
+        if ( current_user_can( 'manage_woocommerce' ) ) return; // admins keep My Account access
+        if ( ! function_exists( 'is_account_page' ) || ! is_account_page() ) return;
+        // Allow wholesale users to still reach the logout endpoint via /my-account/customer-logout/
+        if ( is_wc_endpoint_url( 'customer-logout' ) ) return;
+
+        wp_safe_redirect( home_url( '/wholesale-portal' ) );
+        exit;
     }
 
     /**

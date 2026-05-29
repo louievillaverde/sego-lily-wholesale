@@ -68,6 +68,15 @@ class SLW_Wholesale_Role {
         add_filter( 'wcs_is_subscription', array( __CLASS__, 'disable_subscription_behavior' ), 999, 3 );
         add_action( 'wp_enqueue_scripts', array( __CLASS__, 'hide_subscription_css' ) );
 
+        // Cart-specific subscription suppression for wholesale users.
+        // The wholesale flow is one-time only; recurring totals + scheme
+        // meta on cart line items shouldn't be visible (Holly call w/ Camila
+        // 2026-05-29: "wholesale shouldn't see subscription pricing at all").
+        add_filter( 'woocommerce_get_item_data',                     array( __CLASS__, 'strip_subscription_item_data' ), 999, 2 );
+        add_filter( 'wcs_cart_totals_order_total_html',              array( __CLASS__, 'wholesale_cart_total_html' ), 999, 1 );
+        add_filter( 'wcs_cart_recurring_total_html',                 array( __CLASS__, 'strip_recurring_for_wholesale' ), 999, 1 );
+        add_filter( 'woocommerce_subscriptions_cart_totals_recurring_total_html', array( __CLASS__, 'strip_recurring_for_wholesale' ), 999, 1 );
+
         // Redirect "Return to shop" to wholesale order form for wholesale users
         add_filter( 'woocommerce_return_to_shop_redirect', array( __CLASS__, 'wholesale_return_to_shop' ) );
 
@@ -716,6 +725,8 @@ class SLW_Wholesale_Role {
 
     /**
      * Inject CSS to hide any remaining subscription UI elements for wholesale users.
+     * Includes cart-page selectors so recurring totals + scheme prompts
+     * don't bleed through on the wholesale cart/checkout.
      */
     public static function hide_subscription_css() {
         if ( ! slw_is_wholesale_context() || is_admin() ) {
@@ -730,10 +741,70 @@ class SLW_Wholesale_Role {
                 . '.subscription-details,'
                 . '.woocommerce-subscription-price,'
                 . '.subscription-price,'
-                . '[data-wcsatt]'
+                . '[data-wcsatt],'
+                // Cart / checkout recurring totals
+                . '.cart-subscription-details,'
+                . '.recurring-total,'
+                . '.recurring-totals,'
+                . '.wc-subscriptions-recurring-totals,'
+                . '.cart-recurring-totals,'
+                . '.recurring-total-section,'
+                . 'tr.recurring-total,'
+                . 'tr.wcs-recurring-total,'
+                . 'tr.cart-subscription-details,'
+                // Subscription scheme line meta on cart line items
+                . '.wc_payment_method_paypal_express_subscription_details,'
+                . '.subscription-sign-up-fee,'
+                . '.product-subscription-price'
                 . '{display:none!important}'
                 . '</style>';
         } );
+    }
+
+    /**
+     * Strip subscription scheme meta + recurring price hints from cart line
+     * items for wholesale users. These come through as $cart_item_data
+     * entries like "Subscription: Every Month" added by WCS/WCSATT.
+     */
+    public static function strip_subscription_item_data( $item_data, $cart_item ) {
+        if ( ! slw_is_wholesale_context() ) {
+            return $item_data;
+        }
+        return array_filter( (array) $item_data, function( $entry ) {
+            $key   = strtolower( (string) ( $entry['key']   ?? '' ) );
+            $value = strtolower( (string) ( $entry['value'] ?? '' ) );
+            // Drop any entry whose label or value looks like subscription meta.
+            $needles = array( 'subscription', 'recurring', 'every month', 'every year', 'every week', 'sign-up fee', 'sign up fee', 'billing' );
+            foreach ( $needles as $needle ) {
+                if ( strpos( $key, $needle ) !== false || strpos( $value, $needle ) !== false ) {
+                    return false;
+                }
+            }
+            return true;
+        } );
+    }
+
+    /**
+     * For wholesale users, drop the "(includes recurring)" annotation from
+     * the cart order total HTML and show just the one-time charge.
+     */
+    public static function wholesale_cart_total_html( $html ) {
+        if ( ! slw_is_wholesale_context() ) {
+            return $html;
+        }
+        // Strip any text in parens that mentions "recurring" or "subscription".
+        $html = preg_replace( '/\s*\([^)]*(recurring|subscription)[^)]*\)/i', '', $html );
+        return $html;
+    }
+
+    /**
+     * Wipe the recurring totals section entirely for wholesale users.
+     */
+    public static function strip_recurring_for_wholesale( $html ) {
+        if ( ! slw_is_wholesale_context() ) {
+            return $html;
+        }
+        return '';
     }
 
     /**

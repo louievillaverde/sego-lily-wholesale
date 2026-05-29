@@ -103,13 +103,35 @@ class SLW_Order_Form {
                         $data_store = WC_Data_Store::load( 'product' );
                         $variation_id = (int) $data_store->find_matching_product_variation( $product, $variation );
                     }
+                    // Last-resort fallback: pick the first in-stock visible
+                    // variation. Prevents the 'Gift Box Varieties is a
+                    // required field' error Holly hit when adding the
+                    // Variety Gift Set without explicitly selecting a scent.
+                    // For products where every variation is roughly
+                    // equivalent (gift sets with different scents at the
+                    // same price), this gets the order added cleanly
+                    // instead of failing.
+                    if ( $variation_id <= 0 ) {
+                        $available = $product->get_available_variations();
+                        foreach ( $available as $var_data ) {
+                            if ( empty( $var_data['variation_id'] ) ) continue;
+                            $candidate = wc_get_product( (int) $var_data['variation_id'] );
+                            if ( $candidate && $candidate->is_purchasable() && $candidate->is_in_stock() ) {
+                                $variation_id = (int) $var_data['variation_id'];
+                                if ( empty( $variation ) ) {
+                                    $variation = (array) ( $var_data['attributes'] ?? array() );
+                                }
+                                break;
+                            }
+                        }
+                    }
                     if ( $variation_id <= 0 ) {
                         $failures[] = sprintf(
                             '%s (no variation selected, pick a scent/size first)',
                             $product->get_name()
                         );
                         error_log( sprintf(
-                            '[SLW order-form] variable product %d (%s) sent without variation_id and no matching variation found',
+                            '[SLW order-form] variable product %d (%s) sent without variation_id and no fallback variation found',
                             $product_id,
                             $product->get_name()
                         ) );
