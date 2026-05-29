@@ -4080,6 +4080,10 @@ button.slw-reorder-btn:hover {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
     color: #2C2C2C;
 }
+.slw-wholesale-checkout .slw-balance,
+.slw-checkout-gate .slw-balance { text-wrap: balance; }
+.slw-wholesale-checkout .slw-pretty,
+.slw-checkout-gate .slw-pretty { text-wrap: pretty; }
 .slw-wc-header {
     margin-bottom: 28px;
     border-bottom: 2px solid #D4AF37;
@@ -4098,6 +4102,8 @@ button.slw-reorder-btn:hover {
     font-size: 14px;
 }
 .slw-wc-back {
+    display: inline-block;
+    margin-top: 4px;
     font-size: 13px;
     color: #386174;
     text-decoration: none;
@@ -4129,7 +4135,13 @@ button.slw-reorder-btn:hover {
     color: #386174;
     padding-bottom: 8px;
     border-bottom: 1px solid #e8e2d4;
+    text-wrap: balance;
 }
+.slw-wc-help,
+.slw-wc-note,
+.slw-wc-fine-print,
+.slw-wc-note--info span,
+.slw-wc-radio__label small { text-wrap: pretty; }
 .slw-wc-fields {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -4178,6 +4190,16 @@ button.slw-reorder-btn:hover {
     font-size: 13px;
     color: #386174;
 }
+.slw-wc-checkbox--section-footer {
+    margin: 16px 0 0;
+    padding-top: 14px;
+    border-top: 1px dashed #e0ddd8;
+    width: 100%;
+    font-size: 13.5px;
+    color: #386174;
+    font-weight: 600;
+}
+.slw-wc-billing-section[hidden] { display: none !important; }
 
 .slw-wc-radios { display: flex; flex-direction: column; gap: 8px; }
 .slw-wc-radio {
@@ -4285,6 +4307,7 @@ button.slw-reorder-btn:hover {
     border-radius: 6px;
     font-size: 15px;
     font-weight: 700;
+    white-space: nowrap;
 }
 .slw-wc-fine-print { margin: 12px 0 0; font-size: 11.5px; color: #826a3e; text-align: center; }
 
@@ -4355,8 +4378,23 @@ button.slw-reorder-btn:hover {
     font-family: Georgia, 'Times New Roman', serif;
     color: #386174;
     margin: 0 0 12px;
+    text-wrap: balance;
 }
-.slw-checkout-empty .slw-btn { margin-top: 8px; }
+.slw-checkout-gate p {
+    color: #4f6973;
+    text-wrap: pretty;
+    margin: 0 0 12px;
+}
+.slw-checkout-gate p:last-child { margin-bottom: 0; }
+.slw-checkout-gate a { color: #386174; text-decoration: underline; }
+.slw-checkout-empty .slw-btn { margin-top: 8px; display: inline-block; }
+@media (max-width: 600px) {
+    .slw-checkout-gate {
+        margin: 32px 14px;
+        padding: 24px 20px;
+    }
+    .slw-checkout-gate h2 { font-size: 20px; }
+}
 
 /* --- Mobile optimization for wholesale checkout --- */
 @media (max-width: 900px) {
@@ -4365,7 +4403,9 @@ button.slw-reorder-btn:hover {
         order: -1;
         box-shadow: 0 2px 10px rgba(56, 97, 116, 0.08);
     }
-    .slw-wc-line-items { max-height: 220px; }
+    /* No inner scroll on mobile -- let the page scroll handle it so
+       customers don't fight a tiny double-scroll inside the summary. */
+    .slw-wc-line-items { max-height: none; overflow-y: visible; }
 }
 @media (max-width: 700px) {
     .slw-wholesale-checkout {
@@ -4407,10 +4447,11 @@ button.slw-reorder-btn:hover {
     .slw-wc-totals__row--grand { font-size: 15px; }
     .slw-wc-totals__row--grand dd { font-size: 19px; }
     .slw-wc-place-order {
-        padding: 14px 14px 12px;
+        padding: 14px 14px calc(12px + env(safe-area-inset-bottom));
         /* Pin the place-order block to the bottom of the viewport when
            the user scrolls past the form so they can complete checkout
-           one-handed on mobile. */
+           one-handed on mobile. env(safe-area-inset-bottom) keeps it
+           clear of the iOS Safari home indicator. */
         position: sticky;
         bottom: 0;
         margin: 18px -14px -14px;

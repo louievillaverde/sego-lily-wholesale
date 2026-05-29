@@ -102,13 +102,13 @@ class SLW_Wholesale_Checkout {
 
     public static function render() {
         if ( ! is_user_logged_in() ) {
-            return '<div class="slw-checkout-gate"><h2>Sign in to your wholesale account</h2><p><a href="' . esc_url( wp_login_url( get_permalink() ) ) . '">Log in</a> to access wholesale checkout.</p></div>';
+            return '<div class="slw-checkout-gate"><h2 class="slw-balance">Sign in to your wholesale account</h2><p class="slw-pretty"><a href="' . esc_url( wp_login_url( get_permalink() ) ) . '">Log in</a> to access wholesale checkout.</p></div>';
         }
         if ( ! function_exists( 'slw_is_wholesale_user' ) || ! slw_is_wholesale_user() ) {
-            return '<div class="slw-checkout-gate"><h2>Wholesale customers only</h2><p>This checkout is for approved wholesale partners. Apply for an account at <a href="' . esc_url( home_url( '/wholesale-partners' ) ) . '">' . esc_html( home_url( '/wholesale-partners' ) ) . '</a>.</p></div>';
+            return '<div class="slw-checkout-gate"><h2 class="slw-balance">Wholesale customers only</h2><p class="slw-pretty">This checkout is for approved wholesale partners. <a href="' . esc_url( home_url( '/wholesale-partners' ) ) . '">Apply for an account here</a>.</p></div>';
         }
         if ( ! function_exists( 'WC' ) || ! WC()->cart || WC()->cart->is_empty() ) {
-            return '<div class="slw-checkout-gate slw-checkout-empty"><h2>Your cart is empty</h2><p><a class="slw-btn slw-btn-primary" href="' . esc_url( home_url( '/wholesale-order' ) ) . '">Back to the order form</a></p></div>';
+            return '<div class="slw-checkout-gate slw-checkout-empty"><h2 class="slw-balance">Your cart is empty</h2><p class="slw-pretty">Nothing to check out yet. Pick up where you left off on the order form.</p><a class="slw-btn slw-btn-primary" href="' . esc_url( home_url( '/wholesale-order' ) ) . '">Back to the order form</a></div>';
         }
 
         $summary = self::build_summary();
@@ -149,8 +149,8 @@ class SLW_Wholesale_Checkout {
         ?>
         <div class="slw-wholesale-checkout">
             <div class="slw-wc-header">
-                <h1>Wholesale Checkout</h1>
-                <p>One last step to ship your order. Prices below reflect your wholesale rate.</p>
+                <h1 class="slw-balance">Wholesale Checkout</h1>
+                <p class="slw-pretty">One last step to ship your order. Prices below reflect your wholesale rate.</p>
                 <a class="slw-wc-back" href="<?php echo esc_url( home_url( '/wholesale-order' ) ); ?>">&larr; Back to the order form</a>
             </div>
 
@@ -214,15 +214,15 @@ class SLW_Wholesale_Checkout {
                                 <input type="text" name="shipping_country" value="<?php echo esc_attr( $ship_country ); ?>" />
                             </label>
                         </div>
+                        <label class="slw-wc-checkbox slw-wc-checkbox--section-footer">
+                            <input type="checkbox" name="billing_same_as_shipping" value="1" checked />
+                            <span>Billing address is the same as shipping</span>
+                        </label>
                     </section>
 
-                    <section class="slw-wc-section">
+                    <section class="slw-wc-section slw-wc-billing-section" hidden>
                         <h2 class="slw-wc-section__title">Billing Address</h2>
-                        <label class="slw-wc-checkbox">
-                            <input type="checkbox" name="billing_same_as_shipping" value="1" checked />
-                            <span>Same as shipping</span>
-                        </label>
-                        <div class="slw-wc-fields slw-wc-billing-fields" hidden>
+                        <div class="slw-wc-fields slw-wc-billing-fields">
                             <label class="slw-wc-field slw-wc-field--full">
                                 <span>Address line 1</span>
                                 <input type="text" name="billing_address_1" value="<?php echo esc_attr( get_user_meta( $uid, 'billing_address_1', true ) ); ?>" />
@@ -391,10 +391,12 @@ class SLW_Wholesale_Checkout {
 
         <script>
         (function() {
-            // Toggle billing fields visibility based on the checkbox
+            // Toggle the entire Billing Address section based on the
+            // "same as shipping" checkbox so an empty card never sits in
+            // the form when billing is mirrored.
             var box = document.querySelector('.slw-wholesale-checkout input[name="billing_same_as_shipping"]');
-            var fields = document.querySelector('.slw-wc-billing-fields');
-            function sync() { if (fields) fields.hidden = box.checked; }
+            var billingSection = document.querySelector('.slw-wc-billing-section');
+            function sync() { if (billingSection) billingSection.hidden = box.checked; }
             if (box) {
                 box.addEventListener('change', sync);
                 sync();
