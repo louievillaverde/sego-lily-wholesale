@@ -132,18 +132,30 @@ class SLW_Nav_Menu {
      * deactivating + reactivating need this.
      */
     public static function maybe_create_wholesale_checkout_page() {
-        if ( get_option( 'slw_wholesale_checkout_ready' ) ) return;
+        $version_key = 'slw_wholesale_checkout_shortcode_v2';
+        if ( get_option( $version_key ) ) return;
         $existing = get_page_by_path( 'wholesale-checkout' );
         if ( ! $existing ) {
             wp_insert_post( array(
                 'post_title'   => 'Wholesale Checkout',
-                'post_content' => '[woocommerce_checkout]',
+                'post_content' => '[sego_wholesale_checkout]',
                 'post_status'  => 'publish',
                 'post_type'    => 'page',
                 'post_name'    => 'wholesale-checkout',
             ));
+        } else {
+            // Migrate to the custom shortcode if the page is still on the
+            // bare [woocommerce_checkout]. Only rewrites pages that haven't
+            // been hand-edited away from the native shortcode.
+            $current = trim( $existing->post_content );
+            if ( $current === '[woocommerce_checkout]' || $current === '' ) {
+                wp_update_post( array(
+                    'ID'           => $existing->ID,
+                    'post_content' => '[sego_wholesale_checkout]',
+                ));
+            }
         }
-        update_option( 'slw_wholesale_checkout_ready', '1', true );
+        update_option( $version_key, '1', true );
     }
 
     /**

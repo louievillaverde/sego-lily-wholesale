@@ -3,7 +3,7 @@
  * Plugin Name:       Wholesale Portal
  * Plugin URI:        https://github.com/louievillaverde/sego-lily-wholesale
  * Description:       All-in-one B2B wholesale portal for WooCommerce. Customer portal, tiered pricing, application workflow, PDF invoices, email sequences with multi-provider support, NET payment terms, lead capture, trade show tools, and automated order reminders. Built by Lead Piranha.
- * Version:           4.6.73
+ * Version:           4.6.74
  * Author:            Lead Piranha
  * Author URI:        https://leadpiranha.com
  * Requires at least: 6.0
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SLW_VERSION', '4.6.73' );
+define( 'SLW_VERSION', '4.6.74' );
 define( 'SLW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SLW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -94,6 +94,7 @@ add_action( 'plugins_loaded', function() {
     require_once SLW_PLUGIN_DIR . 'includes/class-reminders.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-rfq.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-customer-portal.php';
+    require_once SLW_PLUGIN_DIR . 'includes/class-wholesale-checkout.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-customer-assets.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-quiz-results.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-email-approve.php';
@@ -146,6 +147,7 @@ add_action( 'plugins_loaded', function() {
     SLW_Reminders::init();
     SLW_RFQ::init();
     SLW_Customer_Portal::init();
+    SLW_Wholesale_Checkout::init();
     SLW_Customer_Assets::init();
     SLW_Quiz_Results::init();
     SLW_Email_Approve::init();
@@ -165,6 +167,7 @@ add_action( 'plugins_loaded', function() {
             || has_shortcode( get_post()->post_content ?? '', 'sego_wholesale_order_form' )
             || has_shortcode( get_post()->post_content ?? '', 'sego_wholesale_dashboard' )
             || has_shortcode( get_post()->post_content ?? '', 'sego_wholesale_rfq' )
+            || has_shortcode( get_post()->post_content ?? '', 'sego_wholesale_checkout' )
             || has_shortcode( get_post()->post_content ?? '', 'wholesale_lead_capture' )
             || has_shortcode( get_post()->post_content ?? '', 'wholesale_lead_capture_quick' )
             || has_shortcode( get_post()->post_content ?? '', 'wholesale_portal' ) ) {
@@ -220,13 +223,15 @@ register_activation_hook( __FILE__, function() {
             'title'   => 'Wholesale Portal',
             'content' => '[wholesale_portal]',
         ),
-        // Wholesale-only checkout page. Uses the native WC checkout
-        // shortcode (NOT Elementor) so apply_wholesale_price filters fire
-        // reliably on every line item. Wholesale users get redirected here
-        // from /checkout via SLW_Nav_Menu::redirect_checkout_for_wholesale.
+        // Wholesale-only checkout page. Uses the CUSTOM SLW shortcode that
+        // builds its own form + computes line totals from our wholesale
+        // helper, then creates a real WC order via wc_create_order() so
+        // the order still feeds WC analytics, reports, customer history.
+        // Wholesale users get redirected here from /checkout via
+        // SLW_Nav_Menu::redirect_checkout_for_wholesale.
         'wholesale-checkout' => array(
             'title'   => 'Wholesale Checkout',
-            'content' => '[woocommerce_checkout]',
+            'content' => '[sego_wholesale_checkout]',
         ),
         'quiz-results' => array(
             'title'   => 'Your Skincare Results',

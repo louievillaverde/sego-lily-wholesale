@@ -785,6 +785,9 @@ class SLW_Wholesale_Role {
                 . '.elementor-menu-cart__main,'
                 . '.elementor-menu-cart__toggle,'
                 . '.elementor-menu-cart__container,'
+                . '.elementor-menu-cart__container.elementor-lightbox,'
+                . '.elementor-menu-cart--shown,'
+                . '.elementor-menu-cart--opened,'
                 . '.widget_shopping_cart,'
                 . '.woocommerce-mini-cart,'
                 . '.mini-cart,'
@@ -793,6 +796,7 @@ class SLW_Wholesale_Role {
                 . '.side-cart,'
                 . '.wc-block-mini-cart,'
                 . '.wc-block-mini-cart__button,'
+                . '.wc-block-mini-cart__drawer,'
                 // Header cart icon selectors (theme-agnostic best effort)
                 . '.header-cart,'
                 . '.header-cart-icon,'
@@ -804,8 +808,10 @@ class SLW_Wholesale_Role {
                 . '.wp-block-woocommerce-mini-cart,'
                 . 'a[href$="/cart/"],'
                 . 'a[href$="/cart"],'
-                . '.menu-item-cart'
-                . '{display:none!important}'
+                . '.menu-item-cart,'
+                // Modal / dialog overlays that themes use for slide-out cart
+                . '.elementor-lightbox-content-wrapper:has(.elementor-menu-cart__container)'
+                . '{display:none!important;visibility:hidden!important;pointer-events:none!important}'
                 . '</style>';
         } );
     }
@@ -889,12 +895,50 @@ class SLW_Wholesale_Role {
         ?>
         <script>
         (function() {
-            if (typeof window.jQuery === 'undefined') return;
-            // Block every common side-cart open trigger.
-            jQuery(document.body).off('added_to_cart wc_fragments_refreshed wc_fragments_loaded');
-            jQuery(document.body).on('added_to_cart wc_fragments_refreshed wc_fragments_loaded', function(e) {
-                e.stopImmediatePropagation();
-            });
+            // List of selectors that represent the retail side cart / mini
+            // cart / cart drawer. We aggressively yank them out of the DOM
+            // on load AND watch for any new ones being injected (Elementor
+            // re-renders them dynamically after AJAX cart updates).
+            var killSelectors = [
+                '.elementor-menu-cart',
+                '.elementor-menu-cart__container',
+                '.elementor-menu-cart__wrapper',
+                '.widget_shopping_cart',
+                '.woocommerce-mini-cart',
+                '.mini-cart',
+                '.cart-popup',
+                '.cart-drawer',
+                '.side-cart',
+                '.wc-block-mini-cart',
+                '.wc-block-mini-cart__drawer',
+                '.header-cart',
+                '.cart-toggle',
+                '.shopping-cart-icon',
+                '.menu-item-cart',
+                'a.cart-contents'
+            ];
+            function killAll() {
+                killSelectors.forEach(function(sel) {
+                    document.querySelectorAll(sel).forEach(function(el) {
+                        // Remove rather than hide so themes can't unhide.
+                        el.parentNode && el.parentNode.removeChild(el);
+                    });
+                });
+            }
+            killAll();
+            // Observe DOM for re-injected side carts (Elementor + theme behavior).
+            try {
+                var observer = new MutationObserver(killAll);
+                observer.observe(document.body, { childList: true, subtree: true });
+            } catch (e) {}
+
+            // Block jQuery events that themes use to open the side cart.
+            if (typeof window.jQuery !== 'undefined') {
+                jQuery(document.body).off('added_to_cart wc_fragments_refreshed wc_fragments_loaded');
+                jQuery(document.body).on('added_to_cart wc_fragments_refreshed wc_fragments_loaded', function(e) {
+                    e.stopImmediatePropagation();
+                });
+            }
         })();
         </script>
         <?php

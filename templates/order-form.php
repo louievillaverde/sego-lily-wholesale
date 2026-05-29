@@ -473,11 +473,14 @@ $products = $all_products; // keep for empty check
                         $product_desc = substr( $product_desc, 0, 317 ) . '...';
                     }
 
-                    // Scent hover: prefer the variation's own description,
-                    // then any attribute-term description from the variation
-                    // attributes (Sego Lily's scent attribute is a taxonomy
-                    // and the term description is what the Shop All page
-                    // surfaces). Skip terms that look like billing intervals.
+                    // Scent hover fallback chain (Shop All uses taxonomy
+                    // term descriptions; we try several places to catch
+                    // however Holly + Camila have set up the scent meta):
+                    //   1. variation's own description
+                    //   2. attribute-term description (skipping billing intervals)
+                    //   3. attribute-term meta '_scent_description' or '_description'
+                    //   4. variation meta '_slw_scent_description'
+                    //   5. parent product short description (last-resort fallback)
                     $scent_desc = trim( wp_strip_all_tags( $variation->get_description() ) );
                     if ( ! $scent_desc ) {
                         foreach ( (array) $variation->get_attributes() as $attr_tax => $attr_val ) {
@@ -487,11 +490,21 @@ $products = $all_products; // keep for empty check
                                 continue;
                             }
                             $term = get_term_by( 'slug', $attr_val, $attr_tax );
-                            if ( $term && ! is_wp_error( $term ) && trim( wp_strip_all_tags( $term->description ) ) ) {
-                                $scent_desc = trim( wp_strip_all_tags( $term->description ) );
-                                break;
+                            if ( $term && ! is_wp_error( $term ) ) {
+                                $tdesc = trim( wp_strip_all_tags( $term->description ?? '' ) );
+                                if ( $tdesc ) { $scent_desc = $tdesc; break; }
+                                foreach ( array( '_scent_description', '_description', 'scent_description' ) as $mk ) {
+                                    $tmeta = trim( wp_strip_all_tags( (string) get_term_meta( $term->term_id, $mk, true ) ) );
+                                    if ( $tmeta ) { $scent_desc = $tmeta; break 2; }
+                                }
                             }
                         }
+                    }
+                    if ( ! $scent_desc ) {
+                        $scent_desc = trim( wp_strip_all_tags( (string) get_post_meta( $variation->get_id(), '_slw_scent_description', true ) ) );
+                    }
+                    if ( ! $scent_desc && $product_desc ) {
+                        $scent_desc = $product_desc;
                     }
                     if ( strlen( $scent_desc ) > 320 ) {
                         $scent_desc = substr( $scent_desc, 0, 317 ) . '...';
@@ -573,11 +586,18 @@ $products = $all_products; // keep for empty check
                     </td>
                     <td class="slw-col-price"><?php echo $v_price_html; ?></td>
                     <?php
-                    // True retail (one-time) for the savings calculation. Uses
-                    // the helper that bypasses subscription contamination.
+                    // True retail for the savings calc. The helper walks
+                    // sibling variations via get_price() which is filtered
+                    // through apply_wholesale_price -- meaning it'd return
+                    // wholesale prices, not retail. Temporarily detach the
+                    // filter so the read reflects MSRP.
+                    $_slw_simple_off = remove_filter( 'woocommerce_product_get_price', array( 'SLW_Wholesale_Role', 'apply_wholesale_price' ), 99 );
+                    $_slw_var_off    = remove_filter( 'woocommerce_product_variation_get_price', array( 'SLW_Wholesale_Role', 'apply_wholesale_price' ), 99 );
                     $v_retail = function_exists( 'slw_get_true_regular_price' )
                         ? slw_get_true_regular_price( $variation )
                         : (float) $variation->get_regular_price();
+                    if ( $_slw_simple_off ) add_filter( 'woocommerce_product_get_price', array( 'SLW_Wholesale_Role', 'apply_wholesale_price' ), 99, 2 );
+                    if ( $_slw_var_off )    add_filter( 'woocommerce_product_variation_get_price', array( 'SLW_Wholesale_Role', 'apply_wholesale_price' ), 99, 2 );
                     ?>
                     <td class="slw-col-qty">
                         <input type="number" class="slw-qty-input" min="<?php echo esc_attr( $v_min_input ); ?>" max="999" step="<?php echo esc_attr( $v_step ); ?>" value="<?php echo esc_attr( $v_default ); ?>"
@@ -707,9 +727,13 @@ $products = $all_products; // keep for empty check
                     </td>
                     <td class="slw-col-price"><?php echo $price_html; ?></td>
                     <?php
+                    $_slw_simple_off = remove_filter( 'woocommerce_product_get_price', array( 'SLW_Wholesale_Role', 'apply_wholesale_price' ), 99 );
+                    $_slw_var_off    = remove_filter( 'woocommerce_product_variation_get_price', array( 'SLW_Wholesale_Role', 'apply_wholesale_price' ), 99 );
                     $p_retail = function_exists( 'slw_get_true_regular_price' )
                         ? slw_get_true_regular_price( $product )
                         : (float) $product->get_regular_price();
+                    if ( $_slw_simple_off ) add_filter( 'woocommerce_product_get_price', array( 'SLW_Wholesale_Role', 'apply_wholesale_price' ), 99, 2 );
+                    if ( $_slw_var_off )    add_filter( 'woocommerce_product_variation_get_price', array( 'SLW_Wholesale_Role', 'apply_wholesale_price' ), 99, 2 );
                     ?>
                     <td class="slw-col-qty">
                         <?php if ( $product->is_in_stock() ) : ?>
@@ -846,16 +870,29 @@ $products = $all_products; // keep for empty check
 </div>
 
 <style>
-/* Header tools row: search + bulk import button side by side */
+/* Header tools row: search + bulk import button side by side.
+   Generous bottom margin so the minimum-note line below has air. */
 .slw-order-header-tools {
     display: flex;
     gap: 12px;
     align-items: center;
     margin-top: 12px;
+    margin-bottom: 26px;
     flex-wrap: wrap;
 }
 .slw-order-header-tools .slw-order-search { margin-top: 0; flex: 1; min-width: 240px; }
 .slw-bulk-import-btn { flex-shrink: 0; }
+.slw-minimum-note {
+    margin-top: 18px !important;
+    padding: 10px 14px;
+    background: #fff8e3;
+    border: 1px solid #f0d780;
+    border-radius: 8px;
+    color: #6b4f0a;
+    font-size: 13px;
+    font-weight: 600;
+    display: inline-block;
+}
 
 /* Bulk import modal */
 .slw-bulk-import-modal {
