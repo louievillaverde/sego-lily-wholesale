@@ -82,10 +82,7 @@ class SLW_Wholesale_Role {
         // opening side cart competes with it and confused Holly's customers.
         add_filter( 'woocommerce_widget_cart_is_hidden',  array( __CLASS__, 'hide_widget_cart_for_wholesale' ) );
         add_filter( 'woocommerce_add_to_cart_fragments',  array( __CLASS__, 'maybe_empty_cart_fragments' ), 999 );
-        // wp_head priority 1 so our document-level capture click listener
-        // is registered BEFORE Elementor's scripts attach their own. The
-        // hide CSS also lands before theme stylesheets paint.
-        add_action( 'wp_head',                            array( __CLASS__, 'suppress_side_cart_js' ), 1 );
+        add_action( 'wp_footer',                          array( __CLASS__, 'suppress_side_cart_js' ) );
 
         // Redirect "Return to shop" to wholesale order form for wholesale users
         add_filter( 'woocommerce_return_to_shop_redirect', array( __CLASS__, 'wholesale_return_to_shop' ) );
@@ -783,55 +780,23 @@ class SLW_Wholesale_Role {
                 . '.wc_payment_method_paypal_express_subscription_details,'
                 . '.subscription-sign-up-fee,'
                 . '.product-subscription-price,'
-                // Hide retail side-cart / mini-cart triggers + popups AND
-                // header cart icons for wholesale users so the in-page Cart
-                // Preview on the order form is the only cart surface they
-                // see. Stops the dual-cart confusion Holly call flagged.
-                . '.elementor-menu-cart,'
-                . '.elementor-menu-cart__wrapper,'
+                // Hide retail side-cart / mini-cart triggers + popups so the
+                // in-page Cart Preview is the only cart surface wholesale
+                // users see. If a theme variant escapes these selectors and
+                // the panel still opens, the JS slide-bar-down coordinator
+                // (suppress_side_cart_js) covers the visual collision.
                 . '.elementor-menu-cart__main,'
-                . '.elementor-menu-cart__toggle,'
                 . '.elementor-menu-cart__container,'
-                . '.elementor-menu-cart__container.elementor-lightbox,'
-                . '.elementor-menu-cart--shown,'
-                . '.elementor-menu-cart--opened,'
+                . '.elementor-menu-cart--shown .elementor-menu-cart__main,'
+                . '.elementor-menu-cart--opened .elementor-menu-cart__main,'
                 . '.widget_shopping_cart,'
                 . '.woocommerce-mini-cart,'
                 . '.mini-cart,'
                 . '.cart-popup,'
                 . '.cart-drawer,'
                 . '.side-cart,'
-                . '.wc-block-mini-cart,'
-                . '.wc-block-mini-cart__button,'
-                . '.wc-block-mini-cart__drawer,'
-                // Header cart icon selectors (theme-agnostic best effort)
-                . '.header-cart,'
-                . '.header-cart-icon,'
-                . '.site-header .cart-icon,'
-                . '.cart-toggle,'
-                . '.header-cart-link,'
-                . '.shopping-cart-icon,'
-                . '.elementor-widget-woocommerce-menu-cart,'
-                . '.wp-block-woocommerce-mini-cart,'
-                . 'a[href$="/cart/"],'
-                . 'a[href$="/cart"],'
-                . '.menu-item-cart,'
-                // Modal / dialog overlays that themes use for slide-out cart
-                . '.elementor-lightbox-content-wrapper:has(.elementor-menu-cart__container),'
-                // Catch-all by class substring: any element whose class
-                // contains menu-cart / mini-cart / cart-drawer / cart-popup
-                // / cart-flyout / side-cart / cart-sidebar -- EXCEPT our
-                // own .slw- components.
-                . '[class*="menu-cart"]:not([class*="slw-"]),'
-                . '[class*="mini-cart"]:not([class*="slw-"]),'
-                . '[class*="cart-drawer"]:not([class*="slw-"]),'
-                . '[class*="cart-popup"]:not([class*="slw-"]),'
-                . '[class*="cart-flyout"]:not([class*="slw-"]),'
-                . '[class*="cart-sidebar"]:not([class*="slw-"]),'
-                . '[id*="menu-cart"],'
-                . '[id*="mini-cart"],'
-                . '[id*="cart-drawer"]'
-                . '{display:none!important;visibility:hidden!important;pointer-events:none!important;opacity:0!important;width:0!important;height:0!important;overflow:hidden!important}'
+                . '.wc-block-mini-cart__drawer'
+                . '{display:none!important;visibility:hidden!important;pointer-events:none!important}'
                 . '</style>';
         } );
     }
@@ -914,178 +879,43 @@ class SLW_Wholesale_Role {
         }
         ?>
         <script>
+        // Side cart + sticky bottom bar coordination.
+        // The side cart is allowed to open normally. When it does, slide our
+        // sticky Cart Preview bar down so the two don't visually collide.
         (function() {
-            // Elementor's side cart toggle is BOUND on page load by Elementor's
-            // own JS. Removing the toggle element after that binding doesn't
-            // help if the parent menu was the actual click target. So our
-            // strategy is layered:
-            //   1. On every click, if a cart icon / link was the target,
-            //      preventDefault + stopPropagation BEFORE Elementor's
-            //      handler fires (capture phase), and force-close any
-            //      "--shown" / "--opened" classes that did sneak through.
-            //   2. Watch the DOM for any element gaining a "shown" / "opened"
-            //      side-cart class and yank it back closed.
-            //   3. When the side cart IS open (despite us), drop the sticky
-            //      bottom Cart Preview bar so they don't fight each other.
-            //   4. Re-route to the wholesale order form when a wholesale
-            //      user actually wants to "go to my cart" -- intercept
-            //      links to /cart so they go to /wholesale-order.
-
-            var iconSelectors = [
-                '.elementor-menu-cart__toggle',
-                '.elementor-menu-cart__toggle_button',
-                '.elementor-menu-cart__toggle-button',
-                '.elementor-widget-woocommerce-menu-cart a',
-                '.menu-item-cart a',
-                '.header-cart a',
-                '.header-cart-link',
-                '.cart-toggle',
-                '.shopping-cart-icon',
-                'a.cart-contents',
-                '.wc-block-mini-cart__button',
-                '.wp-block-woocommerce-mini-cart a',
-                'a[href$="/cart/"]',
-                'a[href$="/cart"]'
-            ];
             var openSelectors = [
                 '.elementor-menu-cart--shown',
                 '.elementor-menu-cart--opened',
                 '.wc-block-mini-cart--open',
-                '.wc-block-mini-cart__drawer.is-mobile',
                 '.cart-drawer.open',
-                '.side-cart.open',
-                '.cart-popup.open',
-                '.cart-popup--open'
+                '.side-cart.open'
             ];
-            var redirectUrl = <?php echo wp_json_encode( home_url( '/wholesale-order' ) ); ?>;
-
-            function isIconTarget(el) {
-                if (!el || el.nodeType !== 1) return false;
-                for (var i = 0; i < iconSelectors.length; i++) {
-                    try {
-                        if (el.closest && el.closest(iconSelectors[i])) return true;
-                    } catch (e) {}
-                }
-                return false;
-            }
-
-            // 1. Capture-phase click interceptor. Runs BEFORE Elementor's
-            //    bubble-phase handler.
-            document.addEventListener('click', function(e) {
-                if (isIconTarget(e.target)) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    e.stopImmediatePropagation();
-                    // Send them to where the cart actually lives for wholesale
-                    window.location.href = redirectUrl;
-                }
-            }, true);
-
-            // 2. Watch for "open" classes appearing on any element and remove.
-            function closeOpened() {
-                openSelectors.forEach(function(sel) {
-                    document.querySelectorAll(sel).forEach(function(el) {
-                        // Strip just the open/shown class so Elementor's
-                        // internal state machine doesn't get confused. Then
-                        // also forcibly hide.
-                        el.classList.remove('elementor-menu-cart--shown');
-                        el.classList.remove('elementor-menu-cart--opened');
-                        el.classList.remove('is-mobile');
-                        el.classList.remove('open');
-                        el.classList.remove('cart-popup--open');
-                        el.style.display = 'none';
-                        el.style.visibility = 'hidden';
-                        el.style.pointerEvents = 'none';
-                    });
-                });
-                // Also drop body class some themes add when cart is open
-                document.body.classList.remove('elementor-menu-cart--shown');
-                document.body.classList.remove('cart-open');
-                document.body.classList.remove('side-cart-open');
-                document.documentElement.classList.remove('cart-open');
-            }
-            closeOpened();
-
-            // 3. Sticky bottom bar coordination: if any side cart IS open
-            //    (transient state we couldn't prevent), hide our Cart
-            //    Preview floating bar so they don't visually collide.
-            //    Re-query each call since this script runs in wp_head and
-            //    the sticky bar isn't in the DOM yet at registration time.
             function syncStickyBar() {
-                var stickyBar = document.querySelector('.slw-sticky-bar, .slw-cart-preview-sticky');
+                var stickyBar = document.querySelector('.slw-sticky-bar');
                 if (!stickyBar) return;
-                var anyOpen = false;
-                openSelectors.forEach(function(sel) {
-                    if (document.querySelector(sel)) anyOpen = true;
-                });
-                if (anyOpen) {
-                    stickyBar.classList.add('slw-sticky-bar--hidden-by-cart');
-                } else {
-                    stickyBar.classList.remove('slw-sticky-bar--hidden-by-cart');
-                }
+                var open = openSelectors.some(function(sel) { return !!document.querySelector(sel); });
+                stickyBar.classList.toggle('slw-sticky-bar--hidden-by-cart', open);
             }
-            // Run on DOMContentLoaded once body is available
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', syncStickyBar);
-            } else {
+            function init() {
                 syncStickyBar();
-            }
-
-            try {
-                var observer = new MutationObserver(function() {
-                    closeOpened();
-                    syncStickyBar();
-                });
-                observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
-            } catch (e) {}
-
-            // 4. Block jQuery events that themes use to open the side cart.
-            //    jQuery isn't loaded yet at wp_head time, so wait for
-            //    DOMContentLoaded + a tick for jQuery to register.
-            function blockJqueryCartEvents() {
-                if (typeof window.jQuery === 'undefined') return;
-                jQuery(document.body).off('added_to_cart wc_fragments_refreshed wc_fragments_loaded');
-                jQuery(document.body).on('added_to_cart wc_fragments_refreshed wc_fragments_loaded', function(e) {
-                    e.stopImmediatePropagation();
-                    closeOpened();
-                });
-            }
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', function() {
-                    blockJqueryCartEvents();
-                    // Re-attempt after jQuery scripts finish loading
-                    window.addEventListener('load', blockJqueryCartEvents);
-                });
-            } else {
-                blockJqueryCartEvents();
-                window.addEventListener('load', blockJqueryCartEvents);
-            }
-
-            // 5. As a last resort, also try removing the cart icon DOM nodes
-            //    after a small delay so Elementor's initial render finishes
-            //    before we yank them. Only the visible icons -- NOT the
-            //    container divs, which Elementor sometimes needs in place.
-            function nukeIcons() {
-                ['.elementor-menu-cart__toggle', 'a.cart-contents', '[class*="menu-cart"] a', '[class*="cart-toggle"]'].forEach(function(sel) {
-                    document.querySelectorAll(sel).forEach(function(el) {
-                        el.style.display = 'none';
-                        el.style.pointerEvents = 'none';
+                try {
+                    new MutationObserver(syncStickyBar).observe(document.documentElement, {
+                        subtree: true, attributes: true, attributeFilter: ['class']
                     });
-                });
+                } catch (e) {}
             }
             if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', function() { setTimeout(nukeIcons, 300); });
+                document.addEventListener('DOMContentLoaded', init);
             } else {
-                setTimeout(nukeIcons, 300);
+                init();
             }
         })();
         </script>
         <style id="slw-sticky-side-cart-coordination">
-            .slw-sticky-bar.slw-sticky-bar--hidden-by-cart,
-            .slw-cart-preview-sticky.slw-sticky-bar--hidden-by-cart {
+            .slw-sticky-bar.slw-sticky-bar--hidden-by-cart {
                 transform: translateY(110%) !important;
                 opacity: 0 !important;
-                transition: transform 0.2s ease, opacity 0.2s ease !important;
+                transition: transform 0.25s ease, opacity 0.25s ease !important;
                 pointer-events: none !important;
             }
         </style>

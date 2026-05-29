@@ -1257,23 +1257,72 @@ $products = $all_products; // keep for empty check
     color: #6e3a3a;
 }
 .slw-cart-preview__remove:disabled { opacity: 0.4; cursor: not-allowed; }
-/* Hide WooCommerce green "added to cart" notice and theme/Elementor
-   variants on the wholesale order form. The Cart Preview gives a much
-   cleaner confirmation; the theme's pop-out lands right on top of the
-   Proceed to Checkout button. */
-.slw-order-form-container ~ .woocommerce-notices-wrapper,
-.slw-order-form-container .woocommerce-notices-wrapper,
-.slw-order-form-container ~ .woocommerce-message,
-.slw-order-form-container .woocommerce-message,
-.slw-order-form-container .wc-block-components-notice-banner,
-.slw-order-form-container .wc-block-components-notice-snackbar,
-.slw-order-form-container .elementor-message,
-body.page-wholesale-order .woocommerce-message,
+/* Reposition + restyle the WooCommerce "added to cart" notice on the
+   wholesale order form. Default behavior dumps a green block right above
+   the Proceed to Checkout button -- looks sloppy and covers the CTA.
+   We brand-style it (cream + teal) and float it as a top-right toast
+   instead, so the customer gets feedback without losing the CTA.
+   Auto-dismisses after 4s via the small script appended below. */
 body.page-wholesale-order .woocommerce-notices-wrapper,
-body.page-wholesale-order .wc-block-components-notice-snackbar,
+.slw-order-form-container ~ .woocommerce-notices-wrapper,
+.slw-order-form-container .woocommerce-notices-wrapper {
+    position: fixed;
+    top: 90px;
+    right: 20px;
+    z-index: 99980;
+    max-width: 360px;
+    width: calc(100vw - 40px);
+    pointer-events: none;
+}
+body.page-wholesale-order .woocommerce-message,
 body.page-wholesale-order .wc-block-components-notice-banner,
-body.page-wholesale-order .elementor-message {
+body.page-wholesale-order .wc-block-components-notice-snackbar,
+.slw-order-form-container ~ .woocommerce-notices-wrapper .woocommerce-message,
+.slw-order-form-container .woocommerce-notices-wrapper .woocommerce-message {
+    background: #386174 !important;
+    color: #F7F6F3 !important;
+    border: none !important;
+    border-left: 4px solid #D4AF37 !important;
+    border-radius: 10px !important;
+    padding: 14px 18px !important;
+    margin: 0 0 10px !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif !important;
+    font-size: 14px !important;
+    line-height: 1.45 !important;
+    box-shadow: 0 8px 24px rgba(56, 97, 116, 0.28) !important;
+    pointer-events: auto;
+    text-wrap: pretty;
+    animation: slwToastIn 0.28s ease both;
+}
+body.page-wholesale-order .woocommerce-message::before,
+.slw-order-form-container .woocommerce-message::before {
+    color: #D4AF37 !important;
+}
+/* Hide the inline "View cart" + "Checkout" buttons WC stuffs into the
+   notice. Wholesale doesn't use the standard cart page and the Cart
+   Preview + sticky bar already give the customer the right path. */
+body.page-wholesale-order .woocommerce-message .button,
+body.page-wholesale-order .woocommerce-message .restore-item,
+.slw-order-form-container .woocommerce-message .button {
     display: none !important;
+}
+@keyframes slwToastIn {
+    from { opacity: 0; transform: translateX(20px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes slwToastOut {
+    from { opacity: 1; transform: translateX(0); }
+    to   { opacity: 0; transform: translateX(20px); }
+}
+.slw-toast-leaving { animation: slwToastOut 0.25s ease both !important; }
+@media (max-width: 600px) {
+    body.page-wholesale-order .woocommerce-notices-wrapper {
+        top: 70px;
+        right: 12px;
+        left: 12px;
+        max-width: none;
+        width: auto;
+    }
 }
 .slw-cart-preview__item--in-cart { background: rgba(56, 97, 116, 0.04); margin: 0 -6px; padding-left: 6px; padding-right: 6px; border-radius: 4px; }
 .slw-cart-preview__item--staged .slw-cart-preview__qty { color: #8a6d1a; }
@@ -1424,6 +1473,24 @@ body.page-wholesale-order .elementor-message {
             })
             .catch(function(err) { console.warn('[SLW] cart action error', action, err); });
     }
+
+    // Auto-dismiss the toast-styled WooCommerce notice after 4s. Adds a
+    // leaving class for the slide-out animation, then removes from DOM.
+    function dismissWcToasts() {
+        var notices = document.querySelectorAll('.woocommerce-message, .wc-block-components-notice-banner, .wc-block-components-notice-snackbar');
+        notices.forEach(function(n) {
+            if (n.dataset.slwDismissArmed) return;
+            n.dataset.slwDismissArmed = '1';
+            setTimeout(function() {
+                n.classList.add('slw-toast-leaving');
+                setTimeout(function() { n.parentNode && n.parentNode.removeChild(n); }, 280);
+            }, 4000);
+        });
+    }
+    dismissWcToasts();
+    try {
+        new MutationObserver(dismissWcToasts).observe(document.body, { childList: true, subtree: true });
+    } catch (e) {}
 
     // Cart Preview: per-line remove (delegated) + clear-all
     if (previewListEl) {
