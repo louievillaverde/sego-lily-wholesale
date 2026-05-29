@@ -18,8 +18,88 @@ class SLW_Order_Form {
         add_shortcode( 'sego_wholesale_order_form', array( __CLASS__, 'render' ) );
 
         // AJAX handler for adding items to cart from the order form
-        add_action( 'wp_ajax_slw_add_to_cart', array( __CLASS__, 'ajax_add_to_cart' ) );
-        add_action( 'wp_ajax_slw_reorder_last', array( __CLASS__, 'ajax_reorder_last' ) );
+        add_action( 'wp_ajax_slw_add_to_cart',     array( __CLASS__, 'ajax_add_to_cart' ) );
+        add_action( 'wp_ajax_slw_reorder_last',    array( __CLASS__, 'ajax_reorder_last' ) );
+        add_action( 'wp_ajax_slw_remove_cart_line', array( __CLASS__, 'ajax_remove_cart_line' ) );
+        add_action( 'wp_ajax_slw_clear_cart',       array( __CLASS__, 'ajax_clear_cart' ) );
+    }
+
+    /**
+     * Remove a single line from the cart (called from the order form
+     * Cart Preview row "x" buttons). Returns the updated cart payload
+     * so the JS can re-render without a page reload.
+     */
+    public static function ajax_remove_cart_line() {
+        check_ajax_referer( 'slw_order_form', 'nonce' );
+        if ( ! is_user_logged_in() || ! slw_is_wholesale_user() ) {
+            wp_send_json_error( array( 'message' => 'Wholesale customers only.' ), 403 );
+        }
+        if ( ! function_exists( 'WC' ) || ! WC()->cart ) {
+            wp_send_json_error( array( 'message' => 'Cart unavailable.' ), 500 );
+        }
+        $cart_key = isset( $_POST['cart_key'] ) ? sanitize_text_field( wp_unslash( $_POST['cart_key'] ) ) : '';
+        if ( $cart_key && ! WC()->cart->is_empty() && isset( WC()->cart->get_cart()[ $cart_key ] ) ) {
+            WC()->cart->remove_cart_item( $cart_key );
+        } else {
+            // Fallback: caller passed product_id/variation_id (the JS path
+            // when it doesn't have the cart_key handy).
+            $pid = absint( $_POST['product_id']   ?? 0 );
+            $vid = absint( $_POST['variation_id'] ?? 0 );
+            foreach ( WC()->cart->get_cart() as $key => $ci ) {
+                if ( (int) ( $ci['product_id'] ?? 0 ) === $pid
+                    && (int) ( $ci['variation_id'] ?? 0 ) === $vid ) {
+                    WC()->cart->remove_cart_item( $key );
+                    break;
+                }
+            }
+        }
+        wp_send_json_success( self::cart_state_payload() );
+    }
+
+    /**
+     * Empty the entire cart. Triggered by the Cart Preview "Clear cart"
+     * button on the order form.
+     */
+    public static function ajax_clear_cart() {
+        check_ajax_referer( 'slw_order_form', 'nonce' );
+        if ( ! is_user_logged_in() || ! slw_is_wholesale_user() ) {
+            wp_send_json_error( array( 'message' => 'Wholesale customers only.' ), 403 );
+        }
+        if ( function_exists( 'WC' ) && WC()->cart ) {
+            WC()->cart->empty_cart();
+        }
+        wp_send_json_success( self::cart_state_payload() );
+    }
+
+    /**
+     * Snapshot of the current cart suitable for the JS to re-render the
+     * Cart Preview without a page reload. Mirrors the boot payload that
+     * order-form.php renders inline on initial load.
+     */
+    private static function cart_state_payload() {
+        $items = array();
+        if ( function_exists( 'WC' ) && WC()->cart && ! WC()->cart->is_empty() ) {
+            foreach ( WC()->cart->get_cart() as $key => $ci ) {
+                $prod = $ci['data'] ?? null;
+                if ( ! $prod ) continue;
+                $label = $prod->get_name();
+                if ( method_exists( $prod, 'get_formatted_name' ) ) {
+                    // get_formatted_name returns SKU + name + variation attrs.
+                    // Strip the SKU prefix ("(#SKU-123) Renewal ...") so the
+                    // line item label reads cleanly.
+                    $label = preg_replace( '/^\(#[^)]+\)\s*/', '', $prod->get_formatted_name() );
+                }
+                $items[] = array(
+                    'cart_key'     => $key,
+                    'product_id'   => (int) ( $ci['product_id'] ?? 0 ),
+                    'variation_id' => (int) ( $ci['variation_id'] ?? 0 ),
+                    'qty'          => (int) ( $ci['quantity'] ?? 0 ),
+                    'label'        => wp_strip_all_tags( $label ),
+                    'lineTotal'    => (float) $prod->get_price() * (int) ( $ci['quantity'] ?? 0 ),
+                );
+            }
+        }
+        return array( 'items' => $items );
     }
 
     /**

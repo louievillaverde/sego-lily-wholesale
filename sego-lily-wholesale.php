@@ -3,7 +3,7 @@
  * Plugin Name:       Wholesale Portal
  * Plugin URI:        https://github.com/louievillaverde/sego-lily-wholesale
  * Description:       All-in-one B2B wholesale portal for WooCommerce. Customer portal, tiered pricing, application workflow, PDF invoices, email sequences with multi-provider support, NET payment terms, lead capture, trade show tools, and automated order reminders. Built by Lead Piranha.
- * Version:           4.6.76
+ * Version:           4.6.77
  * Author:            Lead Piranha
  * Author URI:        https://leadpiranha.com
  * Requires at least: 6.0
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SLW_VERSION', '4.6.76' );
+define( 'SLW_VERSION', '4.6.77' );
 define( 'SLW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SLW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -640,61 +640,91 @@ function slw_get_true_regular_price( $product ) {
         return (float) $override;
     }
 
-    // 1. Variable / variable-subscription parents: walk children and take
-    // the MAX get_price() across variations. The one-time / single-cycle
-    // variation is always the highest priced one (subscriptions and
-    // multi-cycle plans are by definition discounted). Sego Lily's variety
-    // pack has a "1-cycle" variation that acts as one-time -- it has
-    // _subscription_period set so any "skip recurring" filter wrongly
-    // discards it, but its price IS the highest, so MAX picks it up.
+    // Variable / variable-subscription / variation lookups use a direct
+    // SQL MAX of raw _regular_price post-meta across siblings. This bypasses
+    // every filter chain (ours, WC Subscriptions', WCSATT's), so the
+    // returned number is always the true MSRP / one-time-price stored on
+    // the highest-priced variation -- not whatever the subscription plugin
+    // morphs get_price() into. This was the source of the "subscription
+    // prices showing through" bug: even with our filter detached, WCS
+    // still rewrote get_price() to the recurring rate.
+    $walk_parent_id = 0;
     if ( method_exists( $product, 'get_children' ) && (
             $product->is_type( 'variable' ) ||
             $product->is_type( 'variable-subscription' )
     ) ) {
-        $prices = array();
-        foreach ( (array) $product->get_children() as $var_id ) {
-            $variation = wc_get_product( (int) $var_id );
-            if ( ! $variation ) continue;
-            $price = (float) $variation->get_price();
-            if ( $price > 0 ) {
-                $prices[] = $price;
-            }
-        }
-        if ( ! empty( $prices ) ) {
-            return (float) max( $prices );
+        $walk_parent_id = $product_id;
+    } elseif ( $product->is_type( 'variation' ) && $parent_id ) {
+        $walk_parent_id = $parent_id;
+    }
+    if ( $walk_parent_id > 0 ) {
+        $max = slw_max_variation_regular_price( $walk_parent_id );
+        if ( $max > 0 ) {
+            return $max;
         }
     }
 
-    // 2. Direct variation: report the highest-priced sibling so all rows
-    // for the same product roll up to the one-time price.
-    if ( $product->is_type( 'variation' ) && $parent_id ) {
-        $sibling_ids = (array) wp_list_pluck(
-            get_children( array( 'post_parent' => $parent_id, 'post_type' => 'product_variation', 'numberposts' => -1 ) ),
-            'ID'
-        );
-        $prices = array();
-        foreach ( $sibling_ids as $sid ) {
-            $sibling = wc_get_product( (int) $sid );
-            if ( ! $sibling ) continue;
-            $p = (float) $sibling->get_price();
-            if ( $p > 0 ) $prices[] = $p;
-        }
-        if ( ! empty( $prices ) ) {
-            return (float) max( $prices );
-        }
+    // Simple product / fallback: raw _regular_price post meta, then raw
+    // _price as a last resort. NO filter calls.
+    $raw_regular = get_post_meta( $product_id, '_regular_price', true );
+    if ( is_numeric( $raw_regular ) && (float) $raw_regular > 0 ) {
+        return (float) $raw_regular;
     }
-
-    // 3. Simple / subscription: filtered get_price (what the website shows).
-    $filtered_price = (float) $product->get_price();
-    if ( $filtered_price > 0 ) {
-        return $filtered_price;
+    $raw_price = get_post_meta( $product_id, '_price', true );
+    if ( is_numeric( $raw_price ) && (float) $raw_price > 0 ) {
+        return (float) $raw_price;
     }
-    $raw = get_post_meta( $product_id, '_regular_price', true );
-    if ( $raw !== '' && is_numeric( $raw ) && (float) $raw > 0 ) {
-        return (float) $raw;
+    if ( $parent_id ) {
+        $raw_parent_regular = get_post_meta( $parent_id, '_regular_price', true );
+        if ( is_numeric( $raw_parent_regular ) && (float) $raw_parent_regular > 0 ) {
+            return (float) $raw_parent_regular;
+        }
     }
 
     return 0.0;
+}
+
+/**
+ * Direct SQL MAX of raw _regular_price across all published variations
+ * of a parent product. Bypasses every filter chain (apply_wholesale_price,
+ * WC Subscriptions, WCSATT). Returns the highest stored variation
+ * regular price, which for a variable-subscription product is always
+ * the "one-time / single-cycle" variation (subscription cycles are by
+ * definition discounted off the one-time rate). Used as the truth source
+ * for MSRP on the order form + wholesale checkout.
+ */
+function slw_max_variation_regular_price( $parent_id ) {
+    static $cache = array();
+    $parent_id = (int) $parent_id;
+    if ( $parent_id <= 0 ) return 0.0;
+    if ( isset( $cache[ $parent_id ] ) ) return $cache[ $parent_id ];
+    global $wpdb;
+    $max = $wpdb->get_var( $wpdb->prepare(
+        "SELECT MAX(CAST(pm.meta_value AS DECIMAL(12,4)))
+         FROM {$wpdb->posts} p
+         INNER JOIN {$wpdb->postmeta} pm ON pm.post_id = p.ID
+            AND pm.meta_key = '_regular_price'
+         WHERE p.post_parent = %d
+           AND p.post_type = 'product_variation'
+           AND p.post_status = 'publish'",
+        $parent_id
+    ) );
+    // If _regular_price is empty across all variations (some WCSATT setups
+    // only fill _price), fall back to MAX of _price.
+    if ( ! $max || (float) $max <= 0 ) {
+        $max = $wpdb->get_var( $wpdb->prepare(
+            "SELECT MAX(CAST(pm.meta_value AS DECIMAL(12,4)))
+             FROM {$wpdb->posts} p
+             INNER JOIN {$wpdb->postmeta} pm ON pm.post_id = p.ID
+                AND pm.meta_key = '_price'
+             WHERE p.post_parent = %d
+               AND p.post_type = 'product_variation'
+               AND p.post_status = 'publish'",
+            $parent_id
+        ) );
+    }
+    $cache[ $parent_id ] = $max ? (float) $max : 0.0;
+    return $cache[ $parent_id ];
 }
 
 /**

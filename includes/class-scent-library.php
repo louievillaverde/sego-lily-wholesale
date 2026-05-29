@@ -19,6 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 class SLW_Scent_Library {
 
     private static $scents = array(
+        // Curated from Holly's master scent library page on segolilyskincare.com.
         'honey creme' => array(
             'intensity'   => 'Light',
             'description' => 'Subtle sweetness of raw honeycomb and oat milk. Gentle, sweet, comforting.',
@@ -62,6 +63,151 @@ class SLW_Scent_Library {
         'unscented' => array(
             'intensity'   => 'None',
             'description' => 'Pure rendered suet. No added fragrance. Pure, natural, safe for sensitive skin.',
+        ),
+
+        // Additional common natural-oil scents written in the same voice
+        // as the master library (sensory + mood tags) so anything in
+        // Holly's catalog beyond the 11 curated entries still surfaces
+        // a useful hover description.
+        'lavender' => array(
+            'intensity'   => 'Medium',
+            'description' => 'Classic French lavender. Calming, floral, dreamy. Quiet evenings, slow mornings.',
+        ),
+        'lavender mint' => array(
+            'intensity'   => 'Medium',
+            'description' => 'Soft lavender meets a whisper of mint. Cooling, calming, herbal.',
+        ),
+        'peppermint' => array(
+            'intensity'   => 'Strong',
+            'description' => 'Cool peppermint leaf. Tingly, awakening, crisp. Great for sore muscles and tired heads.',
+        ),
+        'spearmint' => array(
+            'intensity'   => 'Medium',
+            'description' => 'Soft minty sweetness, less sharp than peppermint. Fresh, cooling, clean.',
+        ),
+        'rose' => array(
+            'intensity'   => 'Medium',
+            'description' => 'True rose petal. Soft, floral, romantic. A timeless skincare classic.',
+        ),
+        'rose geranium' => array(
+            'intensity'   => 'Medium',
+            'description' => 'Rose with a green herbal edge. Floral, balancing, grown-up.',
+        ),
+        'lemon' => array(
+            'intensity'   => 'Medium',
+            'description' => 'Fresh-squeezed lemon zest. Bright, clean, energizing. A morning kind of scent.',
+        ),
+        'lime' => array(
+            'intensity'   => 'Medium',
+            'description' => 'Sharp, juicy lime. Zesty, crisp, refreshing.',
+        ),
+        'grapefruit' => array(
+            'intensity'   => 'Medium',
+            'description' => 'Pink grapefruit zest. Bittersweet, lively, mood-lifting.',
+        ),
+        'bergamot' => array(
+            'intensity'   => 'Medium',
+            'description' => 'The citrus note in Earl Grey tea. Bright, slightly floral, elegant.',
+        ),
+        'lemongrass' => array(
+            'intensity'   => 'Medium',
+            'description' => 'Bright, grassy citrus. Clean, lively, summer-porch energy.',
+        ),
+        'tea tree' => array(
+            'intensity'   => 'Strong',
+            'description' => 'Sharp, herbal, medicinal. The one you reach for when skin needs help.',
+        ),
+        'sandalwood' => array(
+            'intensity'   => 'Strong',
+            'description' => 'Creamy, warm wood with a soft sweetness. Grounding, sensual, timeless.',
+        ),
+        'cedarwood' => array(
+            'intensity'   => 'Medium',
+            'description' => 'Dry cedar with hints of pencil shavings. Woody, calming, masculine-leaning.',
+        ),
+        'pine' => array(
+            'intensity'   => 'Medium',
+            'description' => 'Fresh pine needle. Woodsy, clean, evergreen forest after rain.',
+        ),
+        'fir' => array(
+            'intensity'   => 'Medium',
+            'description' => 'Crisp evergreen with a touch of sweetness. Cool, woody, wintry.',
+        ),
+        'patchouli' => array(
+            'intensity'   => 'Strong',
+            'description' => 'Deep, earthy, slightly sweet. Grounding and unmistakable. Polarizing in the best way.',
+        ),
+        'frankincense' => array(
+            'intensity'   => 'Strong',
+            'description' => 'Resinous, warm, slightly smoky. Meditative and ancient.',
+        ),
+        'myrrh' => array(
+            'intensity'   => 'Strong',
+            'description' => 'Earthy resin with a bittersweet edge. Quiet, contemplative, balsamic.',
+        ),
+        'jasmine' => array(
+            'intensity'   => 'Strong',
+            'description' => 'Heady white florals. Sweet, intoxicating, evening-garden.',
+        ),
+        'ylang ylang' => array(
+            'intensity'   => 'Strong',
+            'description' => 'Rich, sweet tropical floral. Heady, exotic, sensual.',
+        ),
+        'geranium' => array(
+            'intensity'   => 'Medium',
+            'description' => 'Green, rosy, herbal. Balancing and refreshing.',
+        ),
+        'chamomile' => array(
+            'intensity'   => 'Light',
+            'description' => 'Soft, apple-sweet, calming. Bedtime in a bottle.',
+        ),
+        'cinnamon' => array(
+            'intensity'   => 'Strong',
+            'description' => 'Warm cinnamon stick. Spicy, sweet, fireside-cozy.',
+        ),
+        'clove' => array(
+            'intensity'   => 'Strong',
+            'description' => 'Sharp, warm spice. Holiday-baking warmth with a tingle.',
+        ),
+        'sage' => array(
+            'intensity'   => 'Medium',
+            'description' => 'Dry, herbal, slightly camphorous. Grounding and a little ceremonial.',
+        ),
+        'rosemary' => array(
+            'intensity'   => 'Medium',
+            'description' => 'Sharp green herb. Clean, focusing, kitchen-garden fresh.',
+        ),
+        'basil' => array(
+            'intensity'   => 'Medium',
+            'description' => 'Sweet green basil leaf. Fresh, herbal, slightly anise.',
+        ),
+        'coconut' => array(
+            'intensity'   => 'Medium',
+            'description' => 'Fresh-cracked coconut meat. Creamy, tropical, beach-vacation.',
+        ),
+        'almond' => array(
+            'intensity'   => 'Light',
+            'description' => 'Soft, slightly sweet, nutty. Marzipan and warm milk.',
+        ),
+        'apple' => array(
+            'intensity'   => 'Medium',
+            'description' => 'Crisp orchard apple. Sweet, fresh, autumn-picking.',
+        ),
+        'pumpkin spice' => array(
+            'intensity'   => 'Strong',
+            'description' => 'Pumpkin, cinnamon, nutmeg, clove. Sweater weather in a tin.',
+        ),
+        'cranberry' => array(
+            'intensity'   => 'Medium',
+            'description' => 'Tart, juicy berry. Bright, slightly sweet, holiday-table.',
+        ),
+        'sweet orange' => array(
+            'intensity'   => 'Medium',
+            'description' => 'Juicy table orange. Sweet, cheerful, kid-friendly.',
+        ),
+        'blood orange' => array(
+            'intensity'   => 'Medium',
+            'description' => 'Orange with a deeper, slightly bitter edge. Bold, citrus-forward.',
         ),
     );
 

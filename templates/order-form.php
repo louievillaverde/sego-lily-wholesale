@@ -827,9 +827,12 @@ $products = $all_products; // keep for empty check
          page (qty > 0) so the customer can see exactly what's about to
          hit checkout without scrolling back through the product tables. -->
     <div class="slw-of-card slw-cart-preview" aria-live="polite">
-        <div class="slw-of-card__header">
-            <h3 class="slw-of-card__title">Cart Preview</h3>
-            <p class="slw-of-card__subtitle" id="slw-cart-preview-meta">Set quantities above to populate.</p>
+        <div class="slw-of-card__header slw-cart-preview__header">
+            <div class="slw-of-card__header-text">
+                <h3 class="slw-of-card__title">Cart Preview</h3>
+                <p class="slw-of-card__subtitle" id="slw-cart-preview-meta">Set quantities above to populate.</p>
+            </div>
+            <button type="button" class="slw-cart-preview__clear" id="slw-cart-preview-clear" hidden>Clear cart</button>
         </div>
         <ul class="slw-cart-preview__list" id="slw-cart-preview-list"></ul>
     </div>
@@ -896,14 +899,15 @@ $products = $all_products; // keep for empty check
     gap: 12px;
     align-items: center;
     margin-top: 12px;
-    margin-bottom: 26px;
+    margin-bottom: 10px;
     flex-wrap: wrap;
 }
 .slw-order-header-tools .slw-order-search { margin-top: 0; flex: 1; min-width: 240px; }
 .slw-bulk-import-btn { flex-shrink: 0; }
 .slw-minimum-note {
-    margin-top: 18px !important;
-    padding: 10px 14px;
+    margin-top: 0 !important;
+    margin-bottom: 18px;
+    padding: 8px 14px;
     background: #fff8e3;
     border: 1px solid #f0d780;
     border-radius: 8px;
@@ -1210,12 +1214,67 @@ $products = $all_products; // keep for empty check
 .slw-of-card__subtitle { margin: 0; font-size: 12px; color: #628393; font-style: italic; }
 
 /* Cart Preview list */
+.slw-cart-preview__header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.slw-cart-preview__clear {
+    background: transparent;
+    border: 1px solid #d4cebc;
+    color: #864e4e;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    align-self: center;
+}
+.slw-cart-preview__clear:hover { background: #fff0f0; border-color: #b27474; color: #6e3a3a; }
+.slw-cart-preview__clear[hidden] { display: none; }
 .slw-cart-preview__list { list-style: none; margin: 0; padding: 0; }
-.slw-cart-preview__item { display: grid; grid-template-columns: 36px 1fr auto; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px dashed rgba(224, 219, 208, 0.65); font-size: 13px; }
+.slw-cart-preview__item { display: grid; grid-template-columns: 36px 1fr auto 28px; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px dashed rgba(224, 219, 208, 0.65); font-size: 13px; }
 .slw-cart-preview__item:last-child { border-bottom: none; }
 .slw-cart-preview__qty { font-weight: 700; color: #386174; font-family: Georgia, 'Times New Roman', serif; }
-.slw-cart-preview__name { color: #2C2C2C; }
-.slw-cart-preview__total { font-weight: 600; color: #2C2C2C; }
+.slw-cart-preview__name { color: #2C2C2C; text-wrap: pretty; }
+.slw-cart-preview__total { font-weight: 600; color: #2C2C2C; white-space: nowrap; }
+.slw-cart-preview__remove {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 1px solid transparent;
+    background: transparent;
+    color: #b27474;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    padding: 0;
+}
+.slw-cart-preview__remove:hover {
+    background: #fff0f0;
+    border-color: #d4a8a8;
+    color: #6e3a3a;
+}
+.slw-cart-preview__remove:disabled { opacity: 0.4; cursor: not-allowed; }
+/* Hide WooCommerce green "added to cart" notice and theme/Elementor
+   variants on the wholesale order form. The Cart Preview gives a much
+   cleaner confirmation; the theme's pop-out lands right on top of the
+   Proceed to Checkout button. */
+.slw-order-form-container ~ .woocommerce-notices-wrapper,
+.slw-order-form-container .woocommerce-notices-wrapper,
+.slw-order-form-container ~ .woocommerce-message,
+.slw-order-form-container .woocommerce-message,
+.slw-order-form-container .wc-block-components-notice-banner,
+.slw-order-form-container .wc-block-components-notice-snackbar,
+.slw-order-form-container .elementor-message,
+body.page-wholesale-order .woocommerce-message,
+body.page-wholesale-order .woocommerce-notices-wrapper,
+body.page-wholesale-order .wc-block-components-notice-snackbar,
+body.page-wholesale-order .wc-block-components-notice-banner,
+body.page-wholesale-order .elementor-message {
+    display: none !important;
+}
 .slw-cart-preview__item--in-cart { background: rgba(56, 97, 116, 0.04); margin: 0 -6px; padding-left: 6px; padding-right: 6px; border-radius: 4px; }
 .slw-cart-preview__item--staged .slw-cart-preview__qty { color: #8a6d1a; }
 .slw-cart-preview__pending { font-size: 11px; color: #8a6d1a; font-style: italic; margin-left: 6px; font-weight: 500; }
@@ -1242,7 +1301,9 @@ $products = $all_products; // keep for empty check
     .slw-os-line { flex-wrap: wrap; }
     .slw-os-shipping { text-align: left; flex-basis: 100%; }
     .slw-cart-preview__item { grid-template-columns: 32px 1fr; }
+    .slw-cart-preview__item { grid-template-columns: 32px 1fr 28px; gap: 8px; }
     .slw-cart-preview__total { grid-column: 2; text-align: right; }
+    .slw-cart-preview__remove { grid-row: 1 / span 2; align-self: start; }
 }
 .slw-of-toast {
     position: fixed;
@@ -1331,6 +1392,64 @@ $products = $all_products; // keep for empty check
         var joined = parts.join(decimalSep);
         return sign + currencySymbol + joined;
     }
+    function escapeHtml(str) {
+        return String(str || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+    function refreshCartFromServer(payload) {
+        if (!payload || !Array.isArray(payload.items)) return;
+        inCartItems = payload.items;
+        updateSubtotal();
+    }
+    function postCartAction(action, extra) {
+        var fd = new FormData();
+        fd.append('action', action);
+        fd.append('nonce', nonce);
+        if (extra) {
+            Object.keys(extra).forEach(function(k) { fd.append(k, extra[k]); });
+        }
+        return fetch(ajaxUrl, { method: 'POST', credentials: 'same-origin', body: fd })
+            .then(function(r) { return r.json(); })
+            .then(function(json) {
+                if (json && json.success) {
+                    refreshCartFromServer(json.data);
+                } else {
+                    console.warn('[SLW] cart action failed', action, json);
+                }
+                return json;
+            })
+            .catch(function(err) { console.warn('[SLW] cart action error', action, err); });
+    }
+
+    // Cart Preview: per-line remove (delegated) + clear-all
+    if (previewListEl) {
+        previewListEl.addEventListener('click', function(e) {
+            var btn = e.target.closest('.slw-cart-preview__remove');
+            if (!btn) return;
+            e.preventDefault();
+            btn.disabled = true;
+            postCartAction('slw_remove_cart_line', {
+                cart_key:     btn.getAttribute('data-cart-key')     || '',
+                product_id:   btn.getAttribute('data-product-id')   || '0',
+                variation_id: btn.getAttribute('data-variation-id') || '0'
+            });
+        });
+    }
+    var clearCartBtn = document.getElementById('slw-cart-preview-clear');
+    if (clearCartBtn) {
+        clearCartBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (!window.confirm('Remove every item from your cart?')) return;
+            clearCartBtn.disabled = true;
+            postCartAction('slw_clear_cart').finally(function() {
+                clearCartBtn.disabled = false;
+            });
+        });
+    }
 
     var previewListEl = document.getElementById('slw-cart-preview-list');
     var previewMetaEl = document.getElementById('slw-cart-preview-meta');
@@ -1344,11 +1463,20 @@ $products = $all_products; // keep for empty check
             foreach ( WC()->cart->get_cart() as $key => $ci ) {
                 $prod = $ci['data'] ?? null;
                 if ( ! $prod ) continue;
+                // get_formatted_name includes variation attributes (scent +
+                // size, e.g. "Renewal Tallow Butter - Mango - 4oz"). Strip
+                // the leading SKU prefix that WC prepends so the label reads
+                // clean in the Cart Preview.
+                $label = $prod->get_name();
+                if ( method_exists( $prod, 'get_formatted_name' ) ) {
+                    $label = preg_replace( '/^\(#[^)]+\)\s*/', '', $prod->get_formatted_name() );
+                }
                 $boot[] = array(
+                    'cart_key'     => $key,
                     'product_id'   => (int) ( $ci['product_id'] ?? 0 ),
                     'variation_id' => (int) ( $ci['variation_id'] ?? 0 ),
                     'qty'          => (int) ( $ci['quantity'] ?? 0 ),
-                    'label'        => $prod->get_name(),
+                    'label'        => wp_strip_all_tags( $label ),
                     'lineTotal'    => (float) $prod->get_price() * (int) ( $ci['quantity'] ?? 0 ),
                 );
             }
@@ -1439,8 +1567,12 @@ $products = $all_products; // keep for empty check
                 li.className = 'slw-cart-preview__item slw-cart-preview__item--in-cart';
                 li.innerHTML =
                     '<span class="slw-cart-preview__qty">' + item.qty + '×</span>' +
-                    '<span class="slw-cart-preview__name">' + item.label + '</span>' +
-                    '<span class="slw-cart-preview__total">' + formatPrice(item.lineTotal) + '</span>';
+                    '<span class="slw-cart-preview__name">' + escapeHtml(item.label) + '</span>' +
+                    '<span class="slw-cart-preview__total">' + formatPrice(item.lineTotal) + '</span>' +
+                    '<button type="button" class="slw-cart-preview__remove" aria-label="Remove from cart"' +
+                        ' data-cart-key="' + (item.cart_key || '') + '"' +
+                        ' data-product-id="' + (item.product_id || 0) + '"' +
+                        ' data-variation-id="' + (item.variation_id || 0) + '">&times;</button>';
                 previewListEl.appendChild(li);
             });
             stagedItems.forEach(function(item) {
@@ -1448,7 +1580,7 @@ $products = $all_products; // keep for empty check
                 li.className = 'slw-cart-preview__item slw-cart-preview__item--staged';
                 li.innerHTML =
                     '<span class="slw-cart-preview__qty">' + item.qty + '×</span>' +
-                    '<span class="slw-cart-preview__name">' + item.label + ' <em class="slw-cart-preview__pending">(staged)</em></span>' +
+                    '<span class="slw-cart-preview__name">' + escapeHtml(item.label) + ' <em class="slw-cart-preview__pending">(staged)</em></span>' +
                     '<span class="slw-cart-preview__total">' + formatPrice(item.lineTotal) + '</span>';
                 previewListEl.appendChild(li);
             });
@@ -1463,6 +1595,8 @@ $products = $all_products; // keep for empty check
                     previewMetaEl.textContent = parts.join(' · ');
                 }
             }
+            var clearBtn = document.getElementById('slw-cart-preview-clear');
+            if (clearBtn) clearBtn.hidden = cartItemCount === 0;
         }
 
         // Savings vs retail (Tier 1 ROI element). Looks up each staged input's

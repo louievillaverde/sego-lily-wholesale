@@ -82,7 +82,10 @@ class SLW_Wholesale_Role {
         // opening side cart competes with it and confused Holly's customers.
         add_filter( 'woocommerce_widget_cart_is_hidden',  array( __CLASS__, 'hide_widget_cart_for_wholesale' ) );
         add_filter( 'woocommerce_add_to_cart_fragments',  array( __CLASS__, 'maybe_empty_cart_fragments' ), 999 );
-        add_action( 'wp_footer',                          array( __CLASS__, 'suppress_side_cart_js' ) );
+        // wp_head priority 1 so our document-level capture click listener
+        // is registered BEFORE Elementor's scripts attach their own. The
+        // hide CSS also lands before theme stylesheets paint.
+        add_action( 'wp_head',                            array( __CLASS__, 'suppress_side_cart_js' ), 1 );
 
         // Redirect "Return to shop" to wholesale order form for wholesale users
         add_filter( 'woocommerce_return_to_shop_redirect', array( __CLASS__, 'wholesale_return_to_shop' ) );
@@ -630,43 +633,19 @@ class SLW_Wholesale_Role {
         }
 
         // 3. Fall back to global percentage discount.
-        // Resolve the TRUE retail base. Subscription products store their
-        // recurring rate in _regular_price, so naive get_regular_price()
-        // returns the recurring rate. slw_get_true_regular_price walks
-        // variations + checks _slw_retail_price override + falls back to
-        // raw _regular_price meta, so it always reports MSRP not the
-        // recurring rate. Static recursion guard since the helper calls
-        // get_price() on siblings which re-enters this filter.
-        static $resolving = array();
-        $base_price = 0.0;
-        $pid = $product->get_id();
-        if ( empty( $resolving[ $pid ] ) ) {
-            $resolving[ $pid ] = true;
-            if ( function_exists( 'slw_get_true_regular_price' ) ) {
-                $base_price = (float) slw_get_true_regular_price( $product );
-            }
-            unset( $resolving[ $pid ] );
-        }
-        // Fallbacks if helper returned 0 (deep recursion case or no data):
-        // raw _regular_price meta first, then current filtered price.
-        if ( $base_price <= 0 ) {
-            $raw_regular = get_post_meta( $pid, '_regular_price', true );
-            if ( is_numeric( $raw_regular ) && (float) $raw_regular > 0 ) {
-                $base_price = (float) $raw_regular;
-            } elseif ( $product->get_parent_id() ) {
-                $raw_regular = get_post_meta( $product->get_parent_id(), '_regular_price', true );
-                if ( is_numeric( $raw_regular ) && (float) $raw_regular > 0 ) {
-                    $base_price = (float) $raw_regular;
-                }
-            }
-        }
+        // Resolve the TRUE retail base via slw_get_true_regular_price,
+        // which now walks variations via raw _regular_price post meta
+        // (direct SQL MAX). No filter recursion, no WC Subscriptions
+        // pollution -- always returns MSRP / one-time price, never the
+        // recurring rate.
+        $base_price = function_exists( 'slw_get_true_regular_price' )
+            ? (float) slw_get_true_regular_price( $product )
+            : 0.0;
         if ( $base_price <= 0 ) {
             $regular = $product->get_regular_price();
-            if ( $regular !== '' && is_numeric( $regular ) && (float) $regular > 0 ) {
-                $base_price = (float) $regular;
-            } else {
-                $base_price = (float) $price;
-            }
+            $base_price = ( $regular !== '' && is_numeric( $regular ) && (float) $regular > 0 )
+                ? (float) $regular
+                : (float) $price;
         }
 
         $discount = (float) slw_get_option( 'discount_percent', 50 );
@@ -838,8 +817,21 @@ class SLW_Wholesale_Role {
                 . 'a[href$="/cart"],'
                 . '.menu-item-cart,'
                 // Modal / dialog overlays that themes use for slide-out cart
-                . '.elementor-lightbox-content-wrapper:has(.elementor-menu-cart__container)'
-                . '{display:none!important;visibility:hidden!important;pointer-events:none!important}'
+                . '.elementor-lightbox-content-wrapper:has(.elementor-menu-cart__container),'
+                // Catch-all by class substring: any element whose class
+                // contains menu-cart / mini-cart / cart-drawer / cart-popup
+                // / cart-flyout / side-cart / cart-sidebar -- EXCEPT our
+                // own .slw- components.
+                . '[class*="menu-cart"]:not([class*="slw-"]),'
+                . '[class*="mini-cart"]:not([class*="slw-"]),'
+                . '[class*="cart-drawer"]:not([class*="slw-"]),'
+                . '[class*="cart-popup"]:not([class*="slw-"]),'
+                . '[class*="cart-flyout"]:not([class*="slw-"]),'
+                . '[class*="cart-sidebar"]:not([class*="slw-"]),'
+                . '[id*="menu-cart"],'
+                . '[id*="mini-cart"],'
+                . '[id*="cart-drawer"]'
+                . '{display:none!important;visibility:hidden!important;pointer-events:none!important;opacity:0!important;width:0!important;height:0!important;overflow:hidden!important}'
                 . '</style>';
         } );
     }
@@ -1017,21 +1009,27 @@ class SLW_Wholesale_Role {
             // 3. Sticky bottom bar coordination: if any side cart IS open
             //    (transient state we couldn't prevent), hide our Cart
             //    Preview floating bar so they don't visually collide.
-            var stickyBar = document.querySelector('.slw-sticky-bar, .slw-cart-preview-sticky');
+            //    Re-query each call since this script runs in wp_head and
+            //    the sticky bar isn't in the DOM yet at registration time.
             function syncStickyBar() {
+                var stickyBar = document.querySelector('.slw-sticky-bar, .slw-cart-preview-sticky');
+                if (!stickyBar) return;
                 var anyOpen = false;
                 openSelectors.forEach(function(sel) {
                     if (document.querySelector(sel)) anyOpen = true;
                 });
-                if (stickyBar) {
-                    if (anyOpen) {
-                        stickyBar.classList.add('slw-sticky-bar--hidden-by-cart');
-                    } else {
-                        stickyBar.classList.remove('slw-sticky-bar--hidden-by-cart');
-                    }
+                if (anyOpen) {
+                    stickyBar.classList.add('slw-sticky-bar--hidden-by-cart');
+                } else {
+                    stickyBar.classList.remove('slw-sticky-bar--hidden-by-cart');
                 }
             }
-            syncStickyBar();
+            // Run on DOMContentLoaded once body is available
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', syncStickyBar);
+            } else {
+                syncStickyBar();
+            }
 
             try {
                 var observer = new MutationObserver(function() {
@@ -1042,26 +1040,44 @@ class SLW_Wholesale_Role {
             } catch (e) {}
 
             // 4. Block jQuery events that themes use to open the side cart.
-            if (typeof window.jQuery !== 'undefined') {
+            //    jQuery isn't loaded yet at wp_head time, so wait for
+            //    DOMContentLoaded + a tick for jQuery to register.
+            function blockJqueryCartEvents() {
+                if (typeof window.jQuery === 'undefined') return;
                 jQuery(document.body).off('added_to_cart wc_fragments_refreshed wc_fragments_loaded');
                 jQuery(document.body).on('added_to_cart wc_fragments_refreshed wc_fragments_loaded', function(e) {
                     e.stopImmediatePropagation();
                     closeOpened();
                 });
             }
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function() {
+                    blockJqueryCartEvents();
+                    // Re-attempt after jQuery scripts finish loading
+                    window.addEventListener('load', blockJqueryCartEvents);
+                });
+            } else {
+                blockJqueryCartEvents();
+                window.addEventListener('load', blockJqueryCartEvents);
+            }
 
             // 5. As a last resort, also try removing the cart icon DOM nodes
             //    after a small delay so Elementor's initial render finishes
             //    before we yank them. Only the visible icons -- NOT the
             //    container divs, which Elementor sometimes needs in place.
-            setTimeout(function() {
-                ['.elementor-menu-cart__toggle', 'a.cart-contents'].forEach(function(sel) {
+            function nukeIcons() {
+                ['.elementor-menu-cart__toggle', 'a.cart-contents', '[class*="menu-cart"] a', '[class*="cart-toggle"]'].forEach(function(sel) {
                     document.querySelectorAll(sel).forEach(function(el) {
                         el.style.display = 'none';
                         el.style.pointerEvents = 'none';
                     });
                 });
-            }, 300);
+            }
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function() { setTimeout(nukeIcons, 300); });
+            } else {
+                setTimeout(nukeIcons, 300);
+            }
         })();
         </script>
         <style id="slw-sticky-side-cart-coordination">
