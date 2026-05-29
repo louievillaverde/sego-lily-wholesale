@@ -253,7 +253,16 @@ $products = $all_products; // keep for empty check
                 </span>
             </div>
             <div style="display:flex;align-items:center;gap:12px;">
-                <button type="button" class="slw-btn slw-btn-small slw-add-category" data-category="<?php echo esc_attr( $cat_slug ); ?>" style="background:#D4AF37;color:#1E2A30;border:none;font-weight:700;" onclick="event.stopPropagation();">Add <?php echo esc_html( $category_name ); ?> to Cart</button>
+                <?php
+                // Pluralize singular category names ("Deodorant" -> "Deodorants")
+                // so the button always reads as "Add Deodorants to Cart" instead
+                // of "Add Deodorant to Cart". Skips categories that already end
+                // in s/x/z/ch/sh.
+                $cat_label_plural = preg_match( '/(s|x|z|ch|sh)$/i', $category_name )
+                    ? $category_name
+                    : $category_name . 's';
+                ?>
+                <button type="button" class="slw-btn slw-btn-small slw-add-category" data-category="<?php echo esc_attr( $cat_slug ); ?>" style="background:#D4AF37;color:#1E2A30;border:none;font-weight:700;" onclick="event.stopPropagation();">Add <?php echo esc_html( $cat_label_plural ); ?> to Cart</button>
                 <span class="slw-category-toggle" style="font-size:18px;">&#9660;</span>
             </div>
         </div>
@@ -520,16 +529,26 @@ $products = $all_products; // keep for empty check
         </div>
     </div>
 
-    <div class="slw-order-form-footer">
-        <div class="slw-of-subtotal-block" aria-live="polite">
-            <span class="slw-of-subtotal-label">Subtotal</span>
-            <span class="slw-of-subtotal-value" id="slw-of-subtotal"><?php echo wp_kses_post( wc_price( 0 ) ); ?></span>
-            <span class="slw-of-subtotal-meta" id="slw-of-subtotal-meta">0 items</span>
+    <!-- Order summary card. The order form itself acts as the cart -- a
+         compact 2-line summary preceding the action row so the customer
+         can see what they are about to commit to without bouncing through
+         a separate /cart page. Camila + LV May 29 2026: wholesale checkout
+         flow now skips /cart entirely. -->
+    <div class="slw-order-summary-card" aria-live="polite">
+        <div class="slw-os-line slw-os-line--main">
+            <span class="slw-os-label">Order subtotal</span>
+            <span class="slw-os-value" id="slw-of-subtotal"><?php echo wp_kses_post( wc_price( 0 ) ); ?></span>
         </div>
+        <div class="slw-os-line slw-os-line--meta">
+            <span class="slw-os-meta" id="slw-of-subtotal-meta">0 items</span>
+            <span class="slw-os-shipping" id="slw-of-shipping-line"></span>
+        </div>
+    </div>
+
+    <div class="slw-order-form-footer">
         <div class="slw-of-actions">
-            <button type="button" class="slw-btn slw-btn-primary" id="slw-add-all-btn">Add All to Cart</button>
-            <button type="button" class="slw-btn slw-btn-secondary" id="slw-save-template-btn">Save as Template</button>
-            <a href="<?php echo esc_url( wc_get_cart_url() ); ?>" class="slw-btn slw-btn-secondary">View Cart</a>
+            <button type="button" class="slw-btn slw-btn-secondary" id="slw-save-template-btn">Save Order</button>
+            <button type="button" class="slw-btn slw-btn-primary slw-btn-cta" id="slw-checkout-btn">Proceed to Checkout</button>
         </div>
     </div>
 
@@ -537,16 +556,32 @@ $products = $all_products; // keep for empty check
 </div>
 
 <style>
-.slw-order-form-footer { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; padding: 16px 20px; background: #F7F6F3; border: 1px solid #E8E2D6; border-radius: 10px; margin-top: 24px; }
-.slw-of-subtotal-block { display: flex; align-items: baseline; gap: 8px; font-family: Georgia, 'Times New Roman', serif; }
-.slw-of-subtotal-label { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; color: #628393; font-weight: 600; }
-.slw-of-subtotal-value { font-size: 22px; font-weight: 700; color: #2C2C2C; }
-.slw-of-subtotal-meta { font-size: 12px; color: #628393; font-style: italic; }
-.slw-of-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.slw-order-summary-card {
+    margin-top: 24px;
+    padding: 18px 22px;
+    background: linear-gradient(180deg, #FAF8F2 0%, #F7F6F3 100%);
+    border: 1px solid #E0DBD0;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(56, 97, 116, 0.05);
+}
+.slw-os-line { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
+.slw-os-line--main { padding-bottom: 8px; border-bottom: 1px dashed #E0DBD0; margin-bottom: 8px; }
+.slw-os-label { font-family: Georgia, 'Times New Roman', serif; font-size: 14px; color: #386174; font-weight: 600; letter-spacing: 0.2px; }
+.slw-os-value { font-family: Georgia, 'Times New Roman', serif; font-size: 24px; font-weight: 700; color: #2C2C2C; line-height: 1; }
+.slw-os-meta { font-size: 12px; color: #628393; font-style: italic; }
+.slw-os-shipping { font-size: 12px; color: #628393; text-align: right; }
+.slw-os-shipping strong { color: #2C2C2C; font-style: normal; font-weight: 700; }
+
+.slw-order-form-footer { display: flex; justify-content: flex-end; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
+.slw-of-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.slw-of-actions .slw-btn-cta { padding-left: 26px; padding-right: 26px; font-size: 15px; }
+
 @media (max-width: 600px) {
-    .slw-order-form-footer { flex-direction: column; align-items: stretch; }
-    .slw-of-subtotal-block { justify-content: space-between; }
-    .slw-of-actions { justify-content: flex-end; }
+    .slw-order-form-footer { justify-content: stretch; }
+    .slw-of-actions { width: 100%; }
+    .slw-of-actions .slw-btn { flex: 1; }
+    .slw-os-line { flex-wrap: wrap; }
+    .slw-os-shipping { text-align: left; flex-basis: 100%; }
 }
 .slw-of-toast {
     position: fixed;
@@ -607,7 +642,8 @@ $products = $all_products; // keep for empty check
     var nonce = '<?php echo esc_js( $nonce ); ?>';
     var msgEl = document.getElementById('slw-order-message');
 
-    var cartUrl = <?php echo wp_json_encode( wc_get_cart_url() ); ?>;
+    var cartUrl     = <?php echo wp_json_encode( wc_get_cart_url() ); ?>;
+    var checkoutUrl = <?php echo wp_json_encode( wc_get_checkout_url() ); ?>;
 
     // Live order subtotal in the footer. Reads data-price + quantity off
     // every .slw-qty-input row and renders running totals so the wholesale
@@ -687,11 +723,11 @@ $products = $all_products; // keep for empty check
         msg.className = 'slw-of-toast__msg';
         msg.textContent = text;
         toast.appendChild(msg);
-        if (type === 'success' && cartUrl) {
+        if (type === 'success' && checkoutUrl) {
             var link = document.createElement('a');
-            link.href = cartUrl;
+            link.href = checkoutUrl;
             link.className = 'slw-of-toast__cta';
-            link.textContent = 'View Cart →';
+            link.textContent = 'Checkout →';
             toast.appendChild(link);
         }
         document.body.appendChild(toast);
@@ -895,24 +931,59 @@ $products = $all_products; // keep for empty check
         });
     });
 
-    // "Add All to Cart" button
-    var addAllBtn = document.getElementById('slw-add-all-btn');
-    if (addAllBtn) {
-        addAllBtn.addEventListener('click', function() {
+    // "Proceed to Checkout" button. Collects every row with qty > 0,
+    // bulk-adds to the WC cart, then redirects straight to /checkout --
+    // skips /cart entirely per the May 29 2026 call with Camila + LV.
+    // Items already added via per-row buttons live in the WC cart; this
+    // path picks up anything still in the on-page quantity inputs.
+    var checkoutBtn = document.getElementById('slw-checkout-btn');
+    if (checkoutBtn) {
+        checkoutBtn.addEventListener('click', function() {
+            var btn = this;
             var items = collectItems(null);
+
+            // Nothing to add but cart has items already -> go straight to checkout.
             if (items.length === 0) {
-                showMessage('Set quantities for the products you want, then click Add All to Cart.', 'info');
+                window.location.href = checkoutUrl;
                 return;
             }
-            addToCart(items, this, 'Add All to Cart');
+
+            btn.disabled = true;
+            btn.textContent = 'Preparing checkout...';
+
+            var formData = new FormData();
+            formData.append('action', 'slw_add_to_cart');
+            formData.append('nonce', nonce);
+            formData.append('items', JSON.stringify(items));
+
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', ajaxUrl);
+            xhr.onload = function() {
+                var resp;
+                try { resp = JSON.parse(xhr.responseText); } catch(e) { resp = null; }
+                if (resp && resp.success) {
+                    window.location.href = checkoutUrl;
+                } else {
+                    var msg = (resp && resp.data && resp.data.message) ? resp.data.message : 'Could not prepare checkout.';
+                    showMessage(msg, 'error');
+                    btn.disabled = false;
+                    btn.textContent = 'Proceed to Checkout';
+                }
+            };
+            xhr.onerror = function() {
+                showMessage('Network error. Please try again.', 'error');
+                btn.disabled = false;
+                btn.textContent = 'Proceed to Checkout';
+            };
+            xhr.send(formData);
         });
     }
 
-    // "Save as Template" button
+    // "Save Order" button
     var saveTemplateBtn = document.getElementById('slw-save-template-btn');
     if (saveTemplateBtn) {
         saveTemplateBtn.addEventListener('click', function() {
-            var templateName = prompt('Enter a name for this order template:');
+            var templateName = prompt('Name this saved order (e.g. "Q3 reorder"):');
             if (!templateName || !templateName.trim()) return;
 
             saveTemplateBtn.disabled = true;
@@ -935,12 +1006,12 @@ $products = $all_products; // keep for empty check
                     showMessage(msg, 'error');
                 }
                 saveTemplateBtn.disabled = false;
-                saveTemplateBtn.textContent = 'Save as Template';
+                saveTemplateBtn.textContent = 'Save Order';
             };
             xhr.onerror = function() {
                 showMessage('Network error. Please try again.', 'error');
                 saveTemplateBtn.disabled = false;
-                saveTemplateBtn.textContent = 'Save as Template';
+                saveTemplateBtn.textContent = 'Save Order';
             };
             xhr.send(formData);
         });
@@ -1015,6 +1086,15 @@ $products = $all_products; // keep for empty check
                 });
                 html += '</div>';
                 resultsEl.innerHTML = html;
+                // Mirror the cheapest rate up to the summary card so the
+                // customer sees an estimated grand total without scrolling.
+                if (resp.data.rates.length > 0) {
+                    var shipLine = document.getElementById('slw-of-shipping-line');
+                    if (shipLine) {
+                        var firstRate = resp.data.rates[0];
+                        shipLine.innerHTML = '+ shipping est. <strong>' + firstRate.cost + '</strong>';
+                    }
+                }
             } else {
                 var msg = (resp && resp.data && resp.data.message) ? resp.data.message : 'Could not calculate shipping.';
                 resultsEl.innerHTML = '<div class="slw-shipping-notice slw-shipping-notice-error">' + msg + '</div>';
