@@ -73,6 +73,18 @@ class SLW_Scent_Library {
             'intensity'   => 'None',
             'description' => 'Pure rendered suet. No added fragrance. Pure, natural, safe for sensitive skin.',
         ),
+        'cedarwood sage' => array(
+            'intensity'   => 'Medium',
+            'description' => 'Dry cedar wood with herbal sage. Woody, grounding, quietly ceremonial.',
+        ),
+        'coconut' => array(
+            'intensity'   => 'Medium',
+            'description' => 'Fresh-cracked coconut meat. Creamy, tropical, beach-vacation in a tin.',
+        ),
+        'huckleberry' => array(
+            'intensity'   => 'Medium',
+            'description' => 'Wild mountain berry. Tart, juicy, slightly woodsy. A taste of Big Sky country.',
+        ),
     );
 
     /**

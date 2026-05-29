@@ -483,7 +483,11 @@ $products = $all_products; // keep for empty check
                     //   4. variation meta '_slw_scent_description'
                     //   5. parent product short description (last-resort fallback)
                     $scent_desc = '';
-                    if ( class_exists( 'SLW_Scent_Library' ) ) {
+                    // Variety / gift set products have no single scent --
+                    // skip the hover entirely so we don't surface a generic
+                    // fallback description that doesn't apply.
+                    $is_variety = (bool) preg_match( '/variety|gift\s*set/i', $product->get_name() );
+                    if ( ! $is_variety && class_exists( 'SLW_Scent_Library' ) ) {
                         $lib_hit = SLW_Scent_Library::get_description( $var_label );
                         if ( $lib_hit ) {
                             $scent_desc = $lib_hit;
@@ -498,10 +502,10 @@ $products = $all_products; // keep for empty check
                             }
                         }
                     }
-                    if ( ! $scent_desc ) {
+                    if ( ! $is_variety && ! $scent_desc ) {
                         $scent_desc = trim( wp_strip_all_tags( $variation->get_description() ) );
                     }
-                    if ( ! $scent_desc ) {
+                    if ( ! $is_variety && ! $scent_desc ) {
                         foreach ( (array) $variation->get_attributes() as $attr_tax => $attr_val ) {
                             if ( ! $attr_val ) continue;
                             $lower_val = strtolower( (string) $attr_val );
@@ -519,10 +523,10 @@ $products = $all_products; // keep for empty check
                             }
                         }
                     }
-                    if ( ! $scent_desc ) {
+                    if ( ! $is_variety && ! $scent_desc ) {
                         $scent_desc = trim( wp_strip_all_tags( (string) get_post_meta( $variation->get_id(), '_slw_scent_description', true ) ) );
                     }
-                    if ( ! $scent_desc && $product_desc ) {
+                    if ( ! $is_variety && ! $scent_desc && $product_desc ) {
                         $scent_desc = $product_desc;
                     }
                     if ( strlen( $scent_desc ) > 320 ) {
