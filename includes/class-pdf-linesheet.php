@@ -435,13 +435,20 @@ body {
 .linesheet-header-right .validity {
 	margin-top: 10px;
 	display: inline-flex;
-	align-items: baseline;
+	align-items: center;
 	gap: 6px;
-	padding: 4px 10px 4px 12px;
+	padding: 4px 12px;
 	background: #fdf6e3;
 	border: 1px solid #e8d59a;
 	border-radius: 999px;
 	font-size: 11px;
+}
+
+.linesheet-header-right .validity-icon {
+	width: 12px;
+	height: 12px;
+	color: #8a6d1a;
+	flex-shrink: 0;
 }
 
 .linesheet-header-right .validity-label {
@@ -484,8 +491,22 @@ body {
 	align-items: flex-start;
 }
 
-.linesheet-admin-notice__badge {
+.linesheet-admin-notice__icon {
 	flex-shrink: 0;
+	width: 18px;
+	height: 18px;
+	color: #8a6d1a;
+	margin-top: 1px;
+}
+
+.linesheet-admin-notice__copy {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.linesheet-admin-notice__badge {
+	align-self: flex-start;
 	background: <?php echo esc_attr( $accent ); ?>;
 	color: #F7F6F3;
 	font-size: 10px;
@@ -557,7 +578,22 @@ body {
 }
 
 .linesheet-cta__line {
-	margin-bottom: 4px;
+	margin-bottom: 6px;
+	display: flex;
+	align-items: center;
+	gap: 9px;
+}
+
+.linesheet-cta__icon {
+	flex-shrink: 0;
+	width: 16px;
+	height: 16px;
+	color: rgba(247, 246, 243, 0.9);
+}
+
+.linesheet-cta__icon--sm {
+	width: 14px;
+	height: 14px;
 }
 
 .linesheet-cta__line strong {
@@ -565,15 +601,12 @@ body {
 	color: #ffffff;
 }
 
-.linesheet-cta__sep {
-	margin: 0 6px;
-	opacity: 0.75;
-}
-
 .linesheet-cta__line--sub {
-	margin-top: 6px;
+	margin-top: 8px;
+	padding-top: 8px;
+	border-top: 1px solid rgba(247, 246, 243, 0.18);
 	font-size: 12.5px;
-	opacity: 0.85;
+	opacity: 0.9;
 }
 
 .linesheet-header-right .date {
@@ -905,6 +938,10 @@ body {
 			<div class="date"><?php echo esc_html( $today ); ?></div>
 			<?php if ( $is_prospect_quote ) : ?>
 				<div class="validity">
+					<svg class="validity-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+						<rect x="2" y="3" width="12" height="11" rx="1.5"/>
+						<path d="M2 6.5h12M5.5 2v2M10.5 2v2"/>
+					</svg>
 					<span class="validity-label">Valid through</span>
 					<span class="validity-date"
 					      contenteditable="true"
@@ -921,8 +958,14 @@ body {
 		     part of the admin/quote view and won't appear when a regular
 		     wholesale customer pulls their own price list. Hidden in print. -->
 		<div class="linesheet-admin-notice">
-			<span class="linesheet-admin-notice__badge">Admin view</span>
-			<span>The "Prepared for", "Valid through", cover note, and CTA below are editable on this page and only show when you (or another admin) view it. Regular wholesale customers see a clean version without these fields. Click any field to edit, then print.</span>
+			<svg class="linesheet-admin-notice__icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+				<circle cx="10" cy="10" r="8"/>
+				<path d="M10 9.5v4.5M10 6.5v.5"/>
+			</svg>
+			<div class="linesheet-admin-notice__copy">
+				<span class="linesheet-admin-notice__badge">Admin view</span>
+				<span>The "Prepared for", "Valid through", cover note, and CTA below are editable on this page and only show when you (or another admin) view it. Regular wholesale customers see a clean version without these fields. Click any field to edit, then print.</span>
+			</div>
 		</div>
 
 		<!-- Personal cover note (editable, italic serif). Hidden for regular
@@ -1000,22 +1043,28 @@ body {
 		<div class="linesheet-cta">
 			<div class="linesheet-cta__title">Ready to place your first order?</div>
 			<div class="linesheet-cta__body">
-				<?php if ( $business_phone || $business_email ) : ?>
+				<?php if ( $business_phone ) : ?>
 					<div class="linesheet-cta__line">
-						<?php if ( $business_phone ) : ?>
-							<span>Call <strong><?php echo esc_html( $business_phone ); ?></strong></span>
-						<?php endif; ?>
-						<?php if ( $business_phone && $business_email ) : ?>
-							<span class="linesheet-cta__sep">or</span>
-						<?php endif; ?>
-						<?php if ( $business_email ) : ?>
-							<span>email <strong><?php echo esc_html( $business_email ); ?></strong></span>
-						<?php endif; ?>
+						<svg class="linesheet-cta__icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+							<path d="M3 3.5C3 2.67 3.67 2 4.5 2h1.78c.5 0 .92.34 1.04.82l.62 2.48c.1.43-.05.88-.4 1.13l-.95.68c.83 1.6 2.13 2.9 3.73 3.73l.68-.95c.25-.35.7-.5 1.13-.4l2.48.62c.48.12.82.54.82 1.04v1.78c0 .83-.67 1.5-1.5 1.5h-.5C7.04 14.43 1.57 8.96 1.5 2H3z"/>
+						</svg>
+						<span>Call <strong><?php echo esc_html( $business_phone ); ?></strong></span>
+					</div>
+				<?php endif; ?>
+				<?php if ( $business_email ) : ?>
+					<div class="linesheet-cta__line">
+						<svg class="linesheet-cta__icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+							<rect x="1.5" y="3" width="13" height="10" rx="1.5"/>
+							<path d="M1.5 4l6.5 5 6.5-5"/>
+						</svg>
+						<span>Email <strong><?php echo esc_html( $business_email ); ?></strong></span>
 					</div>
 				<?php endif; ?>
 				<div class="linesheet-cta__line linesheet-cta__line--sub">
-					New here? Apply for a wholesale account at
-					<strong><?php echo esc_html( wp_parse_url( $apply_url, PHP_URL_HOST ) . wp_parse_url( $apply_url, PHP_URL_PATH ) ); ?></strong>
+					<svg class="linesheet-cta__icon linesheet-cta__icon--sm" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+						<path d="M3 8h10M9 4l4 4-4 4"/>
+					</svg>
+					<span>New here? Apply for a wholesale account at <strong><?php echo esc_html( wp_parse_url( $apply_url, PHP_URL_HOST ) . wp_parse_url( $apply_url, PHP_URL_PATH ) ); ?></strong></span>
 				</div>
 			</div>
 		</div>
