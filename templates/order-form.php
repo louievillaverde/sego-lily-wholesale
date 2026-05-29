@@ -1228,71 +1228,86 @@ $products = $all_products; // keep for empty check
 .slw-of-card__subtitle { margin: 0; font-size: 12px; color: #628393; font-style: italic; }
 
 /* Cart Preview list */
+.slw-cart-preview { position: relative; }
 .slw-cart-preview__header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 12px;
-    position: relative;
+    display: block;
+    padding-right: 110px; /* reserve room for the absolute-positioned button */
 }
 .slw-cart-preview__clear {
-    background: #F7F6F3;
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    background: #386174;
     border: 1px solid #386174;
-    color: #386174;
+    color: #F7F6F3;
     font-size: 12px;
     font-weight: 700;
-    padding: 7px 14px;
+    padding: 8px 16px;
     border-radius: 6px;
     cursor: pointer;
-    transition: background 0.15s, color 0.15s, box-shadow 0.15s;
-    align-self: flex-start;
-    letter-spacing: 0.2px;
+    transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+    letter-spacing: 0.3px;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
     white-space: nowrap;
+    text-transform: uppercase;
+    box-shadow: 0 2px 6px rgba(56, 97, 116, 0.22);
+    z-index: 2;
 }
 .slw-cart-preview__clear:hover {
-    background: #386174;
-    color: #F7F6F3;
-    box-shadow: 0 4px 12px rgba(56, 97, 116, 0.22);
+    background: #2C4F5E;
+    box-shadow: 0 4px 12px rgba(56, 97, 116, 0.32);
+    transform: translateY(-1px);
 }
+.slw-cart-preview__clear:active { transform: translateY(0); }
 .slw-cart-preview__clear[hidden] { display: none; }
 .slw-cart-preview__list { list-style: none; margin: 0; padding: 0; }
-.slw-cart-preview__item { display: grid; grid-template-columns: 96px 1fr auto 28px; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px dashed rgba(224, 219, 208, 0.65); font-size: 13px; }
+.slw-cart-preview__item { display: grid; grid-template-columns: 110px 1fr auto 28px; gap: 14px; align-items: center; padding: 12px 0; border-bottom: 1px dashed rgba(224, 219, 208, 0.65); font-size: 13.5px; }
+.slw-cart-preview__item:last-child { border-bottom: none; }
 .slw-cart-preview__qty-ctrl {
     display: inline-flex;
     align-items: stretch;
-    border: 1px solid #d4cebc;
-    border-radius: 6px;
+    border: 1.5px solid #386174;
+    border-radius: 8px;
     overflow: hidden;
     background: #ffffff;
-    height: 30px;
+    height: 34px;
+    box-shadow: 0 1px 3px rgba(56, 97, 116, 0.08);
 }
 .slw-cart-preview__qty-btn {
-    width: 24px;
+    width: 30px;
     border: none;
-    background: #FAF8F2;
+    background: #ffffff;
     color: #386174;
-    font-size: 16px;
-    font-weight: 700;
+    font-size: 18px;
+    font-weight: 600;
     cursor: pointer;
-    transition: background 0.15s, color 0.15s;
+    transition: background 0.12s, color 0.12s;
     line-height: 1;
     padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 .slw-cart-preview__qty-btn:hover { background: #386174; color: #F7F6F3; }
+.slw-cart-preview__qty-btn:active { background: #2C4F5E; color: #F7F6F3; }
 .slw-cart-preview__qty-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .slw-cart-preview__qty-input {
-    width: 40px;
+    width: 42px;
     border: none;
-    border-left: 1px solid #e0ddd8;
-    border-right: 1px solid #e0ddd8;
+    border-left: 1.5px solid #e8e2d4;
+    border-right: 1.5px solid #e8e2d4;
     text-align: center;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 700;
-    color: #386174;
+    color: #1E2A30;
     background: #ffffff;
     -moz-appearance: textfield;
     padding: 0 4px;
+    font-family: Georgia, 'Times New Roman', serif;
+}
+.slw-cart-preview__qty-input:focus {
+    outline: none;
+    background: #FAF8F2;
 }
 .slw-cart-preview__qty-input::-webkit-outer-spin-button,
 .slw-cart-preview__qty-input::-webkit-inner-spin-button {
@@ -1640,9 +1655,10 @@ body.page-wholesale-order .woocommerce-message .restore-item,
             foreach ( WC()->cart->get_cart() as $key => $ci ) {
                 $prod = $ci['data'] ?? null;
                 if ( ! $prod ) continue;
+                $parent_id = (int) $prod->get_parent_id();
                 $base = $prod->get_name();
-                if ( $prod->get_parent_id() ) {
-                    $parent = wc_get_product( $prod->get_parent_id() );
+                if ( $parent_id ) {
+                    $parent = wc_get_product( $parent_id );
                     if ( $parent ) $base = $parent->get_name();
                 }
                 $attrs = array();
@@ -1650,6 +1666,8 @@ body.page-wholesale-order .woocommerce-message .restore-item,
                     if ( ! $value ) continue;
                     $lower = strtolower( (string) $value );
                     if ( preg_match( '/month|year|week|every|one.?time|subscribe|subscription|recurring/i', $lower ) ) continue;
+                    if ( $parent_id > 0 && function_exists( 'slw_attr_differs_among_siblings' )
+                        && ! slw_attr_differs_among_siblings( $parent_id, $taxonomy ) ) continue;
                     $term = get_term_by( 'slug', $value, $taxonomy );
                     $attrs[] = $term ? $term->name : ucfirst( str_replace( '-', ' ', $value ) );
                 }
@@ -1775,24 +1793,16 @@ body.page-wholesale-order .woocommerce-message .restore-item,
                         ' data-variation-id="' + (item.variation_id || 0) + '">&times;</button>';
                 previewListEl.appendChild(li);
             });
-            stagedItems.forEach(function(item) {
-                var li = document.createElement('li');
-                li.className = 'slw-cart-preview__item slw-cart-preview__item--staged';
-                li.innerHTML =
-                    '<span class="slw-cart-preview__qty">' + item.qty + '×</span>' +
-                    '<span class="slw-cart-preview__name">' + escapeHtml(item.label) + ' <em class="slw-cart-preview__pending">(staged)</em></span>' +
-                    '<span class="slw-cart-preview__total">' + formatPrice(item.lineTotal) + '</span>';
-                previewListEl.appendChild(li);
-            });
+            // Staged items (qty changed but Add not clicked) are NOT
+            // rendered here -- they pollute the Cart Preview with
+            // "(staged)" rows that confuse customers. Cart Preview only
+            // shows what's actually in the cart. Use the Add buttons or
+            // category Add to Cart to commit a row.
             if (previewMetaEl) {
-                var totalItems = stagedItemCount + cartItemCount;
-                if (totalItems === 0) {
-                    previewMetaEl.textContent = 'Set quantities above to populate.';
+                if (cartItemCount === 0) {
+                    previewMetaEl.textContent = 'Add items above to populate.';
                 } else {
-                    var parts = [];
-                    if (cartItemCount > 0)    parts.push(cartItemCount + ' in cart');
-                    if (stagedItemCount > 0)  parts.push(stagedItemCount + ' staged');
-                    previewMetaEl.textContent = parts.join(' · ');
+                    previewMetaEl.textContent = cartItemCount + ' item' + (cartItemCount === 1 ? '' : 's') + ' in cart';
                 }
             }
             var clearBtn = document.getElementById('slw-cart-preview-clear');

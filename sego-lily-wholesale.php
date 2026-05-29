@@ -3,7 +3,7 @@
  * Plugin Name:       Wholesale Portal
  * Plugin URI:        https://github.com/louievillaverde/sego-lily-wholesale
  * Description:       All-in-one B2B wholesale portal for WooCommerce. Customer portal, tiered pricing, application workflow, PDF invoices, email sequences with multi-provider support, NET payment terms, lead capture, trade show tools, and automated order reminders. Built by Lead Piranha.
- * Version:           4.6.80
+ * Version:           4.6.81
  * Author:            Lead Piranha
  * Author URI:        https://leadpiranha.com
  * Requires at least: 6.0
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SLW_VERSION', '4.6.80' );
+define( 'SLW_VERSION', '4.6.81' );
 define( 'SLW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SLW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -693,6 +693,42 @@ function slw_get_true_regular_price( $product ) {
  * definition discounted off the one-time rate). Used as the truth source
  * for MSRP on the order form + wholesale checkout.
  */
+/**
+ * Whether a given product attribute taxonomy has more than one distinct
+ * value across the published variations of a parent product. Used to
+ * decide if the attribute is worth displaying in cart-row labels. If
+ * every variation shares the same value (e.g. lip balm only comes in
+ * 0.5oz), listing it adds noise without distinguishing rows. Cached
+ * per request.
+ *
+ * @param int    $parent_id Parent product ID.
+ * @param string $taxonomy  Attribute taxonomy (e.g. "pa_size"). Will be
+ *                          prefixed with "attribute_" for meta lookup.
+ * @return bool
+ */
+function slw_attr_differs_among_siblings( $parent_id, $taxonomy ) {
+    static $cache = array();
+    $parent_id = (int) $parent_id;
+    $taxonomy  = (string) $taxonomy;
+    if ( $parent_id <= 0 || $taxonomy === '' ) return false;
+    $key = $parent_id . ':' . $taxonomy;
+    if ( isset( $cache[ $key ] ) ) return $cache[ $key ];
+    global $wpdb;
+    $count = (int) $wpdb->get_var( $wpdb->prepare(
+        "SELECT COUNT(DISTINCT pm.meta_value)
+         FROM {$wpdb->posts} p
+         INNER JOIN {$wpdb->postmeta} pm ON pm.post_id = p.ID
+            AND pm.meta_key = %s
+         WHERE p.post_parent = %d
+           AND p.post_type = 'product_variation'
+           AND p.post_status = 'publish'",
+        'attribute_' . $taxonomy,
+        $parent_id
+    ) );
+    $cache[ $key ] = $count > 1;
+    return $cache[ $key ];
+}
+
 function slw_max_variation_regular_price( $parent_id ) {
     static $cache = array();
     $parent_id = (int) $parent_id;

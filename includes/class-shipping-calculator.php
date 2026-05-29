@@ -50,14 +50,20 @@ class SLW_Shipping_Calculator {
         $package_total    = 0;
 
         foreach ( $items as $index => $item ) {
-            $product_id = absint( $item['product_id'] ?? 0 );
-            $quantity   = absint( $item['quantity'] ?? 0 );
+            $product_id   = absint( $item['product_id']   ?? 0 );
+            $variation_id = absint( $item['variation_id'] ?? 0 );
+            $quantity     = absint( $item['quantity']     ?? 0 );
 
             if ( $product_id <= 0 || $quantity <= 0 ) {
                 continue;
             }
 
-            $product = wc_get_product( $product_id );
+            // For variations, load the variation itself so WC reads the
+            // variation-level weight/dimensions/shipping class. Falls
+            // back to the parent product if no variation_id was sent.
+            $product = $variation_id > 0
+                ? wc_get_product( $variation_id )
+                : wc_get_product( $product_id );
             if ( ! $product || ! $product->is_in_stock() ) {
                 continue;
             }
@@ -66,14 +72,16 @@ class SLW_Shipping_Calculator {
             $package_total += $line_total;
 
             $package_contents[ $index ] = array(
-                'product_id' => $product_id,
-                'variation_id' => 0,
-                'variation'    => array(),
-                'quantity'     => $quantity,
-                'data'         => $product,
-                'line_total'   => $line_total,
-                'line_tax'     => 0,
-                'line_subtotal' => $line_total,
+                'key'               => 'slw_est_' . $index,
+                'product_id'        => $product_id,
+                'variation_id'      => $variation_id,
+                'variation'         => array(),
+                'quantity'          => $quantity,
+                'data'              => $product,
+                'data_hash'         => method_exists( 'wc_get_cart_item_data_hash' ) ? wc_get_cart_item_data_hash( $product ) : '',
+                'line_total'        => $line_total,
+                'line_tax'          => 0,
+                'line_subtotal'     => $line_total,
                 'line_subtotal_tax' => 0,
             );
         }
@@ -98,13 +106,29 @@ class SLW_Shipping_Calculator {
             ),
         );
 
+        // Seed WC's customer object with the destination so shipping
+        // zone matching uses the same data the package does. Some
+        // shipping methods read from WC()->customer instead of the
+        // package destination -- without this they fall back to the
+        // store's home zip and return wrong (or zero) rates.
+        if ( WC()->customer ) {
+            WC()->customer->set_shipping_country( $country );
+            WC()->customer->set_shipping_state( $state );
+            WC()->customer->set_shipping_postcode( $zip_code );
+            WC()->customer->set_billing_country( $country );
+            WC()->customer->set_billing_state( $state );
+            WC()->customer->set_billing_postcode( $zip_code );
+        }
+
         // Calculate shipping using WooCommerce's engine
         $shipping = WC()->shipping();
         $shipping->reset_shipping();
         $calculated = $shipping->calculate_shipping_for_package( $package );
 
         if ( empty( $calculated['rates'] ) ) {
-            wp_send_json_error( array( 'message' => 'No shipping methods available for this destination.' ) );
+            wp_send_json_error( array(
+                'message' => 'No shipping methods available for this destination. Check your WooCommerce shipping zones cover ' . esc_html( $state ?: $country ) . ' ' . esc_html( $zip_code ) . '.',
+            ) );
         }
 
         // Filter to only wholesale-allowed methods if configured
@@ -121,9 +145,10 @@ class SLW_Shipping_Calculator {
             }
 
             $rates[] = array(
-                'id'    => esc_html( $rate_id ),
-                'label' => esc_html( $rate->get_label() ),
-                'cost'  => html_entity_decode( wp_strip_all_tags( wc_price( $rate->get_cost() ) ) ),
+                'id'        => esc_html( $rate_id ),
+                'label'     => esc_html( $rate->get_label() ),
+                'cost'      => html_entity_decode( wp_strip_all_tags( wc_price( $rate->get_cost() ) ) ),
+                'cost_raw'  => (float) $rate->get_cost(),
             );
         }
 

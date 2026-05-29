@@ -780,11 +780,7 @@ class SLW_Wholesale_Role {
                 . '.wc_payment_method_paypal_express_subscription_details,'
                 . '.subscription-sign-up-fee,'
                 . '.product-subscription-price,'
-                // Hide retail side-cart / mini-cart triggers + popups so the
-                // in-page Cart Preview is the only cart surface wholesale
-                // users see. If a theme variant escapes these selectors and
-                // the panel still opens, the JS slide-bar-down coordinator
-                // (suppress_side_cart_js) covers the visual collision.
+                // Hide retail side-cart / mini-cart popups...
                 . '.elementor-menu-cart__main,'
                 . '.elementor-menu-cart__container,'
                 . '.elementor-menu-cart--shown .elementor-menu-cart__main,'
@@ -795,7 +791,29 @@ class SLW_Wholesale_Role {
                 . '.cart-popup,'
                 . '.cart-drawer,'
                 . '.side-cart,'
-                . '.wc-block-mini-cart__drawer'
+                . '.wc-block-mini-cart__drawer,'
+                // ...AND the cart icon itself. Wholesale customers have
+                // the in-page Cart Preview + the wholesale checkout link
+                // -- the retail header cart icon is dead UI for them and
+                // its click-to-open behavior keeps competing with our
+                // sticky bar. Just hide it. (LV directive 2026-05-29.)
+                . '.elementor-menu-cart,'
+                . '.elementor-menu-cart__wrapper,'
+                . '.elementor-menu-cart__toggle,'
+                . '.elementor-widget-woocommerce-menu-cart,'
+                . '.wc-block-mini-cart,'
+                . '.wc-block-mini-cart__button,'
+                . '.wp-block-woocommerce-mini-cart,'
+                . '.header-cart,'
+                . '.header-cart-icon,'
+                . '.header-cart-link,'
+                . '.site-header .cart-icon,'
+                . '.cart-toggle,'
+                . '.shopping-cart-icon,'
+                . 'a.cart-contents,'
+                . '.menu-item-cart,'
+                . 'a[href$="/cart/"],'
+                . 'a[href$="/cart"]'
                 . '{display:none!important;visibility:hidden!important;pointer-events:none!important}'
                 . '</style>';
         } );

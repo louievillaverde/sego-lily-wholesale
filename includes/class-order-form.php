@@ -145,21 +145,30 @@ class SLW_Order_Form {
     private static function clean_cart_label( $prod ) {
         if ( ! $prod ) return '';
         // Base name: parent product if variation, otherwise just product
+        $parent_id = 0;
         $base = '';
         if ( method_exists( $prod, 'get_parent_id' ) && $prod->get_parent_id() ) {
-            $parent = wc_get_product( $prod->get_parent_id() );
+            $parent_id = (int) $prod->get_parent_id();
+            $parent = wc_get_product( $parent_id );
             $base = $parent ? $parent->get_name() : $prod->get_name();
         } else {
             $base = $prod->get_name();
         }
-        // Variation attributes -- skip anything that looks like a billing
-        // cycle / subscription period.
+        // Variation attributes -- skip:
+        //   1. anything resembling a billing cycle / subscription period
+        //   2. attributes where every sibling shares the same value
+        //      (no distinguishing info -- e.g. lip balm only in 0.5oz,
+        //      deodorant only in 2.5oz, listing it adds noise).
         $attrs = array();
         if ( method_exists( $prod, 'get_attributes' ) ) {
             foreach ( (array) $prod->get_attributes() as $taxonomy => $value ) {
                 if ( ! $value ) continue;
                 $lower = strtolower( (string) $value );
                 if ( preg_match( '/month|year|week|every|one.?time|subscribe|subscription|recurring/i', $lower ) ) {
+                    continue;
+                }
+                if ( $parent_id > 0 && function_exists( 'slw_attr_differs_among_siblings' )
+                    && ! slw_attr_differs_among_siblings( $parent_id, $taxonomy ) ) {
                     continue;
                 }
                 $term = get_term_by( 'slug', $value, $taxonomy );
