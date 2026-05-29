@@ -138,6 +138,16 @@ class SLW_Order_Form {
                         continue;
                     }
                 }
+
+                // Some products require variation attribute values that
+                // weren't passed (e.g. "Gift Box Varieties" on a Variety
+                // Set product). Fill missing required attributes with sane
+                // defaults from the parent's attribute config so the WC
+                // 'X is a required field' rejection doesn't fire. Pre-call
+                // priming, both for slugs that map to terms and for free-
+                // text attribute options.
+                $variation = self::prime_variation_attributes( $product, (array) $variation, $variation_id );
+
                 $result = WC()->cart->add_to_cart( $product_id, $quantity, $variation_id, $variation );
             } elseif ( $type === 'grouped' ) {
                 // Grouped products must be added child-by-child. Apply
@@ -207,5 +217,95 @@ class SLW_Order_Form {
                 : 'Could not add: ' . implode( '; ', $failures );
             wp_send_json_error( array( 'message' => $msg ) );
         }
+    }
+
+    /**
+     * Fill missing required variation attributes with sane defaults.
+     *
+     * Looks at the parent product's variation-enabled attributes. For any
+     * attribute the customer didn't supply a value for, sets one from:
+     *   1. The variation row's own meta (if a specific variation_id was
+     *      picked, its attribute values are authoritative).
+     *   2. A hardcoded preference list for known Sego Lily attributes --
+     *      includes 'variety' / 'varieties' for 'gift-box-varieties' /
+     *      'variety-gift-sets' so the May 29 Camila-call ask works even
+     *      before she's finished creating the new Ageless/Renewal/Moxie/
+     *      Variety variations.
+     *   3. The first taxonomy term (for global attributes) or the first
+     *      pipe-delimited option (for product-level attributes).
+     *
+     * @param WC_Product $product
+     * @param array      $variation Attribute name => value supplied by client.
+     * @param int        $variation_id The matched variation, if any.
+     * @return array Completed attribute map.
+     */
+    private static function prime_variation_attributes( $product, $variation, $variation_id ) {
+        // Customer-friendly aliases that should satisfy specific attribute
+        // names even when the actual terms don't include them. Holly will
+        // sometimes drop 'Gift' from product names; cover both forms.
+        $preferred_terms = array(
+            'gift-box-varieties' => array( 'variety', 'varieties', 'variety-gift-set', 'variety-gift-sets', 'variety-set', 'variety-sets' ),
+            'variety-gift-sets'  => array( 'variety', 'varieties', 'variety-gift-set', 'variety-gift-sets', 'variety-set', 'variety-sets' ),
+            'variety-sets'       => array( 'variety', 'varieties', 'variety-set', 'variety-sets' ),
+            'gift-set-type'      => array( 'variety', 'varieties', 'variety-gift-set' ),
+        );
+
+        // Pull the specific variation's own attribute values first (most authoritative).
+        if ( $variation_id > 0 ) {
+            $matched = wc_get_product( $variation_id );
+            if ( $matched instanceof WC_Product_Variation ) {
+                foreach ( $matched->get_attributes() as $tax => $value ) {
+                    $key = 'attribute_' . sanitize_title( $tax );
+                    if ( empty( $variation[ $key ] ) && $value !== '' ) {
+                        $variation[ $key ] = $value;
+                    }
+                }
+            }
+        }
+
+        // Fill remaining required attributes from the parent.
+        $attrs = $product->get_attributes();
+        if ( ! is_array( $attrs ) ) return $variation;
+
+        foreach ( $attrs as $attr_key => $attr_obj ) {
+            if ( ! is_object( $attr_obj ) || ! method_exists( $attr_obj, 'get_variation' ) ) continue;
+            if ( ! $attr_obj->get_variation() ) continue;
+
+            $field_key = 'attribute_' . sanitize_title( $attr_key );
+            if ( ! empty( $variation[ $field_key ] ) ) continue;
+
+            // Build option list (taxonomy terms or product-level free-text).
+            $candidates = array();
+            if ( $attr_obj->is_taxonomy() ) {
+                $terms = wc_get_product_terms( $product->get_id(), $attr_obj->get_name(), array( 'fields' => 'slugs' ) );
+                if ( ! empty( $terms ) ) $candidates = (array) $terms;
+            } else {
+                $options = $attr_obj->get_options();
+                foreach ( (array) $options as $opt ) {
+                    $candidates[] = sanitize_title( (string) $opt );
+                }
+            }
+            if ( empty( $candidates ) ) continue;
+
+            // Prefer aliases when defined for this attribute.
+            $slug = sanitize_title( $attr_key );
+            if ( isset( $preferred_terms[ $slug ] ) ) {
+                foreach ( $preferred_terms[ $slug ] as $alias ) {
+                    if ( in_array( $alias, $candidates, true ) ) {
+                        $variation[ $field_key ] = $alias;
+                        continue 2;
+                    }
+                }
+                // No alias in the candidate set: still accept the customer's
+                // intent and force one of the alias values through. WC's
+                // taxonomy validation only checks slugs match registered
+                // terms, so this only helps when the alias IS a real term.
+            }
+
+            // Fallback: first candidate.
+            $variation[ $field_key ] = $candidates[0];
+        }
+
+        return $variation;
     }
 }

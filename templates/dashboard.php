@@ -121,8 +121,6 @@ if ( ! is_array( $saved_carts ) ) {
 			<ul class="slw-quick-links">
 				<li><a href="<?php echo esc_url( home_url( '/wholesale-order' ) ); ?>" class="slw-btn slw-btn-primary">Place a New Order</a></li>
 				<li><a href="<?php echo esc_url( $account_url ); ?>">Edit Account Details</a></li>
-				<li><a href="<?php echo esc_url( $account_url . '#shipping' ); ?>">Update Shipping Address</a></li>
-				<li><a href="<?php echo esc_url( $account_url . '#billing' ); ?>">Edit Billing Details</a></li>
 				<li><a href="<?php echo esc_url( $help_url ); ?>"><?php echo $help_label; ?></a></li>
 			</ul>
 		</div>

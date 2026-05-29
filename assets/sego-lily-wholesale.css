@@ -596,24 +596,31 @@ a.slw-btn-ghost:hover {
     color: #2C2C2C;
 }
 
-/* Clickable product row image button */
+/* Clickable product row image button. Keeps the 60x60 thumbnail
+   visible inline; clicking opens the lightbox at full resolution. */
 .slw-row-image-btn {
-    display: inline-block;
-    padding: 0;
-    background: transparent;
+    display: inline-block !important;
+    padding: 2px !important;
+    background: transparent !important;
     border: 1px solid transparent;
     border-radius: 6px;
     cursor: zoom-in;
-    transition: border-color 0.15s, transform 0.15s;
-    line-height: 0;
+    transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+    font-size: 0;
+    line-height: 1;
+    vertical-align: middle;
 }
 .slw-row-image-btn:hover {
     border-color: #D4AF37;
-    transform: scale(1.02);
+    transform: scale(1.04);
+    box-shadow: 0 4px 10px rgba(212, 175, 55, 0.18);
 }
 .slw-row-image-btn img {
     border-radius: 4px;
     display: block;
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
 }
 
 /* Image lightbox */
@@ -2722,7 +2729,14 @@ button.slw-reorder-btn:hover {
 /* -------------------------------------------------------
    Shipping Calculator (Order Form)
    ------------------------------------------------------- */
-.slw-shipping-calculator {
+/* Shipping Calculator styles inherit the unified .slw-of-card pattern
+   from the order-form template. The legacy block styles below would
+   otherwise double-style the container (extra padding/border) since
+   the wrapper now carries both classes. */
+.slw-shipping-calculator.slw-of-card {
+    /* deliberately empty - .slw-of-card wins */
+}
+.slw-shipping-calculator:not(.slw-of-card) {
     background: #F7F6F3;
     border: 1px solid #e0ddd8;
     border-radius: 8px;

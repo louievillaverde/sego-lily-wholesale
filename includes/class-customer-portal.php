@@ -481,7 +481,7 @@ class SLW_Customer_Portal {
 
             <div class="slw-account-grid">
 
-                <!-- Profile -->
+                <!-- Profile (first) -->
                 <form method="post" action="<?php echo esc_url( $post_url ); ?>" class="slw-account-card" id="profile">
                     <?php wp_nonce_field( 'slw_save_account' ); ?>
                     <input type="hidden" name="action"  value="slw_save_account" />
@@ -518,44 +518,28 @@ class SLW_Customer_Portal {
                     </div>
                 </form>
 
-                <!-- Shipping -->
-                <form method="post" action="<?php echo esc_url( $post_url ); ?>" class="slw-account-card" id="shipping">
+                <!-- Password (second, next to Profile) -->
+                <form method="post" action="<?php echo esc_url( $post_url ); ?>" class="slw-account-card" id="password">
                     <?php wp_nonce_field( 'slw_save_account' ); ?>
                     <input type="hidden" name="action"  value="slw_save_account" />
-                    <input type="hidden" name="section" value="shipping" />
-                    <h4 class="slw-account-card__title">Shipping Address</h4>
+                    <input type="hidden" name="section" value="password" />
+                    <h4 class="slw-account-card__title">Password</h4>
                     <div class="slw-account-card__grid">
                         <label class="slw-account-field slw-account-field--wide">
-                            <span>Company (optional)</span>
-                            <input type="text" name="shipping_company" value="<?php echo esc_attr( $get_meta( 'shipping_company' ) ); ?>" />
+                            <span>Current password</span>
+                            <input type="password" name="current_password" autocomplete="current-password" />
                         </label>
                         <label class="slw-account-field slw-account-field--wide">
-                            <span>Address line 1</span>
-                            <input type="text" name="shipping_address_1" value="<?php echo esc_attr( $get_meta( 'shipping_address_1' ) ); ?>" />
+                            <span>New password (min 8 chars)</span>
+                            <input type="password" name="new_password" autocomplete="new-password" />
                         </label>
                         <label class="slw-account-field slw-account-field--wide">
-                            <span>Address line 2</span>
-                            <input type="text" name="shipping_address_2" value="<?php echo esc_attr( $get_meta( 'shipping_address_2' ) ); ?>" />
-                        </label>
-                        <label class="slw-account-field">
-                            <span>City</span>
-                            <input type="text" name="shipping_city" value="<?php echo esc_attr( $get_meta( 'shipping_city' ) ); ?>" />
-                        </label>
-                        <label class="slw-account-field">
-                            <span>State / Region</span>
-                            <input type="text" name="shipping_state" value="<?php echo esc_attr( $get_meta( 'shipping_state' ) ); ?>" />
-                        </label>
-                        <label class="slw-account-field">
-                            <span>Postcode</span>
-                            <input type="text" name="shipping_postcode" value="<?php echo esc_attr( $get_meta( 'shipping_postcode' ) ); ?>" />
-                        </label>
-                        <label class="slw-account-field">
-                            <span>Country</span>
-                            <input type="text" name="shipping_country" value="<?php echo esc_attr( $get_meta( 'shipping_country' ) ?: 'US' ); ?>" />
+                            <span>Confirm new password</span>
+                            <input type="password" name="confirm_password" autocomplete="new-password" />
                         </label>
                     </div>
                     <div class="slw-account-card__actions">
-                        <button type="submit" class="slw-btn slw-btn-primary">Save Shipping</button>
+                        <button type="submit" class="slw-btn slw-btn-primary">Update Password</button>
                     </div>
                 </form>
 
@@ -608,37 +592,53 @@ class SLW_Customer_Portal {
                     </div>
                 </form>
 
-                <!-- Password -->
-                <form method="post" action="<?php echo esc_url( $post_url ); ?>" class="slw-account-card" id="password">
+                <!-- Shipping -->
+                <form method="post" action="<?php echo esc_url( $post_url ); ?>" class="slw-account-card" id="shipping">
                     <?php wp_nonce_field( 'slw_save_account' ); ?>
                     <input type="hidden" name="action"  value="slw_save_account" />
-                    <input type="hidden" name="section" value="password" />
-                    <h4 class="slw-account-card__title">Password</h4>
+                    <input type="hidden" name="section" value="shipping" />
+                    <h4 class="slw-account-card__title">Shipping Address</h4>
                     <div class="slw-account-card__grid">
                         <label class="slw-account-field slw-account-field--wide">
-                            <span>Current password</span>
-                            <input type="password" name="current_password" autocomplete="current-password" />
+                            <span>Company (optional)</span>
+                            <input type="text" name="shipping_company" value="<?php echo esc_attr( $get_meta( 'shipping_company' ) ); ?>" />
                         </label>
                         <label class="slw-account-field slw-account-field--wide">
-                            <span>New password (min 8 chars)</span>
-                            <input type="password" name="new_password" autocomplete="new-password" />
+                            <span>Address line 1</span>
+                            <input type="text" name="shipping_address_1" value="<?php echo esc_attr( $get_meta( 'shipping_address_1' ) ); ?>" />
                         </label>
                         <label class="slw-account-field slw-account-field--wide">
-                            <span>Confirm new password</span>
-                            <input type="password" name="confirm_password" autocomplete="new-password" />
+                            <span>Address line 2</span>
+                            <input type="text" name="shipping_address_2" value="<?php echo esc_attr( $get_meta( 'shipping_address_2' ) ); ?>" />
+                        </label>
+                        <label class="slw-account-field">
+                            <span>City</span>
+                            <input type="text" name="shipping_city" value="<?php echo esc_attr( $get_meta( 'shipping_city' ) ); ?>" />
+                        </label>
+                        <label class="slw-account-field">
+                            <span>State / Region</span>
+                            <input type="text" name="shipping_state" value="<?php echo esc_attr( $get_meta( 'shipping_state' ) ); ?>" />
+                        </label>
+                        <label class="slw-account-field">
+                            <span>Postcode</span>
+                            <input type="text" name="shipping_postcode" value="<?php echo esc_attr( $get_meta( 'shipping_postcode' ) ); ?>" />
+                        </label>
+                        <label class="slw-account-field">
+                            <span>Country</span>
+                            <input type="text" name="shipping_country" value="<?php echo esc_attr( $get_meta( 'shipping_country' ) ?: 'US' ); ?>" />
                         </label>
                     </div>
                     <div class="slw-account-card__actions">
-                        <button type="submit" class="slw-btn slw-btn-primary">Update Password</button>
+                        <button type="submit" class="slw-btn slw-btn-primary">Save Shipping</button>
                     </div>
                 </form>
 
-                <!-- EIN / Resale Certificate -->
-                <form method="post" action="<?php echo esc_url( $post_url ); ?>" class="slw-account-card" id="ein">
+                <!-- EIN / Resale Certificate (last, requires confirm) -->
+                <form method="post" action="<?php echo esc_url( $post_url ); ?>" class="slw-account-card slw-account-card--sensitive" id="ein" data-confirm="Are you sure you want to update your EIN / Resale Certificate? This is a tax document on file with your business.">
                     <?php wp_nonce_field( 'slw_save_ein' ); ?>
                     <input type="hidden" name="action" value="slw_save_ein" />
                     <h4 class="slw-account-card__title">EIN / Resale Certificate</h4>
-                    <p class="slw-account-card__hint">Required for tax-exempt wholesale ordering. Stored encrypted at rest.</p>
+                    <p class="slw-account-card__hint">Required for tax-exempt wholesale ordering. Stored encrypted at rest. Saved changes update your customer record on the admin side immediately.</p>
                     <div class="slw-account-card__grid">
                         <label class="slw-account-field slw-account-field--wide">
                             <span>EIN Number</span>
@@ -652,6 +652,18 @@ class SLW_Customer_Portal {
 
             </div>
         </div>
+        <script>
+        (function() {
+            document.querySelectorAll('.slw-account-card--sensitive').forEach(function(form) {
+                var msg = form.getAttribute('data-confirm') || 'Save these changes?';
+                form.addEventListener('submit', function(e) {
+                    if (!window.confirm(msg)) {
+                        e.preventDefault();
+                    }
+                });
+            });
+        })();
+        </script>
         <?php
     }
 

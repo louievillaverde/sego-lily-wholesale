@@ -423,10 +423,9 @@ $products = $all_products; // keep for empty check
                         </button>
                     </td>
                     <?php
-                    // Hover-trigger descriptions: product-level on the name,
-                    // scent-level on the variation label. Lifted from the
-                    // product short description and the variation description
-                    // respectively (admin sets both in WooCommerce).
+                    // Product hover: short description always (full description
+                    // is too long for the tooltip). Falls back to long description
+                    // only if no short is set.
                     $product_desc = trim( wp_strip_all_tags( $product->get_short_description() ) );
                     if ( ! $product_desc ) {
                         $product_desc = trim( wp_strip_all_tags( $product->get_description() ) );
@@ -434,7 +433,27 @@ $products = $all_products; // keep for empty check
                     if ( strlen( $product_desc ) > 320 ) {
                         $product_desc = substr( $product_desc, 0, 317 ) . '...';
                     }
+
+                    // Scent hover: prefer the variation's own description,
+                    // then any attribute-term description from the variation
+                    // attributes (Sego Lily's scent attribute is a taxonomy
+                    // and the term description is what the Shop All page
+                    // surfaces). Skip terms that look like billing intervals.
                     $scent_desc = trim( wp_strip_all_tags( $variation->get_description() ) );
+                    if ( ! $scent_desc ) {
+                        foreach ( (array) $variation->get_attributes() as $attr_tax => $attr_val ) {
+                            if ( ! $attr_val ) continue;
+                            $lower_val = strtolower( (string) $attr_val );
+                            if ( preg_match( '/month|year|week|every|one.?time|subscribe|subscription/i', $lower_val ) ) {
+                                continue;
+                            }
+                            $term = get_term_by( 'slug', $attr_val, $attr_tax );
+                            if ( $term && ! is_wp_error( $term ) && trim( wp_strip_all_tags( $term->description ) ) ) {
+                                $scent_desc = trim( wp_strip_all_tags( $term->description ) );
+                                break;
+                            }
+                        }
+                    }
                     if ( strlen( $scent_desc ) > 320 ) {
                         $scent_desc = substr( $scent_desc, 0, 317 ) . '...';
                     }
@@ -935,9 +954,16 @@ $products = $all_products; // keep for empty check
 
             if (resp && resp.success) {
                 showMessage(resp.data.message, 'success');
-                // Reset quantities after successful add
-                document.querySelectorAll('.slw-qty-input').forEach(function(input) {
-                    input.value = '0';
+                // Only zero the inputs that were just added to cart, leave
+                // every other staged row alone. Previously this would wipe
+                // EVERY qty input after any per-row Add, which destroyed
+                // partially-built orders.
+                items.forEach(function(it) {
+                    var selector = it.variation_id
+                        ? '.slw-qty-input[data-variation-id="' + it.variation_id + '"]'
+                        : '.slw-qty-input[data-product-id="' + it.product_id + '"]:not([data-variation-id])';
+                    var input = document.querySelector(selector);
+                    if (input) input.value = '0';
                 });
                 updateSubtotal();
             } else {

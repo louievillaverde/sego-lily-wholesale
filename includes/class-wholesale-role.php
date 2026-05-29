@@ -77,6 +77,13 @@ class SLW_Wholesale_Role {
         add_filter( 'wcs_cart_recurring_total_html',                 array( __CLASS__, 'strip_recurring_for_wholesale' ), 999, 1 );
         add_filter( 'woocommerce_subscriptions_cart_totals_recurring_total_html', array( __CLASS__, 'strip_recurring_for_wholesale' ), 999, 1 );
 
+        // Suppress retail mini-cart / side-cart popup for wholesale users.
+        // The order-form page has its own Cart Preview; the theme's auto-
+        // opening side cart competes with it and confused Holly's customers.
+        add_filter( 'woocommerce_widget_cart_is_hidden',  array( __CLASS__, 'hide_widget_cart_for_wholesale' ) );
+        add_filter( 'woocommerce_add_to_cart_fragments',  array( __CLASS__, 'maybe_empty_cart_fragments' ), 999 );
+        add_action( 'wp_footer',                          array( __CLASS__, 'suppress_side_cart_js' ) );
+
         // Redirect "Return to shop" to wholesale order form for wholesale users
         add_filter( 'woocommerce_return_to_shop_redirect', array( __CLASS__, 'wholesale_return_to_shop' ) );
 
@@ -822,6 +829,50 @@ class SLW_Wholesale_Role {
             return $html;
         }
         return '';
+    }
+
+    /**
+     * Tell WC the widget cart is hidden for wholesale users so the theme's
+     * mini-cart / side-cart stays collapsed.
+     */
+    public static function hide_widget_cart_for_wholesale( $is_hidden ) {
+        if ( slw_is_wholesale_context() ) {
+            return true;
+        }
+        return $is_hidden;
+    }
+
+    /**
+     * Empty the cart fragments AJAX response for wholesale users so themes
+     * stop pushing live mini-cart HTML updates after each add-to-cart.
+     */
+    public static function maybe_empty_cart_fragments( $fragments ) {
+        if ( slw_is_wholesale_context() ) {
+            return array();
+        }
+        return $fragments;
+    }
+
+    /**
+     * Intercept the jQuery 'added_to_cart' event for wholesale users so
+     * themes that auto-open a side cart on that event stay closed.
+     */
+    public static function suppress_side_cart_js() {
+        if ( is_admin() || ! slw_is_wholesale_context() ) {
+            return;
+        }
+        ?>
+        <script>
+        (function() {
+            if (typeof window.jQuery === 'undefined') return;
+            // Block every common side-cart open trigger.
+            jQuery(document.body).off('added_to_cart wc_fragments_refreshed wc_fragments_loaded');
+            jQuery(document.body).on('added_to_cart wc_fragments_refreshed wc_fragments_loaded', function(e) {
+                e.stopImmediatePropagation();
+            });
+        })();
+        </script>
+        <?php
     }
 
     /**
