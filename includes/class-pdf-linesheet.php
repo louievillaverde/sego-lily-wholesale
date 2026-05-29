@@ -296,6 +296,32 @@ class SLW_PDF_Linesheet {
 			? sanitize_text_field( wp_unslash( $_GET['prepared_for'] ) )
 			: $customer_default;
 
+		// Prospect-facing additions: editable cover note, validity date, and
+		// CTA block. Defaults are templated so regular customer sends still
+		// look polished without Holly editing anything; she only touches the
+		// fields when actively pitching.
+		$valid_through_default = date_i18n( 'F j, Y', strtotime( '+30 days' ) );
+		$valid_through         = isset( $_GET['valid_through'] )
+			? sanitize_text_field( wp_unslash( $_GET['valid_through'] ) )
+			: $valid_through_default;
+
+		$cover_note_default = 'Pricing below reflects our current wholesale tier. First orders have a $' . number_format( (float) slw_get_option( 'first_order_minimum', 300 ), 0 ) . ' minimum. NET 30 payment terms available after your first order. Reach out anytime with questions.';
+		$cover_note = isset( $_GET['note'] )
+			? sanitize_text_field( wp_unslash( $_GET['note'] ) )
+			: $cover_note_default;
+
+		$apply_url = home_url( '/wholesale-partners' );
+
+		// Quote / prospect mode. Enabled when an admin loads the sheet or when
+		// any prospect-facing URL param is set. Regular wholesale customers
+		// pulling their own price list will NOT see the cover note,
+		// 'Valid through' badge, or prospect CTA block.
+		$is_prospect_quote = current_user_can( 'manage_woocommerce' )
+			|| isset( $_GET['prepared_for'] )
+			|| isset( $_GET['note'] )
+			|| isset( $_GET['valid_through'] )
+			|| isset( $_GET['quote'] );
+
 		header( 'Content-Type: text/html; charset=utf-8' );
 		?>
 <!DOCTYPE html>
@@ -403,6 +429,151 @@ body {
 	color: #b5b0a3;
 	font-weight: 400;
 	font-style: italic;
+}
+
+/* Validity pill -- gold accent, sits under the date */
+.linesheet-header-right .validity {
+	margin-top: 10px;
+	display: inline-flex;
+	align-items: baseline;
+	gap: 6px;
+	padding: 4px 10px 4px 12px;
+	background: #fdf6e3;
+	border: 1px solid #e8d59a;
+	border-radius: 999px;
+	font-size: 11px;
+}
+
+.linesheet-header-right .validity-label {
+	text-transform: uppercase;
+	letter-spacing: 1px;
+	color: #8a6d1a;
+	font-weight: 600;
+}
+
+.linesheet-header-right .validity-date {
+	color: #1E2A30;
+	font-weight: 600;
+	outline: none;
+	cursor: text;
+	padding: 0 2px;
+	border-radius: 3px;
+	border-bottom: 1px dashed transparent;
+}
+
+.linesheet-header-right .validity-date:hover {
+	border-bottom-color: #c9ad57;
+}
+
+.linesheet-header-right .validity-date:focus {
+	border-bottom-color: <?php echo esc_attr( $accent ); ?>;
+}
+
+/* Admin-only notice. Cream pill above the cover note, screen-only. */
+.linesheet-admin-notice {
+	margin: 18px 40px 0;
+	padding: 12px 16px;
+	background: #fdf6e3;
+	border: 1px solid #e8d59a;
+	border-radius: 8px;
+	font-size: 12.5px;
+	color: #5a4408;
+	line-height: 1.55;
+	display: flex;
+	gap: 12px;
+	align-items: flex-start;
+}
+
+.linesheet-admin-notice__badge {
+	flex-shrink: 0;
+	background: <?php echo esc_attr( $accent ); ?>;
+	color: #F7F6F3;
+	font-size: 10px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	padding: 3px 9px;
+	border-radius: 999px;
+	line-height: 1.5;
+	white-space: nowrap;
+}
+
+/* Cover note -- editable italic serif, brand teal left border */
+.linesheet-cover-wrap {
+	padding: 28px 40px 0;
+}
+
+.linesheet-cover-note {
+	font-family: Georgia, 'Times New Roman', serif;
+	font-style: italic;
+	font-size: 15px;
+	line-height: 1.65;
+	color: #2C3E48;
+	padding: 14px 18px;
+	border-left: 3px solid <?php echo esc_attr( $accent ); ?>;
+	background: #fafaf7;
+	border-radius: 0 6px 6px 0;
+	outline: none;
+	cursor: text;
+	transition: background 0.15s, border-left-width 0.15s;
+}
+
+.linesheet-cover-note:hover {
+	background: #f5f3eb;
+}
+
+.linesheet-cover-note:focus {
+	background: #fff;
+	border-left-width: 4px;
+}
+
+.linesheet-cover-note:empty::before {
+	content: attr(data-placeholder);
+	color: #b5b0a3;
+}
+
+/* Prospect CTA card -- brand teal background, cream text */
+.linesheet-cta {
+	margin: 16px 40px 28px;
+	padding: 22px 26px 24px;
+	background: linear-gradient(135deg, <?php echo esc_attr( $accent ); ?> 0%, #2c4f5e 100%);
+	color: #F7F6F3;
+	border-radius: 10px;
+	page-break-inside: avoid;
+	box-shadow: 0 4px 14px rgba(56, 97, 116, 0.18);
+}
+
+.linesheet-cta__title {
+	font-family: Georgia, 'Times New Roman', serif;
+	font-size: 18px;
+	font-weight: 700;
+	margin-bottom: 10px;
+	letter-spacing: 0.3px;
+}
+
+.linesheet-cta__body {
+	font-size: 14px;
+	line-height: 1.55;
+}
+
+.linesheet-cta__line {
+	margin-bottom: 4px;
+}
+
+.linesheet-cta__line strong {
+	font-weight: 700;
+	color: #ffffff;
+}
+
+.linesheet-cta__sep {
+	margin: 0 6px;
+	opacity: 0.75;
+}
+
+.linesheet-cta__line--sub {
+	margin-top: 6px;
+	font-size: 12.5px;
+	opacity: 0.85;
 }
 
 .linesheet-header-right .date {
@@ -616,14 +787,45 @@ body {
 		display: none !important;
 	}
 
-	.linesheet-header-right .customer {
+	.linesheet-header-right .customer,
+	.linesheet-header-right .validity-date {
 		border-color: transparent !important;
 		background: transparent !important;
 		padding: 0 !important;
 	}
 
-	.linesheet-header-right .customer:empty::before {
+	.linesheet-header-right .customer:empty::before,
+	.linesheet-cover-note:empty::before {
 		content: "" !important;
+	}
+
+	.linesheet-admin-notice {
+		display: none !important;
+	}
+
+	.linesheet-cover-wrap {
+		padding: 14px 20px 0 !important;
+	}
+
+	.linesheet-cover-note {
+		background: transparent !important;
+		padding: 4px 12px !important;
+		font-size: 12px !important;
+	}
+
+	.linesheet-cta {
+		margin: 12px 20px 14px !important;
+		padding: 14px 18px !important;
+		box-shadow: none !important;
+	}
+
+	.linesheet-cta__title {
+		font-size: 14px !important;
+		margin-bottom: 6px !important;
+	}
+
+	.linesheet-cta__body {
+		font-size: 11px !important;
 	}
 
 	.linesheet-category {
@@ -701,8 +903,39 @@ body {
 				      data-placeholder="(click to add a name)"><?php echo esc_html( $customer_label ); ?></span>
 			</div>
 			<div class="date"><?php echo esc_html( $today ); ?></div>
+			<?php if ( $is_prospect_quote ) : ?>
+				<div class="validity">
+					<span class="validity-label">Valid through</span>
+					<span class="validity-date"
+					      contenteditable="true"
+					      spellcheck="false"
+					      role="textbox"
+					      aria-label="Valid through (click to edit)"><?php echo esc_html( $valid_through ); ?></span>
+				</div>
+			<?php endif; ?>
 		</div>
 	</div>
+
+	<?php if ( $is_prospect_quote ) : ?>
+		<!-- Admin-only banner: clarifies that the editable fields below are
+		     part of the admin/quote view and won't appear when a regular
+		     wholesale customer pulls their own price list. Hidden in print. -->
+		<div class="linesheet-admin-notice">
+			<span class="linesheet-admin-notice__badge">Admin view</span>
+			<span>The "Prepared for", "Valid through", cover note, and CTA below are editable on this page and only show when you (or another admin) view it. Regular wholesale customers see a clean version without these fields. Click any field to edit, then print.</span>
+		</div>
+
+		<!-- Personal cover note (editable, italic serif). Hidden for regular
+		     wholesale customers; shown only when Holly is preparing a quote. -->
+		<div class="linesheet-cover-wrap">
+			<div class="linesheet-cover-note"
+			     contenteditable="true"
+			     spellcheck="false"
+			     role="textbox"
+			     aria-label="Cover note (click to edit)"
+			     data-placeholder="Add a personal note for your prospect..."><?php echo esc_html( $cover_note ); ?></div>
+		</div>
+	<?php endif; ?>
 
 	<!-- Products by category -->
 	<div class="linesheet-body">
@@ -760,6 +993,33 @@ body {
 			<?php endforeach; ?>
 		<?php endif; ?>
 	</div>
+
+	<?php if ( $is_prospect_quote ) : ?>
+		<!-- Conversion CTA. Brand teal card with clear next steps. Only shown
+		     for prospect quotes; regular customers don't need it. -->
+		<div class="linesheet-cta">
+			<div class="linesheet-cta__title">Ready to place your first order?</div>
+			<div class="linesheet-cta__body">
+				<?php if ( $business_phone || $business_email ) : ?>
+					<div class="linesheet-cta__line">
+						<?php if ( $business_phone ) : ?>
+							<span>Call <strong><?php echo esc_html( $business_phone ); ?></strong></span>
+						<?php endif; ?>
+						<?php if ( $business_phone && $business_email ) : ?>
+							<span class="linesheet-cta__sep">or</span>
+						<?php endif; ?>
+						<?php if ( $business_email ) : ?>
+							<span>email <strong><?php echo esc_html( $business_email ); ?></strong></span>
+						<?php endif; ?>
+					</div>
+				<?php endif; ?>
+				<div class="linesheet-cta__line linesheet-cta__line--sub">
+					New here? Apply for a wholesale account at
+					<strong><?php echo esc_html( wp_parse_url( $apply_url, PHP_URL_HOST ) . wp_parse_url( $apply_url, PHP_URL_PATH ) ); ?></strong>
+				</div>
+			</div>
+		</div>
+	<?php endif; ?>
 
 	<!-- Footer -->
 	<div class="linesheet-footer">
