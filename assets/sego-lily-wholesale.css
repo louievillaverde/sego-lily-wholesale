@@ -4309,7 +4309,7 @@ button.slw-reorder-btn:hover {
     font-weight: 700;
     white-space: nowrap;
 }
-.slw-wc-fine-print { margin: 12px 0 0; font-size: 11.5px; color: #826a3e; text-align: center; }
+.slw-wc-fine-print { margin: 12px 0 0; font-size: 11.5px; color: #826a3e; text-align: left; }
 
 /* --- Summary sidebar --- */
 .slw-wc-summary {

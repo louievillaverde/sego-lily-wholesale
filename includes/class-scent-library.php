@@ -79,7 +79,7 @@ class SLW_Scent_Library {
         ),
         'coconut' => array(
             'intensity'   => 'Medium',
-            'description' => 'Fresh-cracked coconut meat. Creamy, tropical, beach-vacation in a tin.',
+            'description' => 'Fresh-cracked coconut meat. Creamy, tropical, beach-vacation in a jar.',
         ),
         'huckleberry' => array(
             'intensity'   => 'Medium',

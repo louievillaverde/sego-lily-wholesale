@@ -40,6 +40,69 @@ class SLW_Customer_Portal {
     }
 
     /**
+     * Render the wholesale top nav (tabs + Sign out). Used by the portal
+     * itself and by the standalone Order Form page so wholesale customers
+     * never lose access to their other portal sections while shopping.
+     *
+     * @param string $active_tab Slug of the currently-active tab.
+     */
+    public static function render_nav( $active_tab = 'orders' ) {
+        $portal_url = home_url( '/wholesale-portal' );
+        ?>
+        <nav class="slw-portal-tabs slw-portal-tabs--standalone" role="tablist">
+            <div class="slw-portal-tabs-inner">
+                <?php foreach ( self::$tabs as $slug => $label ) :
+                    $url = ( $slug === 'dashboard' )
+                        ? $portal_url
+                        : add_query_arg( array( 'tab' => $slug ), $portal_url );
+                    $is_active = ( $slug === $active_tab );
+                    // Order Form tab points directly at /wholesale-order
+                    // since that's the canonical page now.
+                    if ( $slug === 'orders' ) {
+                        $url = home_url( '/wholesale-order' );
+                    }
+                ?>
+                    <a href="<?php echo esc_url( $url ); ?>"
+                       class="slw-portal-tab<?php echo $is_active ? ' slw-portal-tab-active' : ''; ?>"
+                       role="tab"
+                       aria-selected="<?php echo $is_active ? 'true' : 'false'; ?>"
+                       data-tab="<?php echo esc_attr( $slug ); ?>">
+                        <?php echo esc_html( $label ); ?>
+                    </a>
+                <?php endforeach; ?>
+            </div>
+            <?php if ( is_user_logged_in() ) : ?>
+                <a href="<?php echo esc_url( wp_logout_url( home_url( '/' ) ) ); ?>"
+                   class="slw-portal-signout"
+                   aria-label="Sign out">
+                    <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M6 14H3.5A1.5 1.5 0 0 1 2 12.5v-9A1.5 1.5 0 0 1 3.5 2H6"/>
+                        <path d="M10 11l3-3-3-3M13 8H6"/>
+                    </svg>
+                    <span>Sign out</span>
+                </a>
+            <?php endif; ?>
+            <div class="slw-portal-tabs-mobile">
+                <select class="slw-portal-tab-select" onchange="if(this.value) window.location.href=this.value;">
+                    <?php foreach ( self::$tabs as $slug => $label ) :
+                        $url = ( $slug === 'dashboard' )
+                            ? $portal_url
+                            : add_query_arg( array( 'tab' => $slug ), $portal_url );
+                        if ( $slug === 'orders' ) {
+                            $url = home_url( '/wholesale-order' );
+                        }
+                    ?>
+                        <option value="<?php echo esc_url( $url ); ?>" <?php selected( $slug, $active_tab ); ?>>
+                            <?php echo esc_html( $label ); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+        </nav>
+        <?php
+    }
+
+    /**
      * Save handler for inline Account tab forms: profile, shipping,
      * billing, password. Routed through admin-post.php so the user
      * comes back to /wholesale-portal?tab=account&slw_account_saved=...

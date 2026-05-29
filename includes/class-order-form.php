@@ -22,6 +22,46 @@ class SLW_Order_Form {
         add_action( 'wp_ajax_slw_reorder_last',    array( __CLASS__, 'ajax_reorder_last' ) );
         add_action( 'wp_ajax_slw_remove_cart_line', array( __CLASS__, 'ajax_remove_cart_line' ) );
         add_action( 'wp_ajax_slw_clear_cart',       array( __CLASS__, 'ajax_clear_cart' ) );
+        add_action( 'wp_ajax_slw_set_cart_qty',     array( __CLASS__, 'ajax_set_cart_qty' ) );
+    }
+
+    /**
+     * Update the quantity of a single cart line. Called from the order
+     * form Cart Preview +/- buttons and direct input. Returns updated
+     * cart state for re-render.
+     */
+    public static function ajax_set_cart_qty() {
+        check_ajax_referer( 'slw_order_form', 'nonce' );
+        if ( ! is_user_logged_in() || ! slw_is_wholesale_user() ) {
+            wp_send_json_error( array( 'message' => 'Wholesale customers only.' ), 403 );
+        }
+        if ( ! function_exists( 'WC' ) || ! WC()->cart ) {
+            wp_send_json_error( array( 'message' => 'Cart unavailable.' ), 500 );
+        }
+        $cart_key = isset( $_POST['cart_key'] ) ? sanitize_text_field( wp_unslash( $_POST['cart_key'] ) ) : '';
+        $qty      = max( 0, (int) ( $_POST['qty'] ?? 0 ) );
+        $resolved_key = '';
+        if ( $cart_key && isset( WC()->cart->get_cart()[ $cart_key ] ) ) {
+            $resolved_key = $cart_key;
+        } else {
+            $pid = absint( $_POST['product_id']   ?? 0 );
+            $vid = absint( $_POST['variation_id'] ?? 0 );
+            foreach ( WC()->cart->get_cart() as $key => $ci ) {
+                if ( (int) ( $ci['product_id'] ?? 0 ) === $pid
+                    && (int) ( $ci['variation_id'] ?? 0 ) === $vid ) {
+                    $resolved_key = $key;
+                    break;
+                }
+            }
+        }
+        if ( $resolved_key ) {
+            if ( $qty <= 0 ) {
+                WC()->cart->remove_cart_item( $resolved_key );
+            } else {
+                WC()->cart->set_quantity( $resolved_key, $qty, true );
+            }
+        }
+        wp_send_json_success( self::cart_state_payload() );
     }
 
     /**
@@ -82,24 +122,55 @@ class SLW_Order_Form {
             foreach ( WC()->cart->get_cart() as $key => $ci ) {
                 $prod = $ci['data'] ?? null;
                 if ( ! $prod ) continue;
-                $label = $prod->get_name();
-                if ( method_exists( $prod, 'get_formatted_name' ) ) {
-                    // get_formatted_name returns SKU + name + variation attrs.
-                    // Strip the SKU prefix ("(#SKU-123) Renewal ...") so the
-                    // line item label reads cleanly.
-                    $label = preg_replace( '/^\(#[^)]+\)\s*/', '', $prod->get_formatted_name() );
-                }
                 $items[] = array(
                     'cart_key'     => $key,
                     'product_id'   => (int) ( $ci['product_id'] ?? 0 ),
                     'variation_id' => (int) ( $ci['variation_id'] ?? 0 ),
                     'qty'          => (int) ( $ci['quantity'] ?? 0 ),
-                    'label'        => wp_strip_all_tags( $label ),
+                    'label'        => self::clean_cart_label( $prod ),
                     'lineTotal'    => (float) $prod->get_price() * (int) ( $ci['quantity'] ?? 0 ),
                 );
             }
         }
         return array( 'items' => $items );
+    }
+
+    /**
+     * Build a clean cart-row label: parent product name + non-subscription
+     * variation attributes joined with " — ". No SKU prefix, no "One-Time
+     * Purchase" (every wholesale order IS one-time, so the label is
+     * redundant). Each piece is normalized so size + scent always read
+     * with proper spacing.
+     */
+    private static function clean_cart_label( $prod ) {
+        if ( ! $prod ) return '';
+        // Base name: parent product if variation, otherwise just product
+        $base = '';
+        if ( method_exists( $prod, 'get_parent_id' ) && $prod->get_parent_id() ) {
+            $parent = wc_get_product( $prod->get_parent_id() );
+            $base = $parent ? $parent->get_name() : $prod->get_name();
+        } else {
+            $base = $prod->get_name();
+        }
+        // Variation attributes -- skip anything that looks like a billing
+        // cycle / subscription period.
+        $attrs = array();
+        if ( method_exists( $prod, 'get_attributes' ) ) {
+            foreach ( (array) $prod->get_attributes() as $taxonomy => $value ) {
+                if ( ! $value ) continue;
+                $lower = strtolower( (string) $value );
+                if ( preg_match( '/month|year|week|every|one.?time|subscribe|subscription|recurring/i', $lower ) ) {
+                    continue;
+                }
+                $term = get_term_by( 'slug', $value, $taxonomy );
+                $attrs[] = $term ? $term->name : ucfirst( str_replace( '-', ' ', $value ) );
+            }
+        }
+        $label = $base;
+        if ( ! empty( $attrs ) ) {
+            $label .= ', ' . implode( ', ', $attrs );
+        }
+        return wp_strip_all_tags( $label );
     }
 
     /**

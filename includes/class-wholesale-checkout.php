@@ -101,6 +101,20 @@ class SLW_Wholesale_Checkout {
     }
 
     public static function render() {
+        // Enqueue WC's checkout script + each available gateway's payment
+        // scripts so the native payment-method UI works exactly as it does
+        // on the standard /checkout (Stripe card iframes, NET 30 confirm,
+        // etc. all attach to the standard #payment selector + radios).
+        if ( function_exists( 'wp_enqueue_script' ) ) {
+            wp_enqueue_script( 'wc-checkout' );
+            if ( function_exists( 'WC' ) && WC()->payment_gateways ) {
+                foreach ( WC()->payment_gateways->get_available_payment_gateways() as $gateway ) {
+                    if ( method_exists( $gateway, 'payment_scripts' ) ) {
+                        $gateway->payment_scripts();
+                    }
+                }
+            }
+        }
         if ( ! is_user_logged_in() ) {
             return '<div class="slw-checkout-gate"><h2 class="slw-balance">Sign in to your wholesale account</h2><p class="slw-pretty"><a href="' . esc_url( wp_login_url( get_permalink() ) ) . '">Log in</a> to access wholesale checkout.</p></div>';
         }
@@ -147,6 +161,15 @@ class SLW_Wholesale_Checkout {
         $owner_phone   = class_exists( 'SLW_Email_Settings' ) ? SLW_Email_Settings::get( 'from_phone' ) : '';
         $owner_email   = class_exists( 'SLW_Email_Settings' ) ? SLW_Email_Settings::get( 'from_address' ) : get_option( 'admin_email' );
         ?>
+        <style>
+            /* Hide the WP page title that renders above the shortcode --
+               we already render our own styled "Wholesale Checkout" h1
+               inside the shortcode's header. Avoids the duplicate title. */
+            body.page .entry-title:not(.slw-balance),
+            body.page .wp-block-post-title:not(.slw-balance),
+            body.page .elementor-page-title__title,
+            body.page header.entry-header > h1 { display: none !important; }
+        </style>
         <div class="slw-wholesale-checkout">
             <div class="slw-wc-header">
                 <h1 class="slw-balance">Wholesale Checkout</h1>
@@ -154,7 +177,7 @@ class SLW_Wholesale_Checkout {
                 <a class="slw-wc-back" href="<?php echo esc_url( home_url( '/wholesale-order' ) ); ?>">&larr; Back to the order form</a>
             </div>
 
-            <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="slw-wc-grid" id="slw-wholesale-checkout-form">
+            <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="slw-wc-grid checkout woocommerce-checkout" id="slw-wholesale-checkout-form">
                 <?php wp_nonce_field( 'slw_place_wholesale_order' ); ?>
                 <input type="hidden" name="action" value="slw_place_wholesale_order" />
 
@@ -287,37 +310,26 @@ class SLW_Wholesale_Checkout {
 
                     <section class="slw-wc-section">
                         <h2 class="slw-wc-section__title">Payment</h2>
-                        <div class="slw-wc-radios">
-                            <?php if ( ! empty( $available_gateways ) ) :
-                                foreach ( $available_gateways as $gateway_id => $gateway ) : ?>
-                                <label class="slw-wc-radio">
-                                    <input type="radio" name="payment_method" value="<?php echo esc_attr( $gateway_id ); ?>" <?php checked( $gateway_id, $default_gateway ); ?> />
-                                    <span class="slw-wc-radio__label">
-                                        <strong><?php echo esc_html( $gateway->get_title() ); ?></strong>
-                                        <?php if ( $gateway->get_description() ) : ?>
-                                            <small><?php echo wp_kses_post( $gateway->get_description() ); ?></small>
-                                        <?php endif; ?>
-                                    </span>
-                                </label>
-                                <?php
-                                    // Render the gateway's own payment form (card fields,
-                                    // saved methods, NET 30 confirmation, etc.). WC's
-                                    // payment_fields() outputs the same form the native
-                                    // checkout uses, so saved cards + tokens carry over.
-                                    if ( method_exists( $gateway, 'payment_fields' ) ) : ?>
-                                    <div class="slw-wc-gateway-fields" data-gateway="<?php echo esc_attr( $gateway_id ); ?>" <?php echo $gateway_id === $default_gateway ? '' : 'hidden'; ?>>
-                                        <?php
-                                        ob_start();
-                                        $gateway->payment_fields();
-                                        echo wp_kses_post( ob_get_clean() );
-                                        ?>
-                                    </div>
-                                    <?php endif;
-                                endforeach;
-                            else : ?>
-                                <p class="slw-wc-note">No payment methods available. Contact <?php echo esc_html( $owner_email ); ?>.</p>
-                            <?php endif; ?>
-                        </div>
+                        <?php
+                        // Use WooCommerce's NATIVE payment method rendering --
+                        // the same wc_get_template that the standard checkout
+                        // uses. Wrapped in #payment + .woocommerce-checkout-
+                        // payment so every gateway's JS (Stripe iframes,
+                        // NET 30 confirm, etc.) attaches to the structure
+                        // it expects.
+                        if ( ! empty( $available_gateways ) ) :
+                            WC()->payment_gateways()->set_current_gateway( $available_gateways );
+                            ?>
+                            <div id="payment" class="woocommerce-checkout-payment slw-wc-payment-wrap">
+                                <ul class="wc_payment_methods payment_methods methods">
+                                    <?php foreach ( $available_gateways as $gateway ) {
+                                        wc_get_template( 'checkout/payment-method.php', array( 'gateway' => $gateway ) );
+                                    } ?>
+                                </ul>
+                            </div>
+                        <?php else : ?>
+                            <p class="slw-wc-note">No payment methods available. Contact <?php echo esc_html( $owner_email ); ?>.</p>
+                        <?php endif; ?>
                     </section>
 
                     <section class="slw-wc-section">
@@ -402,20 +414,8 @@ class SLW_Wholesale_Checkout {
                 sync();
             }
 
-            // Show only the selected gateway's payment fields. Lets saved
-            // cards / token UI render via the gateway's own payment_fields().
-            var paymentRadios = document.querySelectorAll('.slw-wholesale-checkout input[name="payment_method"]');
-            var allGatewayBoxes = document.querySelectorAll('.slw-wc-gateway-fields');
-            function syncGateway() {
-                var chosen = '';
-                paymentRadios.forEach(function(r) { if (r.checked) chosen = r.value; });
-                allGatewayBoxes.forEach(function(box) {
-                    box.hidden = (box.getAttribute('data-gateway') !== chosen);
-                });
-            }
-            paymentRadios.forEach(function(r) { r.addEventListener('change', syncGateway); });
-            syncGateway();
-
+            // WC's native payment-method.php handles its own field
+            // visibility (.payment_box auto-toggles via wc-checkout.js).
             // Recompute shipping when zip / state changes -- AJAX hook
             // into WC's update_order_review endpoint so radios refresh.
             var shippingPostcode = document.querySelector('.slw-wholesale-checkout input[name="shipping_postcode"]');

@@ -879,36 +879,57 @@ class SLW_Wholesale_Role {
         }
         ?>
         <script>
-        // Side cart + sticky bottom bar coordination.
-        // The side cart is allowed to open normally. When it does, slide our
-        // sticky Cart Preview bar down so the two don't visually collide.
+        // Bottom Cart Preview bar coordination: hide it the moment a cart
+        // icon is clicked, restore it when the cart panel closes (or after
+        // a few seconds if we never observe the close). Simple. Direct.
         (function() {
-            var openSelectors = [
+            var iconSelectors = [
+                '.elementor-menu-cart__toggle',
+                '.elementor-menu-cart__toggle_button',
+                '.elementor-widget-woocommerce-menu-cart a',
+                '.menu-item-cart a',
+                '.header-cart a',
+                '.header-cart-link',
+                '.cart-toggle',
+                '.shopping-cart-icon',
+                'a.cart-contents',
+                '.wc-block-mini-cart__button',
+                'a[href$="/cart/"]',
+                'a[href$="/cart"]'
+            ];
+            var openClasses = [
                 '.elementor-menu-cart--shown',
                 '.elementor-menu-cart--opened',
-                '.wc-block-mini-cart--open',
-                '.cart-drawer.open',
-                '.side-cart.open'
+                '.wc-block-mini-cart--open'
             ];
-            function syncStickyBar() {
-                var stickyBar = document.querySelector('.slw-sticky-bar');
-                if (!stickyBar) return;
-                var open = openSelectors.some(function(sel) { return !!document.querySelector(sel); });
-                stickyBar.classList.toggle('slw-sticky-bar--hidden-by-cart', open);
+            function hideBar() {
+                var bar = document.querySelector('.slw-sticky-bar');
+                if (bar) bar.classList.add('slw-sticky-bar--hidden-by-cart');
             }
-            function init() {
-                syncStickyBar();
-                try {
-                    new MutationObserver(syncStickyBar).observe(document.documentElement, {
-                        subtree: true, attributes: true, attributeFilter: ['class']
-                    });
-                } catch (e) {}
+            function showBar() {
+                var bar = document.querySelector('.slw-sticky-bar');
+                if (bar) bar.classList.remove('slw-sticky-bar--hidden-by-cart');
             }
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', init);
-            } else {
-                init();
+            function isCartIcon(el) {
+                if (!el || el.nodeType !== 1) return false;
+                for (var i = 0; i < iconSelectors.length; i++) {
+                    try { if (el.closest && el.closest(iconSelectors[i])) return true; } catch (e) {}
+                }
+                return false;
             }
+            // Click on any cart icon -> hide bar immediately.
+            document.addEventListener('click', function(e) {
+                if (isCartIcon(e.target)) hideBar();
+            });
+            // When the cart panel closes, show the bar again.
+            try {
+                new MutationObserver(function() {
+                    var anyOpen = openClasses.some(function(sel) { return !!document.querySelector(sel); });
+                    if (!anyOpen) showBar();
+                }).observe(document.documentElement, {
+                    subtree: true, attributes: true, attributeFilter: ['class']
+                });
+            } catch (e) {}
         })();
         </script>
         <style id="slw-sticky-side-cart-coordination">
