@@ -596,31 +596,48 @@ a.slw-btn-ghost:hover {
     color: #2C2C2C;
 }
 
-/* Clickable product row image button. Keeps the 60x60 thumbnail
-   visible inline; clicking opens the lightbox at full resolution. */
+/* Clickable product row image button. Small rounded box, no theme
+   button styling, no red outline. object-fit:contain so the whole
+   product is visible (cover was cropping product edges). */
 .slw-row-image-btn {
     display: inline-block !important;
-    padding: 2px !important;
-    background: transparent !important;
-    border: 1px solid transparent;
-    border-radius: 6px;
+    width: 64px;
+    height: 64px;
+    padding: 4px !important;
+    background: #F7F6F3 !important;
+    border: 1px solid #e0ddd8 !important;
+    border-radius: 8px !important;
     cursor: zoom-in;
-    transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
-    font-size: 0;
+    transition: border-color 0.15s, box-shadow 0.15s;
     line-height: 1;
     vertical-align: middle;
+    box-shadow: none !important;
+    outline: none !important;
+    text-decoration: none !important;
+    color: transparent !important;
 }
 .slw-row-image-btn:hover {
-    border-color: #D4AF37;
-    transform: scale(1.04);
-    box-shadow: 0 4px 10px rgba(212, 175, 55, 0.18);
+    border-color: #D4AF37 !important;
+    box-shadow: 0 2px 8px rgba(212, 175, 55, 0.18) !important;
+}
+.slw-row-image-btn:focus {
+    outline: 2px solid #386174 !important;
+    outline-offset: 2px;
+}
+.slw-row-image-btn:focus-visible {
+    outline: 2px solid #386174 !important;
+    outline-offset: 2px;
+}
+.slw-row-image-btn:focus:not(:focus-visible) {
+    outline: none !important;
 }
 .slw-row-image-btn img {
     border-radius: 4px;
     display: block;
-    width: 60px;
-    height: 60px;
-    object-fit: cover;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: transparent;
 }
 
 /* Image lightbox */

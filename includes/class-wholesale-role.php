@@ -763,10 +763,10 @@ class SLW_Wholesale_Role {
                 . '.wc_payment_method_paypal_express_subscription_details,'
                 . '.subscription-sign-up-fee,'
                 . '.product-subscription-price,'
-                // Hide retail side-cart / mini-cart triggers + popups for
-                // wholesale users so the in-page Cart Preview on the order
-                // form is the only cart surface they see. Stops the dual-
-                // cart confusion Holly call flagged.
+                // Hide retail side-cart / mini-cart triggers + popups AND
+                // header cart icons for wholesale users so the in-page Cart
+                // Preview on the order form is the only cart surface they
+                // see. Stops the dual-cart confusion Holly call flagged.
                 . '.elementor-menu-cart,'
                 . '.elementor-menu-cart__wrapper,'
                 . '.elementor-menu-cart__main,'
@@ -779,7 +779,19 @@ class SLW_Wholesale_Role {
                 . '.cart-drawer,'
                 . '.side-cart,'
                 . '.wc-block-mini-cart,'
-                . '.wc-block-mini-cart__button'
+                . '.wc-block-mini-cart__button,'
+                // Header cart icon selectors (theme-agnostic best effort)
+                . '.header-cart,'
+                . '.header-cart-icon,'
+                . '.site-header .cart-icon,'
+                . '.cart-toggle,'
+                . '.header-cart-link,'
+                . '.shopping-cart-icon,'
+                . '.elementor-widget-woocommerce-menu-cart,'
+                . '.wp-block-woocommerce-mini-cart,'
+                . 'a[href$="/cart/"],'
+                . 'a[href$="/cart"],'
+                . '.menu-item-cart'
                 . '{display:none!important}'
                 . '</style>';
         } );

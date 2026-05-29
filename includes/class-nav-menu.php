@@ -36,6 +36,114 @@ class SLW_Nav_Menu {
         // to /wholesale-portal before WC renders. Covers every entry point
         // regardless of how the icon was built.
         add_action( 'template_redirect', array( __CLASS__, 'redirect_account_to_portal' ) );
+
+        // Wholesale checkout routing: wholesale customers hitting the
+        // theme-built /checkout (often Elementor) get redirected to
+        // /wholesale-checkout which uses the native WC checkout shortcode
+        // and therefore respects apply_wholesale_price on every line item.
+        add_action( 'template_redirect', array( __CLASS__, 'redirect_checkout_for_wholesale' ) );
+
+        // Same problem for /cart: theme-built cart page often doesn't
+        // apply wholesale prices, so wholesale users go to the wholesale
+        // order form (which acts as their cart).
+        add_action( 'template_redirect', array( __CLASS__, 'redirect_cart_for_wholesale' ) );
+
+        // Rewrite cart-page links upfront so theme cart icons go to the
+        // right URL for wholesale users at click time.
+        add_filter( 'page_link', array( __CLASS__, 'rewrite_cart_link' ), 10, 2 );
+        add_filter( 'woocommerce_get_cart_url', array( __CLASS__, 'rewrite_wc_cart_url' ), 999 );
+
+        // Self-heal: make sure the wholesale-checkout page exists. Plugin
+        // activation creates it, but existing installs need this fallback.
+        add_action( 'admin_init', array( __CLASS__, 'maybe_create_wholesale_checkout_page' ) );
+    }
+
+    /**
+     * Send wholesale customers from /cart to /wholesale-order so they
+     * stay on the wholesale-aware order form / cart surface.
+     */
+    public static function redirect_cart_for_wholesale() {
+        if ( is_admin() ) return;
+        if ( ! is_user_logged_in() ) return;
+        if ( ! function_exists( 'slw_is_wholesale_user' ) || ! slw_is_wholesale_user() ) return;
+        if ( ! function_exists( 'is_cart' ) || ! is_cart() ) return;
+        $order_form = get_page_by_path( 'wholesale-order' );
+        if ( ! $order_form ) return;
+        if ( is_page( $order_form->ID ) ) return;
+        wp_safe_redirect( get_permalink( $order_form->ID ) );
+        exit;
+    }
+
+    /**
+     * page_link filter: rewrite the WC cart page URL to /wholesale-order
+     * for wholesale customers so theme cart icons resolve to the right URL.
+     */
+    public static function rewrite_cart_link( $link, $post_id ) {
+        if ( is_admin() ) return $link;
+        if ( ! is_user_logged_in() ) return $link;
+        if ( ! function_exists( 'slw_is_wholesale_user' ) || ! slw_is_wholesale_user() ) return $link;
+        $cart_page_id = (int) get_option( 'woocommerce_cart_page_id' );
+        if ( ! $cart_page_id || (int) $post_id !== $cart_page_id ) return $link;
+        $order_form = get_page_by_path( 'wholesale-order' );
+        return $order_form ? get_permalink( $order_form->ID ) : $link;
+    }
+
+    /**
+     * wc_get_cart_url filter: same rewrite for any WC-internal cart URL
+     * lookup (e.g. nav menu items configured via WC settings, mini-cart
+     * widget links). Skipped on admin and during checkout/order-pay so
+     * WC's internal redirect chain stays intact.
+     */
+    public static function rewrite_wc_cart_url( $url ) {
+        if ( is_admin() ) return $url;
+        if ( ! is_user_logged_in() ) return $url;
+        if ( ! function_exists( 'slw_is_wholesale_user' ) || ! slw_is_wholesale_user() ) return $url;
+        // Don't mess with cart URLs WC uses internally during checkout flow
+        if ( defined( 'WOOCOMMERCE_CHECKOUT' ) || ( function_exists( 'is_checkout' ) && is_checkout() ) ) return $url;
+        $order_form = get_page_by_path( 'wholesale-order' );
+        return $order_form ? get_permalink( $order_form->ID ) : $url;
+    }
+
+    /**
+     * Send wholesale customers from /checkout to /wholesale-checkout so the
+     * native WC checkout renders (Elementor-built checkout was silently
+     * dropping the wholesale discount).
+     */
+    public static function redirect_checkout_for_wholesale() {
+        if ( is_admin() ) return;
+        if ( ! is_user_logged_in() ) return;
+        if ( ! function_exists( 'slw_is_wholesale_user' ) || ! slw_is_wholesale_user() ) return;
+        if ( ! function_exists( 'is_checkout' ) || ! is_checkout() ) return;
+        // Don't redirect order-received / pay endpoints
+        if ( function_exists( 'is_wc_endpoint_url' ) && (
+                is_wc_endpoint_url( 'order-received' ) ||
+                is_wc_endpoint_url( 'order-pay' )
+        ) ) return;
+        $wholesale = get_page_by_path( 'wholesale-checkout' );
+        if ( ! $wholesale ) return;
+        if ( is_page( $wholesale->ID ) ) return; // already there
+        wp_safe_redirect( get_permalink( $wholesale->ID ) );
+        exit;
+    }
+
+    /**
+     * Idempotent self-heal: create the /wholesale-checkout page if it
+     * doesn't exist. Existing installs that updated past v4.6.72 without
+     * deactivating + reactivating need this.
+     */
+    public static function maybe_create_wholesale_checkout_page() {
+        if ( get_option( 'slw_wholesale_checkout_ready' ) ) return;
+        $existing = get_page_by_path( 'wholesale-checkout' );
+        if ( ! $existing ) {
+            wp_insert_post( array(
+                'post_title'   => 'Wholesale Checkout',
+                'post_content' => '[woocommerce_checkout]',
+                'post_status'  => 'publish',
+                'post_type'    => 'page',
+                'post_name'    => 'wholesale-checkout',
+            ));
+        }
+        update_option( 'slw_wholesale_checkout_ready', '1', true );
     }
 
     /**

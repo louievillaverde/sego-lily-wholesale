@@ -129,12 +129,14 @@ $products = $all_products; // keep for empty check
                 $is_var = $mo_product->is_type( 'variation' );
                 $mo_parent = $is_var ? wc_get_product( $mo_product->get_parent_id() ) : $mo_product;
 
-                $mo_image = wp_get_attachment_image_url( $mo_product->get_image_id(), 'thumbnail' );
+                // 'medium' (~300x300) instead of 'thumbnail' (150x150) so
+                // the image doesn't blow up blurry inside the card.
+                $mo_image = wp_get_attachment_image_url( $mo_product->get_image_id(), 'medium' );
                 if ( ! $mo_image && $mo_parent ) {
-                    $mo_image = wp_get_attachment_image_url( $mo_parent->get_image_id(), 'thumbnail' );
+                    $mo_image = wp_get_attachment_image_url( $mo_parent->get_image_id(), 'medium' );
                 }
                 if ( ! $mo_image ) {
-                    $mo_image = wc_placeholder_img_src( 'thumbnail' );
+                    $mo_image = wc_placeholder_img_src( 'medium' );
                 }
 
                 $mo_label = $mo_product->get_name();
@@ -158,7 +160,7 @@ $products = $all_products; // keep for empty check
                                data-variation-id="<?php echo esc_attr( $is_var ? $mo_product->get_id() : '' ); ?>" />
                         <button type="button" class="slw-btn slw-btn-small slw-btn-primary slw-mo-add-btn"
                                 data-product-id="<?php echo esc_attr( $is_var ? $mo_product->get_parent_id() : $mo_product->get_id() ); ?>"
-                                data-variation-id="<?php echo esc_attr( $is_var ? $mo_product->get_id() : '' ); ?>">Reorder</button>
+                                data-variation-id="<?php echo esc_attr( $is_var ? $mo_product->get_id() : '' ); ?>">Quick Reorder</button>
                     </div>
                 </div>
             </div>
@@ -688,6 +690,9 @@ $products = $all_products; // keep for empty check
 .slw-cart-preview__qty { font-weight: 700; color: #386174; font-family: Georgia, 'Times New Roman', serif; }
 .slw-cart-preview__name { color: #2C2C2C; }
 .slw-cart-preview__total { font-weight: 600; color: #2C2C2C; }
+.slw-cart-preview__item--in-cart { background: rgba(56, 97, 116, 0.04); margin: 0 -6px; padding-left: 6px; padding-right: 6px; border-radius: 4px; }
+.slw-cart-preview__item--staged .slw-cart-preview__qty { color: #8a6d1a; }
+.slw-cart-preview__pending { font-size: 11px; color: #8a6d1a; font-style: italic; margin-left: 6px; font-weight: 500; }
 
 /* Order Subtotal lines */
 .slw-os-line { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
@@ -773,7 +778,13 @@ $products = $all_products; // keep for empty check
     var msgEl = document.getElementById('slw-order-message');
 
     var cartUrl     = <?php echo wp_json_encode( wc_get_cart_url() ); ?>;
-    var checkoutUrl = <?php echo wp_json_encode( wc_get_checkout_url() ); ?>;
+    <?php
+    // Prefer the dedicated wholesale checkout (native WC, not Elementor)
+    // since the theme's /checkout was silently dropping wholesale discounts.
+    $wholesale_checkout = get_page_by_path( 'wholesale-checkout' );
+    $checkout_target    = $wholesale_checkout ? get_permalink( $wholesale_checkout->ID ) : wc_get_checkout_url();
+    ?>
+    var checkoutUrl = <?php echo wp_json_encode( $checkout_target ); ?>;
 
     // Live order subtotal in the footer. Reads data-price + quantity off
     // every .slw-qty-input row and renders running totals so the wholesale
@@ -798,6 +809,27 @@ $products = $all_products; // keep for empty check
     var previewListEl = document.getElementById('slw-cart-preview-list');
     var previewMetaEl = document.getElementById('slw-cart-preview-meta');
 
+    // Items actually in the WC cart (server-rendered on initial load,
+    // refreshed via AJAX after each per-row Add success). Separate from
+    // staged items (qty > 0 in inputs but not yet added).
+    var inCartItems = <?php
+        $boot = array();
+        if ( function_exists( 'WC' ) && WC()->cart && ! WC()->cart->is_empty() ) {
+            foreach ( WC()->cart->get_cart() as $key => $ci ) {
+                $prod = $ci['data'] ?? null;
+                if ( ! $prod ) continue;
+                $boot[] = array(
+                    'product_id'   => (int) ( $ci['product_id'] ?? 0 ),
+                    'variation_id' => (int) ( $ci['variation_id'] ?? 0 ),
+                    'qty'          => (int) ( $ci['quantity'] ?? 0 ),
+                    'label'        => $prod->get_name(),
+                    'lineTotal'    => (float) $prod->get_price() * (int) ( $ci['quantity'] ?? 0 ),
+                );
+            }
+        }
+        echo wp_json_encode( $boot );
+    ?>;
+
     function rowLabelFor(input) {
         var row = input.closest('tr');
         if (!row) return '';
@@ -810,44 +842,107 @@ $products = $all_products; // keep for empty check
         return metaTxt ? nameTxt + ', ' + metaTxt : nameTxt;
     }
 
+    function priceForItem(productId, variationId) {
+        // Look up a matching input on the page (variation first, then parent).
+        var selector = variationId
+            ? '.slw-qty-input[data-variation-id="' + variationId + '"]'
+            : '.slw-qty-input[data-product-id="' + productId + '"]:not([data-variation-id])';
+        var input = document.querySelector(selector);
+        if (input) {
+            var p = parseFloat(input.getAttribute('data-price'));
+            if (p && !isNaN(p)) return p;
+        }
+        return 0;
+    }
+
+    function mergeIntoCart(it) {
+        var price = priceForItem(it.product_id, it.variation_id);
+        var existing = inCartItems.find(function(a) {
+            return a.product_id === it.product_id && a.variation_id === (it.variation_id || 0);
+        });
+        if (existing) {
+            existing.qty += it.qty;
+            existing.lineTotal = existing.qty * price;
+        } else {
+            inCartItems.push({
+                product_id:   it.product_id,
+                variation_id: it.variation_id || 0,
+                qty:          it.qty,
+                label:        it.label || rowLabelForByIds(it.product_id, it.variation_id),
+                lineTotal:    it.qty * price
+            });
+        }
+    }
+
+    function rowLabelForByIds(productId, variationId) {
+        var selector = variationId
+            ? '.slw-qty-input[data-variation-id="' + variationId + '"]'
+            : '.slw-qty-input[data-product-id="' + productId + '"]:not([data-variation-id])';
+        var input = document.querySelector(selector);
+        return input ? rowLabelFor(input) : 'Product #' + productId;
+    }
+
     function updateSubtotal() {
         if (!subtotalEl) return;
-        var total = 0;
-        var lineCount = 0;
-        var itemCount = 0;
-        var previewItems = [];
+        var stagedTotal = 0;
+        var stagedLineCount = 0;
+        var stagedItemCount = 0;
+        var stagedItems = [];
         document.querySelectorAll('.slw-qty-input').forEach(function(input) {
             var qty = parseInt(input.value, 10) || 0;
             if (qty <= 0) return;
             var price = parseFloat(input.getAttribute('data-price')) || 0;
-            total += qty * price;
-            lineCount++;
-            itemCount += qty;
-            previewItems.push({ label: rowLabelFor(input), qty: qty, lineTotal: qty * price });
+            stagedTotal += qty * price;
+            stagedLineCount++;
+            stagedItemCount += qty;
+            stagedItems.push({ label: rowLabelFor(input), qty: qty, lineTotal: qty * price });
         });
-        subtotalEl.textContent = formatPrice(total);
 
-        // Cart preview: itemized list of everything staged with qty > 0.
+        // Order subtotal = staged + cart items (so the customer sees the
+        // full grand total without scrolling).
+        var cartTotal = inCartItems.reduce(function(sum, ci) { return sum + (ci.lineTotal || 0); }, 0);
+        var cartItemCount = inCartItems.reduce(function(sum, ci) { return sum + (ci.qty || 0); }, 0);
+        subtotalEl.textContent = formatPrice(stagedTotal + cartTotal);
+
+        // Cart preview: WC cart items first (already in cart), then any
+        // staged-but-not-yet-added rows below.
         if (previewListEl) {
             previewListEl.innerHTML = '';
-            if (previewItems.length === 0) {
-                if (previewMetaEl) previewMetaEl.textContent = 'Set quantities above to populate.';
-            } else {
-                if (previewMetaEl) {
-                    previewMetaEl.textContent = itemCount + ' item' + (itemCount === 1 ? '' : 's') +
-                        ' across ' + lineCount + ' product' + (lineCount === 1 ? '' : 's');
+            inCartItems.forEach(function(item) {
+                var li = document.createElement('li');
+                li.className = 'slw-cart-preview__item slw-cart-preview__item--in-cart';
+                li.innerHTML =
+                    '<span class="slw-cart-preview__qty">' + item.qty + '×</span>' +
+                    '<span class="slw-cart-preview__name">' + item.label + '</span>' +
+                    '<span class="slw-cart-preview__total">' + formatPrice(item.lineTotal) + '</span>';
+                previewListEl.appendChild(li);
+            });
+            stagedItems.forEach(function(item) {
+                var li = document.createElement('li');
+                li.className = 'slw-cart-preview__item slw-cart-preview__item--staged';
+                li.innerHTML =
+                    '<span class="slw-cart-preview__qty">' + item.qty + '×</span>' +
+                    '<span class="slw-cart-preview__name">' + item.label + ' <em class="slw-cart-preview__pending">(staged)</em></span>' +
+                    '<span class="slw-cart-preview__total">' + formatPrice(item.lineTotal) + '</span>';
+                previewListEl.appendChild(li);
+            });
+            if (previewMetaEl) {
+                var totalItems = stagedItemCount + cartItemCount;
+                if (totalItems === 0) {
+                    previewMetaEl.textContent = 'Set quantities above to populate.';
+                } else {
+                    var parts = [];
+                    if (cartItemCount > 0)    parts.push(cartItemCount + ' in cart');
+                    if (stagedItemCount > 0)  parts.push(stagedItemCount + ' staged');
+                    previewMetaEl.textContent = parts.join(' · ');
                 }
-                previewItems.forEach(function(item) {
-                    var li = document.createElement('li');
-                    li.className = 'slw-cart-preview__item';
-                    li.innerHTML =
-                        '<span class="slw-cart-preview__qty">' + item.qty + '×</span>' +
-                        '<span class="slw-cart-preview__name">' + item.label + '</span>' +
-                        '<span class="slw-cart-preview__total">' + formatPrice(item.lineTotal) + '</span>';
-                    previewListEl.appendChild(li);
-                });
             }
         }
+
+        // Legacy variable consumption below
+        var total     = stagedTotal + cartTotal;
+        var lineCount = stagedLineCount + inCartItems.length;
+        var itemCount = stagedItemCount + cartItemCount;
 
         if (subtotalMetaEl) {
             if (itemCount === 0) {
@@ -954,14 +1049,16 @@ $products = $all_products; // keep for empty check
 
             if (resp && resp.success) {
                 showMessage(resp.data.message, 'success');
-                // Only zero the inputs that were just added to cart, leave
-                // every other staged row alone. Previously this would wipe
-                // EVERY qty input after any per-row Add, which destroyed
-                // partially-built orders.
+                // Move successfully-added rows from 'staged' into the
+                // 'in cart' bucket so the Cart Preview reflects reality.
                 items.forEach(function(it) {
-                    var selector = it.variation_id
-                        ? '.slw-qty-input[data-variation-id="' + it.variation_id + '"]'
-                        : '.slw-qty-input[data-product-id="' + it.product_id + '"]:not([data-variation-id])';
+                    var prodId = parseInt(it.product_id, 10) || 0;
+                    var varId  = parseInt(it.variation_id, 10) || 0;
+                    mergeIntoCart({ product_id: prodId, variation_id: varId, qty: parseInt(it.quantity, 10) || 0 });
+                    // Zero the matching row's qty input only.
+                    var selector = varId
+                        ? '.slw-qty-input[data-variation-id="' + varId + '"]'
+                        : '.slw-qty-input[data-product-id="' + prodId + '"]:not([data-variation-id])';
                     var input = document.querySelector(selector);
                     if (input) input.value = '0';
                 });
@@ -1063,7 +1160,7 @@ $products = $all_products; // keep for empty check
             if (varId) {
                 item.variation_id = varId;
             }
-            addToCart([item], this, 'Reorder');
+            addToCart([item], this, 'Quick Reorder');
         });
     });
 
