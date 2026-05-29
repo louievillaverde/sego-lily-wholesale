@@ -152,6 +152,18 @@ class SLW_Customer_Portal {
                     <?php endforeach; ?>
                 </div>
 
+                <?php if ( ! $is_admin_context && is_user_logged_in() ) : ?>
+                    <a href="<?php echo esc_url( wp_logout_url( home_url( '/' ) ) ); ?>"
+                       class="slw-portal-signout"
+                       aria-label="Sign out">
+                        <svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M6 14H3.5A1.5 1.5 0 0 1 2 12.5v-9A1.5 1.5 0 0 1 3.5 2H6"/>
+                            <path d="M10 11l3-3-3-3M13 8H6"/>
+                        </svg>
+                        <span>Sign out</span>
+                    </a>
+                <?php endif; ?>
+
                 <!-- Mobile dropdown -->
                 <div class="slw-portal-tabs-mobile">
                     <select class="slw-portal-tab-select" onchange="if(this.value) window.location.href=this.value;">

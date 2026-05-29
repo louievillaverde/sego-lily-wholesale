@@ -795,17 +795,25 @@ body {
 	text-decoration: line-through;
 	color: #8A9499;
 	font-size: 12px;
+	display: inline-block;
+	vertical-align: middle;
+	line-height: 1.2;
 }
 
 .linesheet-wholesale-price {
 	font-weight: 700;
 	color: <?php echo esc_attr( $accent ); ?>;
 	font-size: 14px;
+	display: inline-block;
+	vertical-align: middle;
+	line-height: 1.2;
 }
 
 .linesheet-min-qty {
 	font-size: 12px;
 	color: #628393;
+	display: inline-block;
+	vertical-align: middle;
 }
 
 /* Footer */

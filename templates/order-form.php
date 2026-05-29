@@ -396,8 +396,36 @@ $products = $all_products; // keep for empty check
                     <td class="slw-col-image">
                         <img src="<?php echo esc_url( $var_image ); ?>" alt="<?php echo esc_attr( $var_label ); ?>" width="60" height="60" />
                     </td>
+                    <?php
+                    // Tooltip body. Variation description first (scent-specific
+                    // notes Holly can set per-variation), falling back to the
+                    // parent short description, then the parent long description
+                    // (trimmed). Strips HTML so it renders cleanly in a popup.
+                    $v_desc = trim( wp_strip_all_tags( $variation->get_description() ) );
+                    if ( ! $v_desc ) {
+                        $v_desc = trim( wp_strip_all_tags( $product->get_short_description() ) );
+                    }
+                    if ( ! $v_desc ) {
+                        $v_desc = trim( wp_strip_all_tags( $product->get_description() ) );
+                    }
+                    if ( strlen( $v_desc ) > 280 ) {
+                        $v_desc = substr( $v_desc, 0, 277 ) . '...';
+                    }
+                    ?>
                     <td class="slw-col-product">
                         <strong><?php echo esc_html( $product->get_name() ); ?></strong>
+                        <?php if ( $v_desc ) : ?>
+                            <button type="button"
+                                    class="slw-info-btn"
+                                    aria-label="Product details"
+                                    data-product-name="<?php echo esc_attr( $product->get_name() . ( $var_label ? ', ' . $var_label : '' ) ); ?>"
+                                    data-product-desc="<?php echo esc_attr( $v_desc ); ?>">
+                                <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <circle cx="8" cy="8" r="6.5"/>
+                                    <path d="M8 7.5v4M8 5v.5"/>
+                                </svg>
+                            </button>
+                        <?php endif; ?>
                         <br><span class="slw-product-meta"><?php echo esc_html( $var_label ); ?></span>
                         <?php if ( $v_case_pack > 0 && class_exists( 'SLW_Product_Minimums' ) && SLW_Product_Minimums::case_packs_enabled() ) : ?>
                             <br><span class="slw-case-pack-label">Case of <?php echo esc_html( $v_case_pack ); ?></span>
@@ -413,6 +441,9 @@ $products = $all_products; // keep for empty check
                                data-variation-id="<?php echo esc_attr( $variation->get_id() ); ?>"
                                data-variation="<?php echo esc_attr( wp_json_encode( $var_attrs ) ); ?>"
                                data-price="<?php echo esc_attr( $variation->get_price() ); ?>" />
+                        <?php if ( $v_min_input > 1 ) : ?>
+                            <span class="slw-min-badge" aria-label="Minimum quantity">Min <?php echo esc_html( $v_min_input ); ?></span>
+                        <?php endif; ?>
                     </td>
                     <td class="slw-col-action">
                         <button type="button" class="slw-btn slw-btn-small slw-btn-primary slw-add-single"
@@ -453,8 +484,29 @@ $products = $all_products; // keep for empty check
                     <td class="slw-col-image">
                         <img src="<?php echo esc_url( $image ); ?>" alt="<?php echo esc_attr( $product->get_name() ); ?>" width="60" height="60" />
                     </td>
+                    <?php
+                    $p_desc = trim( wp_strip_all_tags( $product->get_short_description() ) );
+                    if ( ! $p_desc ) {
+                        $p_desc = trim( wp_strip_all_tags( $product->get_description() ) );
+                    }
+                    if ( strlen( $p_desc ) > 280 ) {
+                        $p_desc = substr( $p_desc, 0, 277 ) . '...';
+                    }
+                    ?>
                     <td class="slw-col-product">
                         <strong><?php echo esc_html( $product->get_name() ); ?></strong>
+                        <?php if ( $p_desc ) : ?>
+                            <button type="button"
+                                    class="slw-info-btn"
+                                    aria-label="Product details"
+                                    data-product-name="<?php echo esc_attr( $product->get_name() ); ?>"
+                                    data-product-desc="<?php echo esc_attr( $p_desc ); ?>">
+                                <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                    <circle cx="8" cy="8" r="6.5"/>
+                                    <path d="M8 7.5v4M8 5v.5"/>
+                                </svg>
+                            </button>
+                        <?php endif; ?>
                         <?php if ( $case_pack > 0 && class_exists( 'SLW_Product_Minimums' ) && SLW_Product_Minimums::case_packs_enabled() ) : ?>
                             <br><span class="slw-case-pack-label">Case of <?php echo esc_html( $case_pack ); ?></span>
                         <?php endif; ?>
@@ -466,6 +518,9 @@ $products = $all_products; // keep for empty check
                     <td class="slw-col-qty">
                         <?php if ( $product->is_in_stock() ) : ?>
                             <input type="number" class="slw-qty-input" min="<?php echo esc_attr( $min_input ); ?>" max="999" step="<?php echo esc_attr( $step ); ?>" value="<?php echo esc_attr( $default_qty ); ?>" data-product-id="<?php echo esc_attr( $product->get_id() ); ?>" data-price="<?php echo esc_attr( $product->get_price() ); ?>" />
+                            <?php if ( $min_input > 1 ) : ?>
+                                <span class="slw-min-badge" aria-label="Minimum quantity">Min <?php echo esc_html( $min_input ); ?></span>
+                            <?php endif; ?>
                         <?php else : ?>
                             <span class="slw-out-of-stock">Out of stock</span>
                         <?php endif; ?>
@@ -1016,6 +1071,64 @@ $products = $all_products; // keep for empty check
             xhr.send(formData);
         });
     }
+
+    // Product info popup. Hover or click the (i) icon next to a product
+    // name to surface its short description -- Holly call request so
+    // wholesale customers can read scent + product notes without
+    // navigating away from the order form.
+    var infoPopup = null;
+    function ensureInfoPopup() {
+        if (infoPopup) return infoPopup;
+        infoPopup = document.createElement('div');
+        infoPopup.className = 'slw-info-popup';
+        infoPopup.setAttribute('role', 'dialog');
+        infoPopup.style.display = 'none';
+        infoPopup.innerHTML =
+            '<div class="slw-info-popup__title"></div>' +
+            '<div class="slw-info-popup__body"></div>';
+        document.body.appendChild(infoPopup);
+        return infoPopup;
+    }
+    function positionPopup(popup, anchor) {
+        var rect = anchor.getBoundingClientRect();
+        var top = rect.bottom + window.scrollY + 8;
+        var left = rect.left + window.scrollX;
+        // Clamp horizontally so the popup stays in view.
+        var maxLeft = window.scrollX + window.innerWidth - 320;
+        if (left > maxLeft) left = maxLeft;
+        if (left < window.scrollX + 12) left = window.scrollX + 12;
+        popup.style.top = top + 'px';
+        popup.style.left = left + 'px';
+    }
+    function showInfoPopup(btn) {
+        var popup = ensureInfoPopup();
+        popup.querySelector('.slw-info-popup__title').textContent = btn.getAttribute('data-product-name') || '';
+        popup.querySelector('.slw-info-popup__body').textContent  = btn.getAttribute('data-product-desc') || '';
+        popup.style.display = 'block';
+        requestAnimationFrame(function() { positionPopup(popup, btn); });
+    }
+    function hideInfoPopup() {
+        if (infoPopup) infoPopup.style.display = 'none';
+    }
+    document.querySelectorAll('.slw-info-btn').forEach(function(btn) {
+        btn.addEventListener('mouseenter', function() { showInfoPopup(this); });
+        btn.addEventListener('mouseleave', hideInfoPopup);
+        btn.addEventListener('focus',  function() { showInfoPopup(this); });
+        btn.addEventListener('blur',   hideInfoPopup);
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (infoPopup && infoPopup.style.display === 'block') {
+                hideInfoPopup();
+            } else {
+                showInfoPopup(this);
+            }
+        });
+    });
+    document.addEventListener('click', function(e) {
+        if (!infoPopup) return;
+        if (e.target.closest('.slw-info-btn') || e.target.closest('.slw-info-popup')) return;
+        hideInfoPopup();
+    });
 
     // Recommendation links: smooth scroll to the target product row
     document.querySelectorAll('.slw-rec-link').forEach(function(link) {

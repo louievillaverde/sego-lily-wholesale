@@ -39,19 +39,32 @@ class SLW_Nav_Menu {
     }
 
     /**
-     * Server-side catch-all. Sends wholesale customers hitting the
-     * WooCommerce 'My Account' page to /wholesale-portal. Skipped for
-     * admins (they may need WC My Account for support), skipped when the
-     * portal preview flag is set (otherwise we'd loop).
+     * Server-side catch-all. Sends both wholesale customers AND admins
+     * hitting the WooCommerce 'My Account' page over to /wholesale-portal.
+     *
+     * Admins are intentionally included after Holly call 2026-05-29: she
+     * kept landing on the retail member-portal view and wondered why the
+     * wholesale options weren't there. Routing admins to the portal too
+     * keeps the surface they see consistent with what real wholesale
+     * customers see. They still have wp-admin for everything else; the
+     * logout endpoint stays reachable so they can sign out.
+     *
+     * Escape hatch: ?as_member=1 in the URL bypasses the redirect for
+     * troubleshooting. Honored only when an admin has the capability,
+     * so a wholesale customer can't bookmark their way out.
      */
     public static function redirect_account_to_portal() {
         if ( is_admin() ) return;
         if ( ! is_user_logged_in() ) return;
-        if ( ! function_exists( 'slw_is_wholesale_user' ) || ! slw_is_wholesale_user() ) return;
-        if ( current_user_can( 'manage_woocommerce' ) ) return; // admins keep My Account access
         if ( ! function_exists( 'is_account_page' ) || ! is_account_page() ) return;
-        // Allow wholesale users to still reach the logout endpoint via /my-account/customer-logout/
         if ( is_wc_endpoint_url( 'customer-logout' ) ) return;
+
+        $is_wholesale = function_exists( 'slw_is_wholesale_user' ) && slw_is_wholesale_user();
+        $is_admin     = current_user_can( 'manage_woocommerce' );
+        if ( ! $is_wholesale && ! $is_admin ) return;
+
+        // Admin troubleshooting escape hatch
+        if ( $is_admin && ! empty( $_GET['as_member'] ) ) return;
 
         wp_safe_redirect( home_url( '/wholesale-portal' ) );
         exit;
@@ -66,8 +79,14 @@ class SLW_Nav_Menu {
             return $link;
         }
         $account_page_id = (int) get_option( 'woocommerce_myaccount_page_id' );
-        if ( $account_page_id && (int) $post_id === $account_page_id
-             && is_user_logged_in() && function_exists( 'slw_is_wholesale_user' ) && slw_is_wholesale_user() ) {
+        if ( ! $account_page_id || (int) $post_id !== $account_page_id || ! is_user_logged_in() ) {
+            return $link;
+        }
+        // Wholesale customer OR admin -- both routed to the wholesale portal
+        // for surface consistency (Holly call 2026-05-29).
+        $is_wholesale = function_exists( 'slw_is_wholesale_user' ) && slw_is_wholesale_user();
+        $is_admin     = current_user_can( 'manage_woocommerce' );
+        if ( $is_wholesale || $is_admin ) {
             return home_url( '/wholesale-portal' );
         }
         return $link;

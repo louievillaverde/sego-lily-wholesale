@@ -524,7 +524,8 @@ a.slw-btn-ghost:hover {
 }
 
 .slw-col-qty {
-    width: 80px;
+    width: 90px;
+    text-align: center;
 }
 
 .slw-col-action {
@@ -532,10 +533,77 @@ a.slw-btn-ghost:hover {
 }
 
 .slw-qty-input {
-    width: 65px !important;
+    width: 70px !important;
     padding: 6px 8px !important;
     text-align: center;
     font-size: 14px !important;
+}
+
+.slw-min-badge {
+    display: inline-block;
+    margin-top: 6px;
+    padding: 2px 8px;
+    background: #fdf2c8;
+    color: #6b4f0a;
+    border: 1px solid #f0d780;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    line-height: 1.5;
+    white-space: nowrap;
+}
+
+/* Info icon next to product name on the wholesale order form */
+.slw-info-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    margin-left: 6px;
+    padding: 0;
+    background: transparent;
+    color: #628393;
+    border: 1px solid #cfd5d8;
+    border-radius: 999px;
+    cursor: pointer;
+    vertical-align: middle;
+    transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.slw-info-btn:hover,
+.slw-info-btn:focus {
+    color: #386174;
+    border-color: #386174;
+    background: #f7f6f3;
+    outline: none;
+}
+
+.slw-info-popup {
+    position: absolute;
+    z-index: 99998;
+    max-width: 320px;
+    background: #ffffff;
+    border: 1px solid #e0ddd8;
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(56, 97, 116, 0.18);
+    padding: 14px 16px;
+    font-size: 13px;
+    line-height: 1.55;
+    color: #2C2C2C;
+    pointer-events: none;
+}
+.slw-info-popup__title {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: #386174;
+    margin-bottom: 6px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #f0eee9;
+}
+.slw-info-popup__body {
+    color: #2C2C2C;
 }
 
 .slw-product-meta {
@@ -2705,6 +2773,10 @@ button.slw-reorder-btn:hover {
 .slw-portal-tabs {
     margin-bottom: 0;
     border-bottom: 2px solid #e0ddd8;
+    display: flex;
+    align-items: stretch;
+    justify-content: space-between;
+    gap: 16px;
 }
 
 .slw-portal-tabs-inner {
@@ -2713,6 +2785,34 @@ button.slw-reorder-btn:hover {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
+    flex: 1;
+    min-width: 0;
+}
+
+.slw-portal-signout {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 14px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #628393;
+    text-decoration: none;
+    border-left: 1px solid #e0ddd8;
+    transition: color 0.18s, background 0.18s;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+.slw-portal-signout:hover {
+    color: #386174;
+    background: #faf8f2;
+}
+.slw-portal-signout svg {
+    opacity: 0.85;
+}
+@media (max-width: 640px) {
+    .slw-portal-signout span { display: none; }
+    .slw-portal-signout { padding: 0 10px; }
 }
 
 .slw-portal-tabs-inner::-webkit-scrollbar {
@@ -3550,16 +3650,23 @@ button.slw-reorder-btn:hover {
     width: 110px;
     text-align: right;
     white-space: nowrap;
+    vertical-align: middle;
+    line-height: 1.2;
 }
 .slw-price-list-table__price--retail {
     color: var(--pl-muted);
     text-decoration: line-through;
     text-decoration-color: rgba(98,131,147,0.4);
+    font-size: 14px;
 }
 .slw-price-list-table__price--wholesale {
     color: var(--pl-teal);
     font-weight: 700;
     font-size: 15px;
+}
+.slw-price-list-table tbody td > span,
+.slw-price-list-table tbody td.slw-price-list-table__price {
+    vertical-align: middle;
 }
 .slw-price-list-footnote {
     text-align: center;
