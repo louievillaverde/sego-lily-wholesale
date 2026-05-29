@@ -100,22 +100,14 @@ class SLW_PDF_Linesheet {
 				? $terms[0]->name
 				: 'Uncategorized';
 
-			$tiers_string = $product->get_meta( '_slw_tiered_pricing' );
-			$min_qty = '';
-			if ( $tiers_string ) {
-				$tiers = SLW_Wholesale_Role::parse_tiers( $tiers_string );
-				if ( ! empty( $tiers ) ) {
-					$min_qty = min( array_keys( $tiers ) );
-				}
-			}
-
 			$image_id  = $product->get_image_id();
 			$image_url = $image_id ? wp_get_attachment_image_url( $image_id, 'thumbnail' ) : '';
 
 			$rows = self::build_rows_for_product( $product, $discount_pct );
 			foreach ( $rows as $row ) {
-				$row['min_qty']   = $row['min_qty']   ?? $min_qty;
-				$row['image_url'] = $row['image_url'] ?? $image_url;
+				if ( ! array_key_exists( 'image_url', $row ) || ! $row['image_url'] ) {
+					$row['image_url'] = $image_url;
+				}
 				$grouped[ $category_name ][] = $row;
 			}
 		}
@@ -144,9 +136,20 @@ class SLW_PDF_Linesheet {
 		$is_variable = $product->is_type( 'variable' ) || $product->is_type( 'variable-subscription' );
 
 		if ( ! $is_variable ) {
-			$retail    = (float) $product->get_price();
-			if ( $retail <= 0 ) {
-				$retail = slw_get_true_regular_price( $product );
+			// For simple products (incl. WCSATT-enabled), $product->get_price()
+			// may return the subscription rate because the plugin filters it
+			// down by the default scheme's discount. Read raw _regular_price
+			// meta to get the true one-time retail. Manual override beats both.
+			$override = $product->get_meta( '_slw_retail_price' );
+			if ( $override !== '' && is_numeric( $override ) && (float) $override > 0 ) {
+				$retail = (float) $override;
+			} else {
+				$raw = get_post_meta( $product->get_id(), '_regular_price', true );
+				if ( $raw !== '' && is_numeric( $raw ) && (float) $raw > 0 ) {
+					$retail = (float) $raw;
+				} else {
+					$retail = (float) $product->get_price();
+				}
 			}
 			$wholesale = self::calculate_wholesale_price( $product, $retail );
 			if ( $discount_pct > 0 && $discount_pct < 100 && $wholesale > 0 ) {
@@ -157,6 +160,7 @@ class SLW_PDF_Linesheet {
 				'sku'             => $product->get_sku(),
 				'retail_price'    => $retail,
 				'wholesale_price' => $wholesale,
+				'min_qty'         => self::resolve_min_qty( $product ),
 			) );
 		}
 
@@ -231,10 +235,43 @@ class SLW_PDF_Linesheet {
 				'sku'             => $variation->get_sku() ?: $product->get_sku(),
 				'retail_price'    => $retail,
 				'wholesale_price' => $wholesale,
+				'min_qty'         => self::resolve_min_qty( $variation ),
 				'image_url'       => $var_image_id ? wp_get_attachment_image_url( $var_image_id, 'thumbnail' ) : null,
 			);
 		}
 		return $rows;
+	}
+
+	/**
+	 * Resolve the minimum wholesale quantity for a product or variation.
+	 * Pulls from the per-product wholesale settings in this order:
+	 *   1. SLW_Product_Minimums::get_product_minimum (the dedicated min field)
+	 *   2. SLW_Product_Minimums::get_case_pack_size (case pack acts as a floor)
+	 *   3. Lowest tier in _slw_tiered_pricing (parent for variations)
+	 *   4. Empty (no minimum displayed)
+	 *
+	 * @param WC_Product|WC_Product_Variation $product
+	 * @return int|string Minimum quantity, or empty string if none configured.
+	 */
+	private static function resolve_min_qty( $product ) {
+		if ( class_exists( 'SLW_Product_Minimums' ) ) {
+			$min = SLW_Product_Minimums::get_product_minimum( $product->get_id() );
+			if ( $min > 0 ) return (int) $min;
+			$cpack = SLW_Product_Minimums::get_case_pack_size( $product->get_id() );
+			if ( $cpack > 0 ) return (int) $cpack;
+		}
+
+		$tiers_string = $product->get_meta( '_slw_tiered_pricing' );
+		if ( ! $tiers_string && $product->get_parent_id() ) {
+			$tiers_string = get_post_meta( $product->get_parent_id(), '_slw_tiered_pricing', true );
+		}
+		if ( $tiers_string && class_exists( 'SLW_Wholesale_Role' ) ) {
+			$tiers = SLW_Wholesale_Role::parse_tiers( $tiers_string );
+			if ( ! empty( $tiers ) ) {
+				return (int) min( array_keys( $tiers ) );
+			}
+		}
+		return '';
 	}
 
 	/**
@@ -607,6 +644,34 @@ body {
 	border-top: 1px solid rgba(247, 246, 243, 0.18);
 	font-size: 12.5px;
 	opacity: 0.9;
+	position: relative;
+}
+
+.linesheet-cta__dismiss {
+	flex-shrink: 0;
+	margin-left: auto;
+	background: rgba(247, 246, 243, 0.12);
+	color: rgba(247, 246, 243, 0.85);
+	border: none;
+	border-radius: 999px;
+	width: 22px;
+	height: 22px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	cursor: pointer;
+	padding: 0;
+	transition: background 0.15s, color 0.15s;
+}
+
+.linesheet-cta__dismiss:hover {
+	background: rgba(247, 246, 243, 0.25);
+	color: #ffffff;
+}
+
+.linesheet-cta__dismiss svg {
+	width: 11px;
+	height: 11px;
 }
 
 .linesheet-header-right .date {
@@ -861,6 +926,10 @@ body {
 		font-size: 11px !important;
 	}
 
+	.linesheet-cta__dismiss {
+		display: none !important;
+	}
+
 	.linesheet-category {
 		page-break-inside: avoid;
 		margin-bottom: 18px;
@@ -1060,11 +1129,20 @@ body {
 						<span>Email <strong><?php echo esc_html( $business_email ); ?></strong></span>
 					</div>
 				<?php endif; ?>
-				<div class="linesheet-cta__line linesheet-cta__line--sub">
+				<div class="linesheet-cta__line linesheet-cta__line--sub" id="linesheet-cta-apply">
 					<svg class="linesheet-cta__icon linesheet-cta__icon--sm" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
 						<path d="M3 8h10M9 4l4 4-4 4"/>
 					</svg>
 					<span>New here? Apply for a wholesale account at <strong><?php echo esc_html( wp_parse_url( $apply_url, PHP_URL_HOST ) . wp_parse_url( $apply_url, PHP_URL_PATH ) ); ?></strong></span>
+					<button type="button"
+					        class="linesheet-cta__dismiss"
+					        aria-label="Remove this line (for existing customers)"
+					        title="Remove this line"
+					        onclick="var el=document.getElementById('linesheet-cta-apply'); if(el) el.style.display='none';">
+						<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+							<path d="M4 4l8 8M12 4l-8 8"/>
+						</svg>
+					</button>
 				</div>
 			</div>
 		</div>
