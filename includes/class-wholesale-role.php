@@ -755,7 +755,24 @@ class SLW_Wholesale_Role {
                 // Subscription scheme line meta on cart line items
                 . '.wc_payment_method_paypal_express_subscription_details,'
                 . '.subscription-sign-up-fee,'
-                . '.product-subscription-price'
+                . '.product-subscription-price,'
+                // Hide retail side-cart / mini-cart triggers + popups for
+                // wholesale users so the in-page Cart Preview on the order
+                // form is the only cart surface they see. Stops the dual-
+                // cart confusion Holly call flagged.
+                . '.elementor-menu-cart,'
+                . '.elementor-menu-cart__wrapper,'
+                . '.elementor-menu-cart__main,'
+                . '.elementor-menu-cart__toggle,'
+                . '.elementor-menu-cart__container,'
+                . '.widget_shopping_cart,'
+                . '.woocommerce-mini-cart,'
+                . '.mini-cart,'
+                . '.cart-popup,'
+                . '.cart-drawer,'
+                . '.side-cart,'
+                . '.wc-block-mini-cart,'
+                . '.wc-block-mini-cart__button'
                 . '{display:none!important}'
                 . '</style>';
         } );

@@ -14,7 +14,10 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 class SLW_Customer_Portal {
 
-    /** @var array Tab definitions: slug => label */
+    /** @var array Tab definitions: slug => label. 'help' is intentionally
+     * absent from the visible tab bar -- the page still renders if accessed
+     * via ?tab=help, surfaced from the dashboard Quick Links as
+     * 'Help / Contact [Owner]'. Keeps the upper bar cleaner per Holly call. */
     private static $tabs = array(
         'dashboard'  => 'Dashboard',
         'orders'     => 'Order Form',
@@ -23,12 +26,102 @@ class SLW_Customer_Portal {
         'assets'     => 'Assets',
         'rfq'        => 'Request a Quote',
         'price-list' => 'Price List',
-        'help'       => 'Help / Contact',
+    );
+
+    /** @var array Hidden tabs that still render if accessed by URL/slug. */
+    private static $hidden_tabs = array(
+        'help' => 'Help / Contact',
     );
 
     public static function init() {
         add_shortcode( 'wholesale_portal', array( __CLASS__, 'render' ) );
-        add_action( 'admin_post_slw_save_ein', array( __CLASS__, 'handle_save_ein' ) );
+        add_action( 'admin_post_slw_save_ein',     array( __CLASS__, 'handle_save_ein' ) );
+        add_action( 'admin_post_slw_save_account', array( __CLASS__, 'handle_save_account' ) );
+    }
+
+    /**
+     * Save handler for inline Account tab forms: profile, shipping,
+     * billing, password. Routed through admin-post.php so the user
+     * comes back to /wholesale-portal?tab=account&slw_account_saved=...
+     * after a successful update. Updates flow into both WP user fields
+     * AND the WC customer record so admins see the same data in
+     * /wp-admin/user-edit.php.
+     */
+    public static function handle_save_account() {
+        if ( ! is_user_logged_in() ) {
+            wp_die( 'You must be logged in.', 'Unauthorized', array( 'response' => 401 ) );
+        }
+        check_admin_referer( 'slw_save_account' );
+
+        $user_id = get_current_user_id();
+        if ( ! slw_is_wholesale_user( $user_id ) ) {
+            wp_die( 'Wholesale customers only.', 'Unauthorized', array( 'response' => 403 ) );
+        }
+
+        $section = sanitize_key( $_POST['section'] ?? '' );
+        $section_keys = array( 'profile', 'shipping', 'billing', 'password' );
+        if ( ! in_array( $section, $section_keys, true ) ) {
+            wp_safe_redirect( home_url( '/wholesale-portal?tab=account' ) );
+            exit;
+        }
+
+        $customer = new WC_Customer( $user_id );
+
+        if ( $section === 'profile' ) {
+            $first = sanitize_text_field( wp_unslash( $_POST['first_name'] ?? '' ) );
+            $last  = sanitize_text_field( wp_unslash( $_POST['last_name']  ?? '' ) );
+            $email = sanitize_email( wp_unslash( $_POST['email'] ?? '' ) );
+            if ( $first ) update_user_meta( $user_id, 'first_name', $first );
+            if ( $last  ) update_user_meta( $user_id, 'last_name',  $last );
+            if ( $email && is_email( $email ) ) {
+                wp_update_user( array( 'ID' => $user_id, 'user_email' => $email ) );
+                $customer->set_email( $email );
+            }
+            if ( $first ) $customer->set_first_name( $first );
+            if ( $last  ) $customer->set_last_name( $last );
+        } elseif ( $section === 'shipping' ) {
+            $fields = array( 'address_1', 'address_2', 'city', 'state', 'postcode', 'country', 'company' );
+            foreach ( $fields as $f ) {
+                $v = sanitize_text_field( wp_unslash( $_POST[ 'shipping_' . $f ] ?? '' ) );
+                $customer->{ 'set_shipping_' . $f }( $v );
+                update_user_meta( $user_id, 'shipping_' . $f, $v );
+            }
+        } elseif ( $section === 'billing' ) {
+            $fields = array( 'address_1', 'address_2', 'city', 'state', 'postcode', 'country', 'company', 'phone' );
+            foreach ( $fields as $f ) {
+                $v = sanitize_text_field( wp_unslash( $_POST[ 'billing_' . $f ] ?? '' ) );
+                $customer->{ 'set_billing_' . $f }( $v );
+                update_user_meta( $user_id, 'billing_' . $f, $v );
+            }
+            $bemail = sanitize_email( wp_unslash( $_POST['billing_email'] ?? '' ) );
+            if ( $bemail && is_email( $bemail ) ) {
+                $customer->set_billing_email( $bemail );
+                update_user_meta( $user_id, 'billing_email', $bemail );
+            }
+        } elseif ( $section === 'password' ) {
+            $current = (string) ( $_POST['current_password'] ?? '' );
+            $new     = (string) ( $_POST['new_password'] ?? '' );
+            $confirm = (string) ( $_POST['confirm_password'] ?? '' );
+            $user_obj = wp_get_current_user();
+            if ( ! $current || ! wp_check_password( $current, $user_obj->user_pass, $user_id ) ) {
+                $redirect = add_query_arg( 'slw_account_error', 'bad_current', home_url( '/wholesale-portal?tab=account' ) );
+                wp_safe_redirect( $redirect ); exit;
+            }
+            if ( strlen( $new ) < 8 || $new !== $confirm ) {
+                $redirect = add_query_arg( 'slw_account_error', 'bad_new', home_url( '/wholesale-portal?tab=account' ) );
+                wp_safe_redirect( $redirect ); exit;
+            }
+            wp_set_password( $new, $user_id );
+            // wp_set_password logs the user out; re-authenticate so they stay in the portal.
+            wp_set_current_user( $user_id );
+            wp_set_auth_cookie( $user_id, true );
+        }
+
+        $customer->save();
+
+        $redirect = add_query_arg( 'slw_account_saved', $section, home_url( '/wholesale-portal?tab=account' ) );
+        wp_safe_redirect( $redirect );
+        exit;
     }
 
     /**
@@ -100,7 +193,8 @@ class SLW_Customer_Portal {
         } elseif ( isset( $_GET['tab'] ) ) {
             $active_tab = sanitize_key( $_GET['tab'] );
         }
-        if ( ! array_key_exists( $active_tab, self::$tabs ) ) {
+        $known = array_merge( self::$tabs, self::$hidden_tabs );
+        if ( ! array_key_exists( $active_tab, $known ) ) {
             $active_tab = 'dashboard';
         }
 
@@ -108,7 +202,7 @@ class SLW_Customer_Portal {
 
         // Admin preview banner
         if ( $is_admin_preview && class_exists( 'SLW_Dashboard' ) ) {
-            SLW_Dashboard::render_preview_banner( 'Customer Portal: ' . esc_html( self::$tabs[ $active_tab ] ) );
+            SLW_Dashboard::render_preview_banner( 'Customer Portal: ' . esc_html( $known[ $active_tab ] ?? ucfirst( $active_tab ) ) );
         }
 
         // When rendered inside the admin Preview page, tab URLs must stay in admin
@@ -339,99 +433,223 @@ class SLW_Customer_Portal {
     }
 
     /**
-     * Account tab. Edit profile, change password, shipping address.
+     * Account tab. Inline forms for profile, shipping, billing, password,
+     * + EIN. All saves route through admin-post.php?action=slw_save_account
+     * (and slw_save_ein for the legacy field). No redirects out to
+     * /my-account anymore -- everything happens inside the portal.
      */
     private static function render_account_tab() {
-        $user = wp_get_current_user();
-        $edit_account_url = wc_get_account_endpoint_url( 'edit-account' );
-        $edit_address_url = wc_get_account_endpoint_url( 'edit-address' );
-        $business_name    = get_user_meta( $user->ID, 'slw_business_name', true );
-        $net30_approved   = get_user_meta( $user->ID, 'slw_net30_approved', true ) === '1';
-        $ein              = self::get_user_ein( $user->ID );
-        $ein_just_saved   = ! empty( $_GET['slw_ein_saved'] );
+        $user           = wp_get_current_user();
+        $uid            = $user->ID;
+        $business_name  = get_user_meta( $uid, 'slw_business_name', true );
+        $net30_approved = get_user_meta( $uid, 'slw_net30_approved', true ) === '1';
+        $ein            = self::get_user_ein( $uid );
+        $ein_just_saved = ! empty( $_GET['slw_ein_saved'] );
+        $saved_section  = sanitize_key( $_GET['slw_account_saved'] ?? '' );
+        $error_code     = sanitize_key( $_GET['slw_account_error'] ?? '' );
+        $post_url       = admin_url( 'admin-post.php' );
+
+        $get_meta = function( $key ) use ( $uid ) {
+            return (string) get_user_meta( $uid, $key, true );
+        };
+
+        $section_labels = array(
+            'profile'  => 'Profile updated.',
+            'shipping' => 'Shipping address saved.',
+            'billing'  => 'Billing details saved.',
+            'password' => 'Password updated.',
+        );
         ?>
         <div class="slw-account-tab">
             <h3>Account Settings</h3>
 
+            <?php if ( $saved_section && isset( $section_labels[ $saved_section ] ) ) : ?>
+                <div class="slw-notice slw-notice-success">&#10003; <?php echo esc_html( $section_labels[ $saved_section ] ); ?></div>
+            <?php endif; ?>
+            <?php if ( $error_code === 'bad_current' ) : ?>
+                <div class="slw-notice slw-notice-error">Current password is incorrect.</div>
+            <?php elseif ( $error_code === 'bad_new' ) : ?>
+                <div class="slw-notice slw-notice-error">New password must be at least 8 characters and match the confirmation.</div>
+            <?php endif; ?>
             <?php if ( $ein_just_saved ) : ?>
-                <div class="slw-notice slw-notice-success" style="margin-bottom:16px;">EIN saved.</div>
+                <div class="slw-notice slw-notice-success">EIN saved.</div>
             <?php elseif ( empty( $ein ) ) : ?>
-                <div class="slw-notice slw-notice-warning" style="margin-bottom:16px;">
-                    <strong>Action needed:</strong> please add your EIN / Resale Certificate number below. We need it on file before your first order.
+                <div class="slw-notice slw-notice-warning">
+                    <strong>Action needed:</strong> add your EIN / Resale Certificate below. We need it on file before your first order.
                 </div>
             <?php endif; ?>
 
-            <div class="slw-dashboard-grid">
-                <div class="slw-dashboard-card">
-                    <h4>Profile Information</h4>
-                    <dl class="slw-account-summary">
-                        <div class="slw-account-summary-row">
-                            <dt>Name</dt>
-                            <dd><?php echo esc_html( $user->first_name . ' ' . $user->last_name ); ?></dd>
-                        </div>
-                        <div class="slw-account-summary-row">
-                            <dt>Email</dt>
-                            <dd><?php echo esc_html( $user->user_email ); ?></dd>
-                        </div>
+            <div class="slw-account-grid">
+
+                <!-- Profile -->
+                <form method="post" action="<?php echo esc_url( $post_url ); ?>" class="slw-account-card" id="profile">
+                    <?php wp_nonce_field( 'slw_save_account' ); ?>
+                    <input type="hidden" name="action"  value="slw_save_account" />
+                    <input type="hidden" name="section" value="profile" />
+                    <h4 class="slw-account-card__title">Profile</h4>
+                    <div class="slw-account-card__grid">
+                        <label class="slw-account-field">
+                            <span>First name</span>
+                            <input type="text" name="first_name" value="<?php echo esc_attr( $user->first_name ); ?>" />
+                        </label>
+                        <label class="slw-account-field">
+                            <span>Last name</span>
+                            <input type="text" name="last_name" value="<?php echo esc_attr( $user->last_name ); ?>" />
+                        </label>
+                        <label class="slw-account-field slw-account-field--wide">
+                            <span>Email</span>
+                            <input type="email" name="email" value="<?php echo esc_attr( $user->user_email ); ?>" />
+                        </label>
                         <?php if ( $business_name ) : ?>
-                        <div class="slw-account-summary-row">
-                            <dt>Business</dt>
-                            <dd><?php echo esc_html( $business_name ); ?></dd>
-                        </div>
+                            <div class="slw-account-readout">
+                                <span class="slw-account-readout__label">Business</span>
+                                <span class="slw-account-readout__value"><?php echo esc_html( $business_name ); ?></span>
+                            </div>
                         <?php endif; ?>
                         <?php if ( $net30_approved ) : ?>
-                        <div class="slw-account-summary-row">
-                            <dt>Payment Terms</dt>
-                            <dd><strong>NET 30 Approved</strong></dd>
-                        </div>
+                            <div class="slw-account-readout">
+                                <span class="slw-account-readout__label">Payment Terms</span>
+                                <span class="slw-account-readout__value"><strong>NET 30 Approved</strong></span>
+                            </div>
                         <?php endif; ?>
-                    </dl>
-                    <div style="margin-top:16px;">
-                        <a href="<?php echo esc_url( $edit_account_url ); ?>" class="slw-btn slw-btn-primary">Edit Account Details</a>
                     </div>
-                </div>
-
-                <div class="slw-dashboard-card">
-                    <h4>Shipping Address</h4>
-                    <?php
-                    $address_parts = array_filter( array(
-                        get_user_meta( $user->ID, 'shipping_address_1', true ),
-                        get_user_meta( $user->ID, 'shipping_address_2', true ),
-                        get_user_meta( $user->ID, 'shipping_city', true ),
-                        get_user_meta( $user->ID, 'shipping_state', true ) . ' ' . get_user_meta( $user->ID, 'shipping_postcode', true ),
-                    ) );
-                    if ( ! empty( $address_parts ) ) : ?>
-                        <p><?php echo esc_html( implode( ', ', $address_parts ) ); ?></p>
-                    <?php else : ?>
-                        <p class="slw-empty-orders">No shipping address on file.</p>
-                    <?php endif; ?>
-                    <div style="margin-top:16px;">
-                        <a href="<?php echo esc_url( $edit_address_url ); ?>" class="slw-btn slw-btn-secondary">Update Shipping Address</a>
+                    <div class="slw-account-card__actions">
+                        <button type="submit" class="slw-btn slw-btn-primary">Save Profile</button>
                     </div>
-                </div>
+                </form>
 
-                <div class="slw-dashboard-card">
-                    <h4>Password</h4>
-                    <p>Change your account password from the WooCommerce account page.</p>
-                    <div style="margin-top:16px;">
-                        <a href="<?php echo esc_url( $edit_account_url ); ?>" class="slw-btn slw-btn-secondary">Change Password</a>
+                <!-- Shipping -->
+                <form method="post" action="<?php echo esc_url( $post_url ); ?>" class="slw-account-card" id="shipping">
+                    <?php wp_nonce_field( 'slw_save_account' ); ?>
+                    <input type="hidden" name="action"  value="slw_save_account" />
+                    <input type="hidden" name="section" value="shipping" />
+                    <h4 class="slw-account-card__title">Shipping Address</h4>
+                    <div class="slw-account-card__grid">
+                        <label class="slw-account-field slw-account-field--wide">
+                            <span>Company (optional)</span>
+                            <input type="text" name="shipping_company" value="<?php echo esc_attr( $get_meta( 'shipping_company' ) ); ?>" />
+                        </label>
+                        <label class="slw-account-field slw-account-field--wide">
+                            <span>Address line 1</span>
+                            <input type="text" name="shipping_address_1" value="<?php echo esc_attr( $get_meta( 'shipping_address_1' ) ); ?>" />
+                        </label>
+                        <label class="slw-account-field slw-account-field--wide">
+                            <span>Address line 2</span>
+                            <input type="text" name="shipping_address_2" value="<?php echo esc_attr( $get_meta( 'shipping_address_2' ) ); ?>" />
+                        </label>
+                        <label class="slw-account-field">
+                            <span>City</span>
+                            <input type="text" name="shipping_city" value="<?php echo esc_attr( $get_meta( 'shipping_city' ) ); ?>" />
+                        </label>
+                        <label class="slw-account-field">
+                            <span>State / Region</span>
+                            <input type="text" name="shipping_state" value="<?php echo esc_attr( $get_meta( 'shipping_state' ) ); ?>" />
+                        </label>
+                        <label class="slw-account-field">
+                            <span>Postcode</span>
+                            <input type="text" name="shipping_postcode" value="<?php echo esc_attr( $get_meta( 'shipping_postcode' ) ); ?>" />
+                        </label>
+                        <label class="slw-account-field">
+                            <span>Country</span>
+                            <input type="text" name="shipping_country" value="<?php echo esc_attr( $get_meta( 'shipping_country' ) ?: 'US' ); ?>" />
+                        </label>
                     </div>
-                </div>
+                    <div class="slw-account-card__actions">
+                        <button type="submit" class="slw-btn slw-btn-primary">Save Shipping</button>
+                    </div>
+                </form>
 
-                <div class="slw-dashboard-card">
-                    <h4>EIN / Resale Certificate</h4>
-                    <p>Required for tax-exempt wholesale ordering. Stored encrypted at rest.</p>
-                    <form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-                        <?php wp_nonce_field( 'slw_save_ein' ); ?>
-                        <input type="hidden" name="action" value="slw_save_ein" />
-                        <label for="slw-ein-input" style="display:block;margin-bottom:6px;font-weight:600;">EIN Number</label>
-                        <input type="text" id="slw-ein-input" name="slw_ein"
-                               value="<?php echo esc_attr( $ein ); ?>"
-                               placeholder="XX-XXXXXXX"
-                               style="width:100%;padding:8px;margin-bottom:12px;" />
+                <!-- Billing -->
+                <form method="post" action="<?php echo esc_url( $post_url ); ?>" class="slw-account-card" id="billing">
+                    <?php wp_nonce_field( 'slw_save_account' ); ?>
+                    <input type="hidden" name="action"  value="slw_save_account" />
+                    <input type="hidden" name="section" value="billing" />
+                    <h4 class="slw-account-card__title">Billing Details</h4>
+                    <div class="slw-account-card__grid">
+                        <label class="slw-account-field">
+                            <span>Billing email</span>
+                            <input type="email" name="billing_email" value="<?php echo esc_attr( $get_meta( 'billing_email' ) ?: $user->user_email ); ?>" />
+                        </label>
+                        <label class="slw-account-field">
+                            <span>Phone</span>
+                            <input type="text" name="billing_phone" value="<?php echo esc_attr( $get_meta( 'billing_phone' ) ); ?>" />
+                        </label>
+                        <label class="slw-account-field slw-account-field--wide">
+                            <span>Company (optional)</span>
+                            <input type="text" name="billing_company" value="<?php echo esc_attr( $get_meta( 'billing_company' ) ); ?>" />
+                        </label>
+                        <label class="slw-account-field slw-account-field--wide">
+                            <span>Address line 1</span>
+                            <input type="text" name="billing_address_1" value="<?php echo esc_attr( $get_meta( 'billing_address_1' ) ); ?>" />
+                        </label>
+                        <label class="slw-account-field slw-account-field--wide">
+                            <span>Address line 2</span>
+                            <input type="text" name="billing_address_2" value="<?php echo esc_attr( $get_meta( 'billing_address_2' ) ); ?>" />
+                        </label>
+                        <label class="slw-account-field">
+                            <span>City</span>
+                            <input type="text" name="billing_city" value="<?php echo esc_attr( $get_meta( 'billing_city' ) ); ?>" />
+                        </label>
+                        <label class="slw-account-field">
+                            <span>State / Region</span>
+                            <input type="text" name="billing_state" value="<?php echo esc_attr( $get_meta( 'billing_state' ) ); ?>" />
+                        </label>
+                        <label class="slw-account-field">
+                            <span>Postcode</span>
+                            <input type="text" name="billing_postcode" value="<?php echo esc_attr( $get_meta( 'billing_postcode' ) ); ?>" />
+                        </label>
+                        <label class="slw-account-field">
+                            <span>Country</span>
+                            <input type="text" name="billing_country" value="<?php echo esc_attr( $get_meta( 'billing_country' ) ?: 'US' ); ?>" />
+                        </label>
+                    </div>
+                    <div class="slw-account-card__actions">
+                        <button type="submit" class="slw-btn slw-btn-primary">Save Billing</button>
+                    </div>
+                </form>
+
+                <!-- Password -->
+                <form method="post" action="<?php echo esc_url( $post_url ); ?>" class="slw-account-card" id="password">
+                    <?php wp_nonce_field( 'slw_save_account' ); ?>
+                    <input type="hidden" name="action"  value="slw_save_account" />
+                    <input type="hidden" name="section" value="password" />
+                    <h4 class="slw-account-card__title">Password</h4>
+                    <div class="slw-account-card__grid">
+                        <label class="slw-account-field slw-account-field--wide">
+                            <span>Current password</span>
+                            <input type="password" name="current_password" autocomplete="current-password" />
+                        </label>
+                        <label class="slw-account-field slw-account-field--wide">
+                            <span>New password (min 8 chars)</span>
+                            <input type="password" name="new_password" autocomplete="new-password" />
+                        </label>
+                        <label class="slw-account-field slw-account-field--wide">
+                            <span>Confirm new password</span>
+                            <input type="password" name="confirm_password" autocomplete="new-password" />
+                        </label>
+                    </div>
+                    <div class="slw-account-card__actions">
+                        <button type="submit" class="slw-btn slw-btn-primary">Update Password</button>
+                    </div>
+                </form>
+
+                <!-- EIN / Resale Certificate -->
+                <form method="post" action="<?php echo esc_url( $post_url ); ?>" class="slw-account-card" id="ein">
+                    <?php wp_nonce_field( 'slw_save_ein' ); ?>
+                    <input type="hidden" name="action" value="slw_save_ein" />
+                    <h4 class="slw-account-card__title">EIN / Resale Certificate</h4>
+                    <p class="slw-account-card__hint">Required for tax-exempt wholesale ordering. Stored encrypted at rest.</p>
+                    <div class="slw-account-card__grid">
+                        <label class="slw-account-field slw-account-field--wide">
+                            <span>EIN Number</span>
+                            <input type="text" name="slw_ein" value="<?php echo esc_attr( $ein ); ?>" placeholder="XX-XXXXXXX" />
+                        </label>
+                    </div>
+                    <div class="slw-account-card__actions">
                         <button type="submit" class="slw-btn slw-btn-primary">Save EIN</button>
-                    </form>
-                </div>
+                    </div>
+                </form>
+
             </div>
         </div>
         <?php

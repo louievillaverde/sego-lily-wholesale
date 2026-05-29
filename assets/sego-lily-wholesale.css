@@ -554,32 +554,22 @@ a.slw-btn-ghost:hover {
     white-space: nowrap;
 }
 
-/* Info icon next to product name on the wholesale order form */
-.slw-info-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 20px;
-    height: 20px;
-    margin-left: 6px;
-    padding: 0;
-    background: transparent;
-    color: #628393;
-    border: 1px solid #cfd5d8;
-    border-radius: 999px;
-    cursor: pointer;
-    vertical-align: middle;
-    transition: color 0.15s, border-color 0.15s, background 0.15s;
+/* Hover-triggered descriptions on product names + scent labels. The
+   trigger element gets a subtle dotted underline so customers know
+   to hover; the popup floats below with the relevant description. */
+.slw-has-hover {
+    cursor: help;
+    border-bottom: 1px dotted #c9d0d3;
+    transition: color 0.15s, border-bottom-color 0.15s;
 }
-.slw-info-btn:hover,
-.slw-info-btn:focus {
+.slw-has-hover:hover,
+.slw-has-hover:focus {
     color: #386174;
-    border-color: #386174;
-    background: #f7f6f3;
+    border-bottom-color: #386174;
     outline: none;
 }
 
-.slw-info-popup {
+.slw-hover-popup {
     position: absolute;
     z-index: 99998;
     max-width: 320px;
@@ -593,7 +583,7 @@ a.slw-btn-ghost:hover {
     color: #2C2C2C;
     pointer-events: none;
 }
-.slw-info-popup__title {
+.slw-hover-popup__title {
     font-family: Georgia, 'Times New Roman', serif;
     font-size: 14px;
     font-weight: 700;
@@ -602,8 +592,171 @@ a.slw-btn-ghost:hover {
     padding-bottom: 6px;
     border-bottom: 1px solid #f0eee9;
 }
-.slw-info-popup__body {
+.slw-hover-popup__body {
     color: #2C2C2C;
+}
+
+/* Clickable product row image button */
+.slw-row-image-btn {
+    display: inline-block;
+    padding: 0;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    cursor: zoom-in;
+    transition: border-color 0.15s, transform 0.15s;
+    line-height: 0;
+}
+.slw-row-image-btn:hover {
+    border-color: #D4AF37;
+    transform: scale(1.02);
+}
+.slw-row-image-btn img {
+    border-radius: 4px;
+    display: block;
+}
+
+/* Image lightbox */
+.slw-lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(20, 28, 32, 0.82);
+    z-index: 99999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 32px;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+.slw-lightbox__img {
+    max-width: 92vw;
+    max-height: 92vh;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+    display: block;
+}
+.slw-lightbox__close {
+    position: absolute;
+    top: 18px;
+    right: 22px;
+    background: rgba(247, 246, 243, 0.15);
+    color: #F7F6F3;
+    border: none;
+    border-radius: 999px;
+    width: 38px;
+    height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.slw-lightbox__close:hover { background: rgba(247, 246, 243, 0.3); }
+
+/* --- Account tab inline edit forms --- */
+.slw-account-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    margin-top: 16px;
+}
+@media (max-width: 800px) {
+    .slw-account-grid { grid-template-columns: 1fr; }
+}
+.slw-account-card {
+    background: #FAF8F2;
+    border: 1px solid #e0ddd8;
+    border-radius: 10px;
+    padding: 20px 22px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.slw-account-card__title {
+    margin: 0;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: #386174;
+    padding-bottom: 8px;
+    border-bottom: 2px solid #D4AF37;
+}
+.slw-account-card__hint {
+    margin: 0;
+    font-size: 12px;
+    color: #628393;
+    font-style: italic;
+}
+.slw-account-card__grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 14px;
+}
+.slw-account-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 12px;
+    color: #386174;
+    font-weight: 600;
+}
+.slw-account-field--wide { grid-column: 1 / -1; }
+.slw-account-field input {
+    padding: 8px 10px !important;
+    border: 1px solid #d4cebc !important;
+    border-radius: 6px !important;
+    background: #ffffff !important;
+    font-size: 14px !important;
+    color: #2C2C2C !important;
+    font-weight: 400;
+    width: 100%;
+    box-sizing: border-box;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+.slw-account-field input:focus {
+    outline: none;
+    border-color: #386174 !important;
+    box-shadow: 0 0 0 3px rgba(56, 97, 116, 0.12);
+}
+.slw-account-readout {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: #ffffff;
+    border: 1px dashed #d4cebc;
+    border-radius: 6px;
+    font-size: 13px;
+}
+.slw-account-readout__label { color: #628393; font-weight: 600; }
+.slw-account-readout__value { color: #2C2C2C; }
+.slw-account-card__actions {
+    margin-top: auto;
+    padding-top: 8px;
+    display: flex;
+    justify-content: flex-end;
+}
+.slw-account-card__actions .slw-btn {
+    min-height: 40px;
+    padding: 10px 22px !important;
+    font-size: 13px !important;
+}
+
+/* --- Portal-wide footer breathing room --- */
+.slw-portal-wrap {
+    padding-bottom: 48px;
+}
+.slw-portal-content {
+    padding-bottom: 32px;
+}
+
+/* --- Theme red/pink link sweep inside portal scope --- */
+.slw-portal-wrap a:not(.slw-btn):not(.slw-portal-tab):not(.slw-portal-signout):not(.slw-text-link):not(.linesheet-cover-note):not([style*="color"]) {
+    color: #386174;
+}
+.slw-portal-wrap a:not(.slw-btn):not(.slw-portal-tab):not(.slw-portal-signout):hover {
+    color: #D4AF37;
 }
 
 .slw-product-meta {

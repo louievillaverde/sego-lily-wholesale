@@ -110,17 +110,20 @@ if ( ! is_array( $saved_carts ) ) {
 		<!-- Quick Links -->
 		<div class="slw-dashboard-card">
 			<h3>Quick Links</h3>
+			<?php
+			$portal_url    = home_url( '/wholesale-portal' );
+			$account_url   = add_query_arg( 'tab', 'account', $portal_url );
+			$help_url      = add_query_arg( 'tab', 'help',    $portal_url );
+			$contact_name  = class_exists( 'SLW_Email_Settings' ) ? SLW_Email_Settings::get( 'owner_name' ) : '';
+			$contact_first = $contact_name ? trim( strtok( $contact_name, ' ' ) ) : '';
+			$help_label    = $contact_first ? 'Help / Contact ' . esc_html( $contact_first ) : 'Help / Contact';
+			?>
 			<ul class="slw-quick-links">
 				<li><a href="<?php echo esc_url( home_url( '/wholesale-order' ) ); ?>" class="slw-btn slw-btn-primary">Place a New Order</a></li>
-				<li><a href="<?php echo esc_url( wc_get_cart_url() ); ?>" class="slw-btn slw-btn-secondary">View Cart</a></li>
-				<li><a href="<?php echo esc_url( wc_get_account_endpoint_url( 'edit-account' ) ); ?>">Edit Account Details</a></li>
-				<li><a href="<?php echo esc_url( wc_get_account_endpoint_url( 'edit-address' ) ); ?>">Update Shipping Address</a></li>
-				<?php
-				$contact_email = class_exists( 'SLW_Email_Settings' ) ? SLW_Email_Settings::get( 'from_address' ) : get_option( 'admin_email' );
-				$contact_name  = class_exists( 'SLW_Email_Settings' ) ? SLW_Email_Settings::get( 'owner_name' ) : '';
-				$contact_label = $contact_name ? 'Contact ' . esc_html( $contact_name ) : 'Contact Us';
-				?>
-				<li><a href="mailto:<?php echo esc_attr( $contact_email ); ?>"><?php echo $contact_label; ?></a></li>
+				<li><a href="<?php echo esc_url( $account_url ); ?>">Edit Account Details</a></li>
+				<li><a href="<?php echo esc_url( $account_url . '#shipping' ); ?>">Update Shipping Address</a></li>
+				<li><a href="<?php echo esc_url( $account_url . '#billing' ); ?>">Edit Billing Details</a></li>
+				<li><a href="<?php echo esc_url( $help_url ); ?>"><?php echo $help_label; ?></a></li>
 			</ul>
 		</div>
 

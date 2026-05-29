@@ -115,9 +115,9 @@ $products = $all_products; // keep for empty check
     if ( ! empty( $most_ordered_ids ) ) :
     ?>
     <div class="slw-most-ordered">
-        <div class="slw-new-arrivals-header" style="display:flex;align-items:center;justify-content:space-between;margin-top:12px;">
-            <h3 style="margin:0;">Your Most Ordered</h3>
-            <span style="font-size:12px;color:#628393;">Quick reorder</span>
+        <div class="slw-section-header slw-most-ordered-header">
+            <h3 class="slw-section-header__title">Your Most Ordered</h3>
+            <span class="slw-section-header__hint">Quick reorder</span>
         </div>
         <div class="slw-new-arrivals-grid">
             <?php foreach ( $most_ordered_ids as $mo_id ) :
@@ -243,7 +243,13 @@ $products = $all_products; // keep for empty check
     <div class="slw-category-section" data-category="<?php echo esc_attr( $cat_slug ); ?>" data-category-min="<?php echo esc_attr( $category_min_qty ); ?>" data-category-term="<?php echo esc_attr( $cat_term_id ); ?>">
         <div class="slw-category-header" style="display:flex;justify-content:space-between;align-items:center;background:#386174;color:#F7F6F3;padding:14px 20px;border-radius:8px 8px 0 0;margin-top:20px;cursor:pointer;" data-category="<?php echo esc_attr( $cat_slug ); ?>">
             <div>
-                <h3 style="margin:0;font-size:18px;color:#F7F6F3;font-family:Georgia,'Times New Roman',serif;"><?php echo esc_html( $category_name ); ?></h3>
+                <?php
+                $cat_display = $category_name;
+                if ( strcasecmp( $cat_display, 'Bundles' ) === 0 || strcasecmp( $cat_display, 'Bundle' ) === 0 ) {
+                    $cat_display = 'Variety Sets';
+                }
+                ?>
+                <h3 style="margin:0;font-size:18px;color:#F7F6F3;font-family:Georgia,'Times New Roman',serif;"><?php echo esc_html( $cat_display ); ?></h3>
                 <span style="font-size:13px;opacity:0.8;">
                     <?php echo esc_html( count( $cat_products ) ); ?> product<?php echo count( $cat_products ) !== 1 ? 's' : ''; ?>
                     <?php if ( $category_min_qty > 0 ) : ?>
@@ -254,15 +260,19 @@ $products = $all_products; // keep for empty check
             </div>
             <div style="display:flex;align-items:center;gap:12px;">
                 <?php
-                // Pluralize singular category names ("Deodorant" -> "Deodorants")
-                // so the button always reads as "Add Deodorants to Cart" instead
-                // of "Add Deodorant to Cart". Skips categories that already end
-                // in s/x/z/ch/sh.
-                $cat_label_plural = preg_match( '/(s|x|z|ch|sh)$/i', $category_name )
-                    ? $category_name
-                    : $category_name . 's';
+                // Pluralize singular category names ("Deodorant" -> "Deodorants").
+                // Display rename: 'Bundles' surfaces as 'Variety Sets' on the
+                // wholesale order form (Holly call ask) without touching the
+                // actual WP category slug.
+                $cat_label_for_button = $category_name;
+                if ( strcasecmp( $cat_label_for_button, 'Bundles' ) === 0 || strcasecmp( $cat_label_for_button, 'Bundle' ) === 0 ) {
+                    $cat_label_for_button = 'Variety Sets';
+                }
+                $cat_label_plural = preg_match( '/(s|x|z|ch|sh)$/i', $cat_label_for_button )
+                    ? $cat_label_for_button
+                    : $cat_label_for_button . 's';
                 ?>
-                <button type="button" class="slw-btn slw-btn-small slw-add-category" data-category="<?php echo esc_attr( $cat_slug ); ?>" style="background:#D4AF37;color:#1E2A30;border:none;font-weight:700;" onclick="event.stopPropagation();">Add <?php echo esc_html( $cat_label_plural ); ?> to Cart</button>
+                <button type="button" class="slw-btn slw-btn-small slw-add-category" data-category="<?php echo esc_attr( $cat_slug ); ?>" style="background:#D4AF37;color:#1E2A30;border:none;font-weight:700;" onclick="event.stopPropagation();">One-Click Add <?php echo esc_html( $cat_label_plural ); ?></button>
                 <span class="slw-category-toggle" style="font-size:18px;">&#9660;</span>
             </div>
         </div>
@@ -393,40 +403,53 @@ $products = $all_products; // keep for empty check
                             $v_price_html = wc_price( $variation->get_price() );
                 ?>
                 <tr data-product-id="<?php echo esc_attr( $product->get_id() ); ?>" data-variation-id="<?php echo esc_attr( $variation->get_id() ); ?>" data-category="<?php echo esc_attr( $cat_slug ); ?>" id="slw-product-<?php echo esc_attr( $variation->get_id() ); ?>">
+                    <?php
+                    // Larger lightbox image (full-size if available, else thumbnail).
+                    $var_image_full = $variation->get_image_id() ? wp_get_attachment_image_url( $variation->get_image_id(), 'large' ) : '';
+                    if ( ! $var_image_full ) {
+                        $var_image_full = wp_get_attachment_image_url( $product->get_image_id(), 'large' );
+                    }
+                    if ( ! $var_image_full ) {
+                        $var_image_full = $var_image;
+                    }
+                    ?>
                     <td class="slw-col-image">
-                        <img src="<?php echo esc_url( $var_image ); ?>" alt="<?php echo esc_attr( $var_label ); ?>" width="60" height="60" />
+                        <button type="button"
+                                class="slw-row-image-btn"
+                                aria-label="Enlarge product image"
+                                data-image-full="<?php echo esc_url( $var_image_full ); ?>"
+                                data-image-alt="<?php echo esc_attr( $product->get_name() . ' ' . $var_label ); ?>">
+                            <img src="<?php echo esc_url( $var_image ); ?>" alt="<?php echo esc_attr( $var_label ); ?>" width="60" height="60" />
+                        </button>
                     </td>
                     <?php
-                    // Tooltip body. Variation description first (scent-specific
-                    // notes Holly can set per-variation), falling back to the
-                    // parent short description, then the parent long description
-                    // (trimmed). Strips HTML so it renders cleanly in a popup.
-                    $v_desc = trim( wp_strip_all_tags( $variation->get_description() ) );
-                    if ( ! $v_desc ) {
-                        $v_desc = trim( wp_strip_all_tags( $product->get_short_description() ) );
+                    // Hover-trigger descriptions: product-level on the name,
+                    // scent-level on the variation label. Lifted from the
+                    // product short description and the variation description
+                    // respectively (admin sets both in WooCommerce).
+                    $product_desc = trim( wp_strip_all_tags( $product->get_short_description() ) );
+                    if ( ! $product_desc ) {
+                        $product_desc = trim( wp_strip_all_tags( $product->get_description() ) );
                     }
-                    if ( ! $v_desc ) {
-                        $v_desc = trim( wp_strip_all_tags( $product->get_description() ) );
+                    if ( strlen( $product_desc ) > 320 ) {
+                        $product_desc = substr( $product_desc, 0, 317 ) . '...';
                     }
-                    if ( strlen( $v_desc ) > 280 ) {
-                        $v_desc = substr( $v_desc, 0, 277 ) . '...';
+                    $scent_desc = trim( wp_strip_all_tags( $variation->get_description() ) );
+                    if ( strlen( $scent_desc ) > 320 ) {
+                        $scent_desc = substr( $scent_desc, 0, 317 ) . '...';
                     }
                     ?>
                     <td class="slw-col-product">
-                        <strong><?php echo esc_html( $product->get_name() ); ?></strong>
-                        <?php if ( $v_desc ) : ?>
-                            <button type="button"
-                                    class="slw-info-btn"
-                                    aria-label="Product details"
-                                    data-product-name="<?php echo esc_attr( $product->get_name() . ( $var_label ? ', ' . $var_label : '' ) ); ?>"
-                                    data-product-desc="<?php echo esc_attr( $v_desc ); ?>">
-                                <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                    <circle cx="8" cy="8" r="6.5"/>
-                                    <path d="M8 7.5v4M8 5v.5"/>
-                                </svg>
-                            </button>
-                        <?php endif; ?>
-                        <br><span class="slw-product-meta"><?php echo esc_html( $var_label ); ?></span>
+                        <strong class="slw-product-name<?php echo $product_desc ? ' slw-has-hover' : ''; ?>"
+                                <?php if ( $product_desc ) : ?>
+                                data-hover-title="<?php echo esc_attr( $product->get_name() ); ?>"
+                                data-hover-desc="<?php echo esc_attr( $product_desc ); ?>"
+                                <?php endif; ?>><?php echo esc_html( $product->get_name() ); ?></strong>
+                        <br><span class="slw-product-meta<?php echo $scent_desc ? ' slw-has-hover' : ''; ?>"
+                                  <?php if ( $scent_desc ) : ?>
+                                  data-hover-title="<?php echo esc_attr( $var_label ); ?>"
+                                  data-hover-desc="<?php echo esc_attr( $scent_desc ); ?>"
+                                  <?php endif; ?>><?php echo esc_html( $var_label ); ?></span>
                         <?php if ( $v_case_pack > 0 && class_exists( 'SLW_Product_Minimums' ) && SLW_Product_Minimums::case_packs_enabled() ) : ?>
                             <br><span class="slw-case-pack-label">Case of <?php echo esc_html( $v_case_pack ); ?></span>
                         <?php endif; ?>
@@ -481,32 +504,31 @@ $products = $all_products; // keep for empty check
                         }
                 ?>
                 <tr data-product-id="<?php echo esc_attr( $product->get_id() ); ?>" data-category="<?php echo esc_attr( $cat_slug ); ?>" id="slw-product-<?php echo esc_attr( $product->get_id() ); ?>">
+                    <?php $image_full = wp_get_attachment_image_url( $product->get_image_id(), 'large' ); if ( ! $image_full ) $image_full = $image; ?>
                     <td class="slw-col-image">
-                        <img src="<?php echo esc_url( $image ); ?>" alt="<?php echo esc_attr( $product->get_name() ); ?>" width="60" height="60" />
+                        <button type="button"
+                                class="slw-row-image-btn"
+                                aria-label="Enlarge product image"
+                                data-image-full="<?php echo esc_url( $image_full ); ?>"
+                                data-image-alt="<?php echo esc_attr( $product->get_name() ); ?>">
+                            <img src="<?php echo esc_url( $image ); ?>" alt="<?php echo esc_attr( $product->get_name() ); ?>" width="60" height="60" />
+                        </button>
                     </td>
                     <?php
                     $p_desc = trim( wp_strip_all_tags( $product->get_short_description() ) );
                     if ( ! $p_desc ) {
                         $p_desc = trim( wp_strip_all_tags( $product->get_description() ) );
                     }
-                    if ( strlen( $p_desc ) > 280 ) {
-                        $p_desc = substr( $p_desc, 0, 277 ) . '...';
+                    if ( strlen( $p_desc ) > 320 ) {
+                        $p_desc = substr( $p_desc, 0, 317 ) . '...';
                     }
                     ?>
                     <td class="slw-col-product">
-                        <strong><?php echo esc_html( $product->get_name() ); ?></strong>
-                        <?php if ( $p_desc ) : ?>
-                            <button type="button"
-                                    class="slw-info-btn"
-                                    aria-label="Product details"
-                                    data-product-name="<?php echo esc_attr( $product->get_name() ); ?>"
-                                    data-product-desc="<?php echo esc_attr( $p_desc ); ?>">
-                                <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                                    <circle cx="8" cy="8" r="6.5"/>
-                                    <path d="M8 7.5v4M8 5v.5"/>
-                                </svg>
-                            </button>
-                        <?php endif; ?>
+                        <strong class="slw-product-name<?php echo $p_desc ? ' slw-has-hover' : ''; ?>"
+                                <?php if ( $p_desc ) : ?>
+                                data-hover-title="<?php echo esc_attr( $product->get_name() ); ?>"
+                                data-hover-desc="<?php echo esc_attr( $p_desc ); ?>"
+                                <?php endif; ?>><?php echo esc_html( $product->get_name() ); ?></strong>
                         <?php if ( $case_pack > 0 && class_exists( 'SLW_Product_Minimums' ) && SLW_Product_Minimums::case_packs_enabled() ) : ?>
                             <br><span class="slw-case-pack-label">Case of <?php echo esc_html( $case_pack ); ?></span>
                         <?php endif; ?>
@@ -567,10 +589,10 @@ $products = $all_products; // keep for empty check
     <?php endforeach; ?>
 
     <!-- Shipping Estimate -->
-    <div class="slw-shipping-calculator" id="slw-shipping-calculator">
-        <div class="slw-shipping-calculator-header">
-            <h3>Shipping Estimate</h3>
-            <p>Get an estimated shipping cost for your order before checkout.</p>
+    <div class="slw-shipping-calculator slw-of-card" id="slw-shipping-calculator">
+        <div class="slw-of-card__header">
+            <h3 class="slw-of-card__title">Shipping Estimate</h3>
+            <p class="slw-of-card__subtitle">Get an estimated shipping cost before checkout.</p>
         </div>
         <div class="slw-shipping-calculator-form">
             <div class="slw-shipping-calculator-inputs">
@@ -584,26 +606,36 @@ $products = $all_products; // keep for empty check
         </div>
     </div>
 
-    <!-- Order summary card. The order form itself acts as the cart -- a
-         compact 2-line summary preceding the action row so the customer
-         can see what they are about to commit to without bouncing through
-         a separate /cart page. Camila + LV May 29 2026: wholesale checkout
-         flow now skips /cart entirely. -->
-    <div class="slw-order-summary-card" aria-live="polite">
+    <!-- Cart Preview. Itemized list of everything currently staged on the
+         page (qty > 0) so the customer can see exactly what's about to
+         hit checkout without scrolling back through the product tables. -->
+    <div class="slw-of-card slw-cart-preview" aria-live="polite">
+        <div class="slw-of-card__header">
+            <h3 class="slw-of-card__title">Cart Preview</h3>
+            <p class="slw-of-card__subtitle" id="slw-cart-preview-meta">Set quantities above to populate.</p>
+        </div>
+        <ul class="slw-cart-preview__list" id="slw-cart-preview-list"></ul>
+    </div>
+
+    <!-- Order Subtotal -->
+    <div class="slw-of-card slw-order-summary-card" aria-live="polite">
+        <div class="slw-of-card__header">
+            <h3 class="slw-of-card__title">Order Subtotal</h3>
+            <p class="slw-of-card__subtitle" id="slw-of-subtotal-meta">0 items</p>
+        </div>
         <div class="slw-os-line slw-os-line--main">
-            <span class="slw-os-label">Order subtotal</span>
+            <span class="slw-os-label">Subtotal</span>
             <span class="slw-os-value" id="slw-of-subtotal"><?php echo wp_kses_post( wc_price( 0 ) ); ?></span>
         </div>
         <div class="slw-os-line slw-os-line--meta">
-            <span class="slw-os-meta" id="slw-of-subtotal-meta">0 items</span>
             <span class="slw-os-shipping" id="slw-of-shipping-line"></span>
         </div>
     </div>
 
     <div class="slw-order-form-footer">
         <div class="slw-of-actions">
-            <button type="button" class="slw-btn slw-btn-secondary" id="slw-save-template-btn">Save Order</button>
-            <button type="button" class="slw-btn slw-btn-primary slw-btn-cta" id="slw-checkout-btn">Proceed to Checkout</button>
+            <button type="button" class="slw-btn slw-btn-primary slw-of-action-btn" id="slw-save-template-btn">Save Order Preset Preset</button>
+            <button type="button" class="slw-btn slw-btn-cta slw-of-action-btn slw-of-action-btn--cta" id="slw-checkout-btn">Proceed to Checkout</button>
         </div>
     </div>
 
@@ -611,32 +643,56 @@ $products = $all_products; // keep for empty check
 </div>
 
 <style>
-.slw-order-summary-card {
-    margin-top: 24px;
+/* Section header used above "Your Most Ordered" / "Quick reorder" so the
+   title + hint render as a single tidy pair. */
+.slw-section-header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 16px 0 10px; padding-bottom: 8px; border-bottom: 1px solid #e0ddd8; }
+.slw-section-header__title { margin: 0; font-family: Georgia, 'Times New Roman', serif; font-size: 18px; font-weight: 700; color: #386174; line-height: 1.2; }
+.slw-section-header__hint { font-size: 12px; color: #628393; font-style: italic; letter-spacing: 0.2px; }
+
+/* Uniform card pattern used for Shipping Estimate, Cart Preview, and Order Subtotal. */
+.slw-of-card {
+    margin-top: 18px;
     padding: 18px 22px;
     background: linear-gradient(180deg, #FAF8F2 0%, #F7F6F3 100%);
     border: 1px solid #E0DBD0;
     border-radius: 10px;
     box-shadow: 0 1px 3px rgba(56, 97, 116, 0.05);
 }
+.slw-of-card__header { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid #E0DBD0; }
+.slw-of-card__title { margin: 0; font-family: Georgia, 'Times New Roman', serif; font-size: 16px; font-weight: 700; color: #386174; letter-spacing: 0.2px; }
+.slw-of-card__subtitle { margin: 0; font-size: 12px; color: #628393; font-style: italic; }
+
+/* Cart Preview list */
+.slw-cart-preview__list { list-style: none; margin: 0; padding: 0; }
+.slw-cart-preview__item { display: grid; grid-template-columns: 36px 1fr auto; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px dashed rgba(224, 219, 208, 0.65); font-size: 13px; }
+.slw-cart-preview__item:last-child { border-bottom: none; }
+.slw-cart-preview__qty { font-weight: 700; color: #386174; font-family: Georgia, 'Times New Roman', serif; }
+.slw-cart-preview__name { color: #2C2C2C; }
+.slw-cart-preview__total { font-weight: 600; color: #2C2C2C; }
+
+/* Order Subtotal lines */
 .slw-os-line { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; }
 .slw-os-line--main { padding-bottom: 8px; border-bottom: 1px dashed #E0DBD0; margin-bottom: 8px; }
 .slw-os-label { font-family: Georgia, 'Times New Roman', serif; font-size: 14px; color: #386174; font-weight: 600; letter-spacing: 0.2px; }
-.slw-os-value { font-family: Georgia, 'Times New Roman', serif; font-size: 24px; font-weight: 700; color: #2C2C2C; line-height: 1; }
-.slw-os-meta { font-size: 12px; color: #628393; font-style: italic; }
+.slw-os-value { font-family: Georgia, 'Times New Roman', serif; font-size: 26px; font-weight: 700; color: #2C2C2C; line-height: 1; }
 .slw-os-shipping { font-size: 12px; color: #628393; text-align: right; }
 .slw-os-shipping strong { color: #2C2C2C; font-style: normal; font-weight: 700; }
 
-.slw-order-form-footer { display: flex; justify-content: flex-end; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
-.slw-of-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.slw-of-actions .slw-btn-cta { padding-left: 26px; padding-right: 26px; font-size: 15px; }
+/* Action row: Save Order Preset + Proceed to Checkout
+   sized as siblings (same padding, same font size). */
+.slw-order-form-footer { display: flex; justify-content: flex-end; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 16px; padding-bottom: 8px; }
+.slw-of-actions { display: flex; gap: 12px; align-items: stretch; flex-wrap: wrap; }
+.slw-of-action-btn { padding: 13px 24px !important; font-size: 14px !important; min-height: 46px; }
+.slw-of-action-btn--cta { font-weight: 700 !important; padding-left: 28px !important; padding-right: 28px !important; }
 
 @media (max-width: 600px) {
     .slw-order-form-footer { justify-content: stretch; }
     .slw-of-actions { width: 100%; }
-    .slw-of-actions .slw-btn { flex: 1; }
+    .slw-of-action-btn { flex: 1; }
     .slw-os-line { flex-wrap: wrap; }
     .slw-os-shipping { text-align: left; flex-basis: 100%; }
+    .slw-cart-preview__item { grid-template-columns: 32px 1fr; }
+    .slw-cart-preview__total { grid-column: 2; text-align: right; }
 }
 .slw-of-toast {
     position: fixed;
@@ -720,11 +776,27 @@ $products = $all_products; // keep for empty check
         return sign + currencySymbol + joined;
     }
 
+    var previewListEl = document.getElementById('slw-cart-preview-list');
+    var previewMetaEl = document.getElementById('slw-cart-preview-meta');
+
+    function rowLabelFor(input) {
+        var row = input.closest('tr');
+        if (!row) return '';
+        var prodCell = row.querySelector('.slw-col-product');
+        if (!prodCell) return '';
+        var name = prodCell.querySelector('strong');
+        var meta = prodCell.querySelector('.slw-product-meta');
+        var nameTxt = name ? name.textContent.trim() : '';
+        var metaTxt = meta ? meta.textContent.trim() : '';
+        return metaTxt ? nameTxt + ', ' + metaTxt : nameTxt;
+    }
+
     function updateSubtotal() {
         if (!subtotalEl) return;
         var total = 0;
         var lineCount = 0;
         var itemCount = 0;
+        var previewItems = [];
         document.querySelectorAll('.slw-qty-input').forEach(function(input) {
             var qty = parseInt(input.value, 10) || 0;
             if (qty <= 0) return;
@@ -732,8 +804,32 @@ $products = $all_products; // keep for empty check
             total += qty * price;
             lineCount++;
             itemCount += qty;
+            previewItems.push({ label: rowLabelFor(input), qty: qty, lineTotal: qty * price });
         });
         subtotalEl.textContent = formatPrice(total);
+
+        // Cart preview: itemized list of everything staged with qty > 0.
+        if (previewListEl) {
+            previewListEl.innerHTML = '';
+            if (previewItems.length === 0) {
+                if (previewMetaEl) previewMetaEl.textContent = 'Set quantities above to populate.';
+            } else {
+                if (previewMetaEl) {
+                    previewMetaEl.textContent = itemCount + ' item' + (itemCount === 1 ? '' : 's') +
+                        ' across ' + lineCount + ' product' + (lineCount === 1 ? '' : 's');
+                }
+                previewItems.forEach(function(item) {
+                    var li = document.createElement('li');
+                    li.className = 'slw-cart-preview__item';
+                    li.innerHTML =
+                        '<span class="slw-cart-preview__qty">' + item.qty + '×</span>' +
+                        '<span class="slw-cart-preview__name">' + item.label + '</span>' +
+                        '<span class="slw-cart-preview__total">' + formatPrice(item.lineTotal) + '</span>';
+                    previewListEl.appendChild(li);
+                });
+            }
+        }
+
         if (subtotalMetaEl) {
             if (itemCount === 0) {
                 subtotalMetaEl.textContent = '0 items';
@@ -1034,7 +1130,7 @@ $products = $all_products; // keep for empty check
         });
     }
 
-    // "Save Order" button
+    // "Save Order Preset" button
     var saveTemplateBtn = document.getElementById('slw-save-template-btn');
     if (saveTemplateBtn) {
         saveTemplateBtn.addEventListener('click', function() {
@@ -1061,73 +1157,108 @@ $products = $all_products; // keep for empty check
                     showMessage(msg, 'error');
                 }
                 saveTemplateBtn.disabled = false;
-                saveTemplateBtn.textContent = 'Save Order';
+                saveTemplateBtn.textContent = 'Save Order Preset';
             };
             xhr.onerror = function() {
                 showMessage('Network error. Please try again.', 'error');
                 saveTemplateBtn.disabled = false;
-                saveTemplateBtn.textContent = 'Save Order';
+                saveTemplateBtn.textContent = 'Save Order Preset';
             };
             xhr.send(formData);
         });
     }
 
-    // Product info popup. Hover or click the (i) icon next to a product
-    // name to surface its short description -- Holly call request so
-    // wholesale customers can read scent + product notes without
-    // navigating away from the order form.
-    var infoPopup = null;
-    function ensureInfoPopup() {
-        if (infoPopup) return infoPopup;
-        infoPopup = document.createElement('div');
-        infoPopup.className = 'slw-info-popup';
-        infoPopup.setAttribute('role', 'dialog');
-        infoPopup.style.display = 'none';
-        infoPopup.innerHTML =
-            '<div class="slw-info-popup__title"></div>' +
-            '<div class="slw-info-popup__body"></div>';
-        document.body.appendChild(infoPopup);
-        return infoPopup;
+    // Hover popups on product names + scent labels. Surfaces the short
+    // description / variation description in a small card without an
+    // explicit click. Replaces the (i) icon from v4.6.69. Click outside
+    // the trigger dismisses.
+    var hoverPopup = null;
+    function ensureHoverPopup() {
+        if (hoverPopup) return hoverPopup;
+        hoverPopup = document.createElement('div');
+        hoverPopup.className = 'slw-hover-popup';
+        hoverPopup.setAttribute('role', 'dialog');
+        hoverPopup.style.display = 'none';
+        hoverPopup.innerHTML =
+            '<div class="slw-hover-popup__title"></div>' +
+            '<div class="slw-hover-popup__body"></div>';
+        document.body.appendChild(hoverPopup);
+        return hoverPopup;
     }
-    function positionPopup(popup, anchor) {
+    function positionHoverPopup(popup, anchor) {
         var rect = anchor.getBoundingClientRect();
-        var top = rect.bottom + window.scrollY + 8;
+        var top  = rect.bottom + window.scrollY + 6;
         var left = rect.left + window.scrollX;
-        // Clamp horizontally so the popup stays in view.
-        var maxLeft = window.scrollX + window.innerWidth - 320;
+        var maxLeft = window.scrollX + window.innerWidth - 340;
         if (left > maxLeft) left = maxLeft;
         if (left < window.scrollX + 12) left = window.scrollX + 12;
-        popup.style.top = top + 'px';
+        popup.style.top  = top + 'px';
         popup.style.left = left + 'px';
     }
-    function showInfoPopup(btn) {
-        var popup = ensureInfoPopup();
-        popup.querySelector('.slw-info-popup__title').textContent = btn.getAttribute('data-product-name') || '';
-        popup.querySelector('.slw-info-popup__body').textContent  = btn.getAttribute('data-product-desc') || '';
+    function showHoverPopup(anchor) {
+        var title = anchor.getAttribute('data-hover-title') || '';
+        var body  = anchor.getAttribute('data-hover-desc')  || '';
+        if (!body) return;
+        var popup = ensureHoverPopup();
+        popup.querySelector('.slw-hover-popup__title').textContent = title;
+        popup.querySelector('.slw-hover-popup__body').textContent  = body;
         popup.style.display = 'block';
-        requestAnimationFrame(function() { positionPopup(popup, btn); });
+        requestAnimationFrame(function() { positionHoverPopup(popup, anchor); });
     }
-    function hideInfoPopup() {
-        if (infoPopup) infoPopup.style.display = 'none';
+    function hideHoverPopup() {
+        if (hoverPopup) hoverPopup.style.display = 'none';
     }
-    document.querySelectorAll('.slw-info-btn').forEach(function(btn) {
-        btn.addEventListener('mouseenter', function() { showInfoPopup(this); });
-        btn.addEventListener('mouseleave', hideInfoPopup);
-        btn.addEventListener('focus',  function() { showInfoPopup(this); });
-        btn.addEventListener('blur',   hideInfoPopup);
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            if (infoPopup && infoPopup.style.display === 'block') {
-                hideInfoPopup();
-            } else {
-                showInfoPopup(this);
+    document.querySelectorAll('.slw-has-hover').forEach(function(el) {
+        el.addEventListener('mouseenter', function() { showHoverPopup(this); });
+        el.addEventListener('mouseleave', hideHoverPopup);
+        el.addEventListener('focus',      function() { showHoverPopup(this); });
+        el.addEventListener('blur',       hideHoverPopup);
+    });
+
+    // Image lightbox. Click a product row's thumbnail to blow it up.
+    var lightbox = null;
+    function ensureLightbox() {
+        if (lightbox) return lightbox;
+        lightbox = document.createElement('div');
+        lightbox.className = 'slw-lightbox';
+        lightbox.style.display = 'none';
+        lightbox.innerHTML =
+            '<button type="button" class="slw-lightbox__close" aria-label="Close">' +
+                '<svg viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>' +
+            '</button>' +
+            '<img class="slw-lightbox__img" alt="" />';
+        lightbox.addEventListener('click', function(e) {
+            if (e.target === lightbox || e.target.closest('.slw-lightbox__close')) {
+                hideLightbox();
             }
         });
+        document.body.appendChild(lightbox);
+        return lightbox;
+    }
+    function showLightbox(src, alt) {
+        var box = ensureLightbox();
+        var img = box.querySelector('.slw-lightbox__img');
+        img.src = src;
+        img.alt = alt || '';
+        box.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+    function hideLightbox() {
+        if (!lightbox) return;
+        lightbox.style.display = 'none';
+        document.body.style.overflow = '';
+    }
+    document.querySelectorAll('.slw-row-image-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            showLightbox(this.getAttribute('data-image-full'), this.getAttribute('data-image-alt'));
+        });
     });
-    document.addEventListener('click', function(e) {
-        if (!infoPopup) return;
-        if (e.target.closest('.slw-info-btn') || e.target.closest('.slw-info-popup')) return;
-        hideInfoPopup();
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            hideHoverPopup();
+            hideLightbox();
+        }
     });
 
     // Recommendation links: smooth scroll to the target product row
