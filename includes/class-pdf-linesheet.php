@@ -282,15 +282,19 @@ class SLW_PDF_Linesheet {
 		$products_by_cat = self::get_products_by_category();
 		$today           = date_i18n( 'F j, Y' );
 
-		// Personalize for the logged-in wholesale customer (their business name
-		// + account manager so the printout is recognizable as theirs, not a
-		// generic catalog).
+		// Personalize for the logged-in wholesale customer by default. Allow
+		// override via ?prepared_for=Name in the URL (e.g. when Holly sends
+		// the sheet to a prospect she's quoting) and via on-page click-to-edit
+		// for ad-hoc tweaks before printing.
 		$current_user      = wp_get_current_user();
 		$customer_business = $current_user->ID ? get_user_meta( $current_user->ID, 'slw_business_name', true ) : '';
-		$customer_label    = $customer_business ?: trim( $current_user->first_name . ' ' . $current_user->last_name );
-		if ( ! $customer_label ) {
-			$customer_label = $current_user->display_name ?: '';
+		$customer_default  = $customer_business ?: trim( $current_user->first_name . ' ' . $current_user->last_name );
+		if ( ! $customer_default ) {
+			$customer_default = $current_user->display_name ?: '';
 		}
+		$customer_label = isset( $_GET['prepared_for'] )
+			? sanitize_text_field( wp_unslash( $_GET['prepared_for'] ) )
+			: $customer_default;
 
 		header( 'Content-Type: text/html; charset=utf-8' );
 		?>
@@ -357,12 +361,48 @@ body {
 	margin-bottom: 4px;
 }
 
-.linesheet-header-right .customer {
+.linesheet-header-right .customer-row {
+	margin-top: 6px;
 	font-size: 13px;
 	color: #1E2A30;
+	display: inline-flex;
+	gap: 6px;
+	align-items: baseline;
+}
+
+.linesheet-header-right .customer-prefix {
+	color: #628393;
+	font-weight: 400;
+}
+
+.linesheet-header-right .customer {
 	font-weight: 600;
-	margin-top: 6px;
 	letter-spacing: 0.2px;
+	min-width: 80px;
+	display: inline-block;
+	padding: 1px 6px;
+	border-radius: 4px;
+	border: 1px dashed transparent;
+	outline: none;
+	cursor: text;
+	transition: border-color 0.15s, background 0.15s;
+}
+
+.linesheet-header-right .customer:hover {
+	border-color: #d0c8b8;
+	background: #faf7f0;
+}
+
+.linesheet-header-right .customer:focus {
+	border-color: <?php echo esc_attr( $accent ); ?>;
+	background: #fff;
+}
+
+.linesheet-header-right .customer:empty::before {
+	content: attr(data-placeholder);
+	color: #b5b0a3;
+	font-weight: 400;
+	font-style: italic;
 }
 
 .linesheet-header-right .date {
@@ -576,6 +616,16 @@ body {
 		display: none !important;
 	}
 
+	.linesheet-header-right .customer {
+		border-color: transparent !important;
+		background: transparent !important;
+		padding: 0 !important;
+	}
+
+	.linesheet-header-right .customer:empty::before {
+		content: "" !important;
+	}
+
 	.linesheet-category {
 		page-break-inside: avoid;
 		margin-bottom: 18px;
@@ -641,9 +691,15 @@ body {
 		</div>
 		<div class="linesheet-header-right">
 			<div class="title">Wholesale Price List</div>
-			<?php if ( $customer_label ) : ?>
-				<div class="customer">Prepared for <?php echo esc_html( $customer_label ); ?></div>
-			<?php endif; ?>
+			<div class="customer-row">
+				<span class="customer-prefix">Prepared for</span>
+				<span class="customer"
+				      contenteditable="true"
+				      spellcheck="false"
+				      role="textbox"
+				      aria-label="Prepared for (click to edit)"
+				      data-placeholder="(click to add a name)"><?php echo esc_html( $customer_label ); ?></span>
+			</div>
 			<div class="date"><?php echo esc_html( $today ); ?></div>
 		</div>
 	</div>
