@@ -4205,23 +4205,88 @@ button.slw-reorder-btn:hover {
 }
 
 .slw-wc-note { margin: 0; font-size: 13px; color: #628393; font-style: italic; }
+.slw-wc-note--info {
+    background: #FAF6E6;
+    border: 1px solid #e6d9a8;
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-style: normal;
+    color: #6b5719;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    line-height: 1.5;
+}
+.slw-wc-note--info strong { color: #5e4b13; font-weight: 700; }
+.slw-wc-note--info span { color: #826a3e; font-size: 12.5px; }
 
-.slw-wc-place-order { margin-top: 4px; padding: 22px 24px 18px; background: linear-gradient(135deg, #386174 0%, #2C4F5E 100%); color: #F7F6F3; border-radius: 12px; }
+.slw-wc-gateway-fields {
+    padding: 14px 14px 4px 38px;
+    margin-top: -4px;
+    background: #ffffff;
+    border-left: 3px solid #386174;
+    border-radius: 0 8px 8px 0;
+    font-size: 14px;
+    color: #2C2C2C;
+}
+.slw-wc-gateway-fields[hidden] { display: none; }
+.slw-wc-gateway-fields input[type="text"],
+.slw-wc-gateway-fields input[type="email"],
+.slw-wc-gateway-fields input[type="tel"],
+.slw-wc-gateway-fields input[type="password"],
+.slw-wc-gateway-fields select,
+.slw-wc-gateway-fields textarea {
+    padding: 9px 11px;
+    border: 1px solid #d4cebc;
+    border-radius: 6px;
+    font-size: 14px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.slw-wc-place-order {
+    margin-top: 6px;
+    padding: 18px 18px 14px;
+    background: #FAF8F2;
+    border: 2px solid #D4AF37;
+    border-radius: 12px;
+    box-shadow: 0 4px 18px rgba(212, 175, 55, 0.18);
+}
 .slw-wc-place-btn {
     width: 100%;
-    padding: 16px 22px !important;
+    padding: 18px 22px !important;
     font-size: 16px !important;
     font-weight: 700 !important;
-    background: #D4AF37 !important;
+    background: linear-gradient(135deg, #E5C246 0%, #D4AF37 50%, #B6932A 100%) !important;
     color: #1E2A30 !important;
     border: none !important;
     border-radius: 8px !important;
     cursor: pointer;
     text-transform: none !important;
-    letter-spacing: 0.2px !important;
+    letter-spacing: 0.3px !important;
+    font-family: Georgia, 'Times New Roman', serif !important;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    box-shadow: 0 4px 12px rgba(212, 175, 55, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+    transition: transform 0.12s ease, box-shadow 0.18s ease, filter 0.18s ease;
 }
-.slw-wc-place-btn:hover { background: #c19b2f !important; }
-.slw-wc-fine-print { margin: 10px 0 0; font-size: 11.5px; color: rgba(247,246,243,0.75); text-align: center; }
+.slw-wc-place-btn:hover {
+    filter: brightness(1.05);
+    box-shadow: 0 6px 20px rgba(212, 175, 55, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.55);
+    transform: translateY(-1px);
+}
+.slw-wc-place-btn:active { transform: translateY(0); box-shadow: 0 2px 6px rgba(212, 175, 55, 0.35) !important; }
+.slw-wc-place-btn__label { letter-spacing: 0.5px; }
+.slw-wc-place-btn__total {
+    background: rgba(30, 42, 48, 0.12);
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: 700;
+}
+.slw-wc-fine-print { margin: 12px 0 0; font-size: 11.5px; color: #826a3e; text-align: center; }
 
 /* --- Summary sidebar --- */
 .slw-wc-summary {
@@ -4292,3 +4357,90 @@ button.slw-reorder-btn:hover {
     margin: 0 0 12px;
 }
 .slw-checkout-empty .slw-btn { margin-top: 8px; }
+
+/* --- Mobile optimization for wholesale checkout --- */
+@media (max-width: 900px) {
+    .slw-wc-summary {
+        position: static;
+        order: -1;
+        box-shadow: 0 2px 10px rgba(56, 97, 116, 0.08);
+    }
+    .slw-wc-line-items { max-height: 220px; }
+}
+@media (max-width: 700px) {
+    .slw-wholesale-checkout {
+        padding: 20px 14px 90px;
+    }
+    .slw-wc-header h1 { font-size: 24px; }
+    .slw-wc-header p { font-size: 13px; }
+    .slw-wc-grid { gap: 18px; }
+    .slw-wc-section {
+        padding: 16px 16px 14px;
+        border-radius: 10px;
+    }
+    .slw-wc-section__title { font-size: 16px; margin-bottom: 10px; }
+    .slw-wc-fields {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    .slw-wc-field input,
+    .slw-wc-section textarea,
+    .slw-wc-gateway-fields input[type="text"],
+    .slw-wc-gateway-fields input[type="email"],
+    .slw-wc-gateway-fields input[type="tel"],
+    .slw-wc-gateway-fields input[type="password"],
+    .slw-wc-gateway-fields select {
+        font-size: 16px; /* prevents iOS auto-zoom */
+        padding: 12px 12px;
+    }
+    .slw-wc-radio { padding: 11px 12px; }
+    .slw-wc-radio__label { font-size: 13.5px; }
+    .slw-wc-summary {
+        padding: 16px 16px;
+        border-radius: 10px;
+    }
+    .slw-wc-summary__title { font-size: 16px; }
+    .slw-wc-line__img { width: 38px; height: 38px; }
+    .slw-wc-line__name { font-size: 12.5px; }
+    .slw-wc-line__total { font-size: 13px; }
+    .slw-wc-totals__row { font-size: 13px; }
+    .slw-wc-totals__row--grand { font-size: 15px; }
+    .slw-wc-totals__row--grand dd { font-size: 19px; }
+    .slw-wc-place-order {
+        padding: 14px 14px 12px;
+        /* Pin the place-order block to the bottom of the viewport when
+           the user scrolls past the form so they can complete checkout
+           one-handed on mobile. */
+        position: sticky;
+        bottom: 0;
+        margin: 18px -14px -14px;
+        border-radius: 12px 12px 0 0;
+        background: #FAF8F2;
+        z-index: 5;
+        box-shadow: 0 -6px 18px rgba(56, 97, 116, 0.12), 0 0 0 2px #D4AF37 inset;
+        border: none;
+    }
+    .slw-wc-place-btn {
+        padding: 16px 16px !important;
+        font-size: 15px !important;
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    .slw-wc-place-btn__label { font-size: 14px; }
+    .slw-wc-place-btn__total { font-size: 14px; padding: 3px 10px; }
+    .slw-wc-fine-print { font-size: 10.5px; margin-top: 8px; }
+    .slw-wc-checkbox { margin-bottom: 10px; }
+}
+@media (max-width: 480px) {
+    .slw-wc-header h1 { font-size: 21px; }
+    .slw-wc-place-btn {
+        flex-direction: column;
+        gap: 4px;
+    }
+    .slw-wc-line {
+        grid-template-columns: 38px 1fr;
+        gap: 8px;
+    }
+    .slw-wc-line__total { grid-column: 2; text-align: right; }
+}

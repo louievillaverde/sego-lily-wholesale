@@ -476,12 +476,31 @@ $products = $all_products; // keep for empty check
                     // Scent hover fallback chain (Shop All uses taxonomy
                     // term descriptions; we try several places to catch
                     // however Holly + Camila have set up the scent meta):
+                    //   0. SLW_Scent_Library hardcoded lookup by variation label
                     //   1. variation's own description
                     //   2. attribute-term description (skipping billing intervals)
                     //   3. attribute-term meta '_scent_description' or '_description'
                     //   4. variation meta '_slw_scent_description'
                     //   5. parent product short description (last-resort fallback)
-                    $scent_desc = trim( wp_strip_all_tags( $variation->get_description() ) );
+                    $scent_desc = '';
+                    if ( class_exists( 'SLW_Scent_Library' ) ) {
+                        $lib_hit = SLW_Scent_Library::get_description( $var_label );
+                        if ( $lib_hit ) {
+                            $scent_desc = $lib_hit;
+                        } else {
+                            // Try each attribute value individually so a
+                            // composite label like "Renewal - Mango" still
+                            // hits "mango" in the library.
+                            foreach ( (array) $variation->get_attributes() as $attr_val ) {
+                                if ( ! $attr_val ) continue;
+                                $attr_hit = SLW_Scent_Library::get_description( $attr_val );
+                                if ( $attr_hit ) { $scent_desc = $attr_hit; break; }
+                            }
+                        }
+                    }
+                    if ( ! $scent_desc ) {
+                        $scent_desc = trim( wp_strip_all_tags( $variation->get_description() ) );
+                    }
                     if ( ! $scent_desc ) {
                         foreach ( (array) $variation->get_attributes() as $attr_tax => $attr_val ) {
                             if ( ! $attr_val ) continue;

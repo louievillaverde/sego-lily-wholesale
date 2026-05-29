@@ -251,11 +251,14 @@ class SLW_Wholesale_Checkout {
                     </section>
 
                     <section class="slw-wc-section">
-                        <h2 class="slw-wc-section__title">Shipping Method</h2>
+                        <h2 class="slw-wc-section__title">Shipping</h2>
                         <div class="slw-wc-radios">
                             <?php if ( ! empty( $available_shipping ) ) :
-                                foreach ( $available_shipping as $package_id => $package ) :
-                                    foreach ( $package['rates'] as $rate_id => $rate ) :
+                                $rate_count = 0;
+                                foreach ( $available_shipping as $pkg ) { $rate_count += count( $pkg['rates'] ); }
+                                if ( $rate_count > 0 ) :
+                                    foreach ( $available_shipping as $package_id => $package ) :
+                                        foreach ( $package['rates'] as $rate_id => $rate ) :
                             ?>
                                 <label class="slw-wc-radio">
                                     <input type="radio" name="shipping_method" value="<?php echo esc_attr( $rate_id ); ?>" <?php checked( $rate_id, $chosen_method ); ?> />
@@ -265,16 +268,25 @@ class SLW_Wholesale_Checkout {
                                     </span>
                                 </label>
                             <?php
+                                        endforeach;
                                     endforeach;
-                                endforeach;
+                                else : ?>
+                                    <div class="slw-wc-note slw-wc-note--info">
+                                        <strong>Shipping calculated separately.</strong>
+                                        <span>We'll weigh your packed order and invoice the actual carrier rate after pick-and-pack. Most wholesale orders ship via UPS Ground or USPS Priority.</span>
+                                    </div>
+                                <?php endif;
                             else : ?>
-                                <p class="slw-wc-note">Enter your zip above and shipping options will calculate.</p>
+                                <div class="slw-wc-note slw-wc-note--info">
+                                    <strong>Shipping calculated separately.</strong>
+                                    <span>We'll weigh your packed order and invoice the actual carrier rate after pick-and-pack. Most wholesale orders ship via UPS Ground or USPS Priority.</span>
+                                </div>
                             <?php endif; ?>
                         </div>
                     </section>
 
                     <section class="slw-wc-section">
-                        <h2 class="slw-wc-section__title">Payment Method</h2>
+                        <h2 class="slw-wc-section__title">Payment</h2>
                         <div class="slw-wc-radios">
                             <?php if ( ! empty( $available_gateways ) ) :
                                 foreach ( $available_gateways as $gateway_id => $gateway ) : ?>
@@ -287,7 +299,21 @@ class SLW_Wholesale_Checkout {
                                         <?php endif; ?>
                                     </span>
                                 </label>
-                                <?php endforeach;
+                                <?php
+                                    // Render the gateway's own payment form (card fields,
+                                    // saved methods, NET 30 confirmation, etc.). WC's
+                                    // payment_fields() outputs the same form the native
+                                    // checkout uses, so saved cards + tokens carry over.
+                                    if ( method_exists( $gateway, 'payment_fields' ) ) : ?>
+                                    <div class="slw-wc-gateway-fields" data-gateway="<?php echo esc_attr( $gateway_id ); ?>" <?php echo $gateway_id === $default_gateway ? '' : 'hidden'; ?>>
+                                        <?php
+                                        ob_start();
+                                        $gateway->payment_fields();
+                                        echo wp_kses_post( ob_get_clean() );
+                                        ?>
+                                    </div>
+                                    <?php endif;
+                                endforeach;
                             else : ?>
                                 <p class="slw-wc-note">No payment methods available. Contact <?php echo esc_html( $owner_email ); ?>.</p>
                             <?php endif; ?>
@@ -295,12 +321,15 @@ class SLW_Wholesale_Checkout {
                     </section>
 
                     <section class="slw-wc-section">
-                        <h2 class="slw-wc-section__title">Order Notes</h2>
-                        <textarea name="order_notes" rows="3" placeholder="Special delivery instructions, PO number, etc."></textarea>
+                        <h2 class="slw-wc-section__title">Packing &amp; Delivery Notes</h2>
+                        <textarea name="order_notes" rows="3" placeholder="Special packing requests, delivery window, dock instructions, PO number, anything we should know to pack and ship correctly."></textarea>
                     </section>
 
                     <div class="slw-wc-place-order">
-                        <button type="submit" class="slw-btn slw-btn-cta slw-wc-place-btn">Place Wholesale Order &middot; <?php echo wp_kses_post( wc_price( $grand_total ) ); ?></button>
+                        <button type="submit" class="slw-btn slw-wc-place-btn">
+                            <span class="slw-wc-place-btn__label">Place Wholesale Order</span>
+                            <span class="slw-wc-place-btn__total"><?php echo wp_kses_post( wc_price( $grand_total ) ); ?></span>
+                        </button>
                         <p class="slw-wc-fine-print">By placing this order you agree to your wholesale partnership terms with <?php echo esc_html( get_bloginfo( 'name' ) ); ?>.</p>
                     </div>
                 </div>
@@ -335,13 +364,13 @@ class SLW_Wholesale_Checkout {
                         </div>
                         <?php if ( $summary['savings'] > 0 ) : ?>
                         <div class="slw-wc-totals__row slw-wc-totals__row--savings">
-                            <dt>You saved</dt>
+                            <dt>Wholesale savings vs MSRP</dt>
                             <dd><?php echo wp_kses_post( wc_price( $summary['savings'] ) ); ?> <span class="slw-wc-totals__pct">(<?php echo esc_html( $summary['discount_pct'] ); ?>% off)</span></dd>
                         </div>
                         <?php endif; ?>
                         <div class="slw-wc-totals__row">
                             <dt>Shipping</dt>
-                            <dd><?php echo $shipping_total > 0 ? wp_kses_post( wc_price( $shipping_total ) ) : 'Select a method'; ?></dd>
+                            <dd><?php echo $shipping_total > 0 ? wp_kses_post( wc_price( $shipping_total ) ) : '<em>Invoiced after pack-out</em>'; ?></dd>
                         </div>
                         <?php if ( $tax_total > 0 ) : ?>
                         <div class="slw-wc-totals__row">
@@ -370,6 +399,32 @@ class SLW_Wholesale_Checkout {
                 box.addEventListener('change', sync);
                 sync();
             }
+
+            // Show only the selected gateway's payment fields. Lets saved
+            // cards / token UI render via the gateway's own payment_fields().
+            var paymentRadios = document.querySelectorAll('.slw-wholesale-checkout input[name="payment_method"]');
+            var allGatewayBoxes = document.querySelectorAll('.slw-wc-gateway-fields');
+            function syncGateway() {
+                var chosen = '';
+                paymentRadios.forEach(function(r) { if (r.checked) chosen = r.value; });
+                allGatewayBoxes.forEach(function(box) {
+                    box.hidden = (box.getAttribute('data-gateway') !== chosen);
+                });
+            }
+            paymentRadios.forEach(function(r) { r.addEventListener('change', syncGateway); });
+            syncGateway();
+
+            // Recompute shipping when zip / state changes -- AJAX hook
+            // into WC's update_order_review endpoint so radios refresh.
+            var shippingPostcode = document.querySelector('.slw-wholesale-checkout input[name="shipping_postcode"]');
+            var shippingState    = document.querySelector('.slw-wholesale-checkout input[name="shipping_state"]');
+            function triggerWcUpdate() {
+                if (typeof window.jQuery !== 'undefined' && jQuery.fn.trigger) {
+                    jQuery(document.body).trigger('update_checkout');
+                }
+            }
+            if (shippingPostcode) shippingPostcode.addEventListener('blur', triggerWcUpdate);
+            if (shippingState)    shippingState.addEventListener('blur', triggerWcUpdate);
         })();
         </script>
         <?php

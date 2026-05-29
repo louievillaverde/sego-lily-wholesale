@@ -630,15 +630,43 @@ class SLW_Wholesale_Role {
         }
 
         // 3. Fall back to global percentage discount.
-        // Use the regular price as the base when available. If the product
-        // also has a subscription scheme attached, _regular_price may itself
-        // be the recurring rate -- in that case set a per-product wholesale
-        // override via the Wholesale Price field on the product edit page to
-        // skip this fallback entirely.
-        $base_price = (float) $price;
-        $regular = $product->get_regular_price();
-        if ( $regular !== '' && is_numeric( $regular ) && (float) $regular > 0 ) {
-            $base_price = (float) $regular;
+        // Resolve the TRUE retail base. Subscription products store their
+        // recurring rate in _regular_price, so naive get_regular_price()
+        // returns the recurring rate. slw_get_true_regular_price walks
+        // variations + checks _slw_retail_price override + falls back to
+        // raw _regular_price meta, so it always reports MSRP not the
+        // recurring rate. Static recursion guard since the helper calls
+        // get_price() on siblings which re-enters this filter.
+        static $resolving = array();
+        $base_price = 0.0;
+        $pid = $product->get_id();
+        if ( empty( $resolving[ $pid ] ) ) {
+            $resolving[ $pid ] = true;
+            if ( function_exists( 'slw_get_true_regular_price' ) ) {
+                $base_price = (float) slw_get_true_regular_price( $product );
+            }
+            unset( $resolving[ $pid ] );
+        }
+        // Fallbacks if helper returned 0 (deep recursion case or no data):
+        // raw _regular_price meta first, then current filtered price.
+        if ( $base_price <= 0 ) {
+            $raw_regular = get_post_meta( $pid, '_regular_price', true );
+            if ( is_numeric( $raw_regular ) && (float) $raw_regular > 0 ) {
+                $base_price = (float) $raw_regular;
+            } elseif ( $product->get_parent_id() ) {
+                $raw_regular = get_post_meta( $product->get_parent_id(), '_regular_price', true );
+                if ( is_numeric( $raw_regular ) && (float) $raw_regular > 0 ) {
+                    $base_price = (float) $raw_regular;
+                }
+            }
+        }
+        if ( $base_price <= 0 ) {
+            $regular = $product->get_regular_price();
+            if ( $regular !== '' && is_numeric( $regular ) && (float) $regular > 0 ) {
+                $base_price = (float) $regular;
+            } else {
+                $base_price = (float) $price;
+            }
         }
 
         $discount = (float) slw_get_option( 'discount_percent', 50 );
@@ -895,52 +923,156 @@ class SLW_Wholesale_Role {
         ?>
         <script>
         (function() {
-            // List of selectors that represent the retail side cart / mini
-            // cart / cart drawer. We aggressively yank them out of the DOM
-            // on load AND watch for any new ones being injected (Elementor
-            // re-renders them dynamically after AJAX cart updates).
-            var killSelectors = [
-                '.elementor-menu-cart',
-                '.elementor-menu-cart__container',
-                '.elementor-menu-cart__wrapper',
-                '.widget_shopping_cart',
-                '.woocommerce-mini-cart',
-                '.mini-cart',
-                '.cart-popup',
-                '.cart-drawer',
-                '.side-cart',
-                '.wc-block-mini-cart',
-                '.wc-block-mini-cart__drawer',
-                '.header-cart',
+            // Elementor's side cart toggle is BOUND on page load by Elementor's
+            // own JS. Removing the toggle element after that binding doesn't
+            // help if the parent menu was the actual click target. So our
+            // strategy is layered:
+            //   1. On every click, if a cart icon / link was the target,
+            //      preventDefault + stopPropagation BEFORE Elementor's
+            //      handler fires (capture phase), and force-close any
+            //      "--shown" / "--opened" classes that did sneak through.
+            //   2. Watch the DOM for any element gaining a "shown" / "opened"
+            //      side-cart class and yank it back closed.
+            //   3. When the side cart IS open (despite us), drop the sticky
+            //      bottom Cart Preview bar so they don't fight each other.
+            //   4. Re-route to the wholesale order form when a wholesale
+            //      user actually wants to "go to my cart" -- intercept
+            //      links to /cart so they go to /wholesale-order.
+
+            var iconSelectors = [
+                '.elementor-menu-cart__toggle',
+                '.elementor-menu-cart__toggle_button',
+                '.elementor-menu-cart__toggle-button',
+                '.elementor-widget-woocommerce-menu-cart a',
+                '.menu-item-cart a',
+                '.header-cart a',
+                '.header-cart-link',
                 '.cart-toggle',
                 '.shopping-cart-icon',
-                '.menu-item-cart',
-                'a.cart-contents'
+                'a.cart-contents',
+                '.wc-block-mini-cart__button',
+                '.wp-block-woocommerce-mini-cart a',
+                'a[href$="/cart/"]',
+                'a[href$="/cart"]'
             ];
-            function killAll() {
-                killSelectors.forEach(function(sel) {
+            var openSelectors = [
+                '.elementor-menu-cart--shown',
+                '.elementor-menu-cart--opened',
+                '.wc-block-mini-cart--open',
+                '.wc-block-mini-cart__drawer.is-mobile',
+                '.cart-drawer.open',
+                '.side-cart.open',
+                '.cart-popup.open',
+                '.cart-popup--open'
+            ];
+            var redirectUrl = <?php echo wp_json_encode( home_url( '/wholesale-order' ) ); ?>;
+
+            function isIconTarget(el) {
+                if (!el || el.nodeType !== 1) return false;
+                for (var i = 0; i < iconSelectors.length; i++) {
+                    try {
+                        if (el.closest && el.closest(iconSelectors[i])) return true;
+                    } catch (e) {}
+                }
+                return false;
+            }
+
+            // 1. Capture-phase click interceptor. Runs BEFORE Elementor's
+            //    bubble-phase handler.
+            document.addEventListener('click', function(e) {
+                if (isIconTarget(e.target)) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.stopImmediatePropagation();
+                    // Send them to where the cart actually lives for wholesale
+                    window.location.href = redirectUrl;
+                }
+            }, true);
+
+            // 2. Watch for "open" classes appearing on any element and remove.
+            function closeOpened() {
+                openSelectors.forEach(function(sel) {
                     document.querySelectorAll(sel).forEach(function(el) {
-                        // Remove rather than hide so themes can't unhide.
-                        el.parentNode && el.parentNode.removeChild(el);
+                        // Strip just the open/shown class so Elementor's
+                        // internal state machine doesn't get confused. Then
+                        // also forcibly hide.
+                        el.classList.remove('elementor-menu-cart--shown');
+                        el.classList.remove('elementor-menu-cart--opened');
+                        el.classList.remove('is-mobile');
+                        el.classList.remove('open');
+                        el.classList.remove('cart-popup--open');
+                        el.style.display = 'none';
+                        el.style.visibility = 'hidden';
+                        el.style.pointerEvents = 'none';
                     });
                 });
+                // Also drop body class some themes add when cart is open
+                document.body.classList.remove('elementor-menu-cart--shown');
+                document.body.classList.remove('cart-open');
+                document.body.classList.remove('side-cart-open');
+                document.documentElement.classList.remove('cart-open');
             }
-            killAll();
-            // Observe DOM for re-injected side carts (Elementor + theme behavior).
+            closeOpened();
+
+            // 3. Sticky bottom bar coordination: if any side cart IS open
+            //    (transient state we couldn't prevent), hide our Cart
+            //    Preview floating bar so they don't visually collide.
+            var stickyBar = document.querySelector('.slw-sticky-bar, .slw-cart-preview-sticky');
+            function syncStickyBar() {
+                var anyOpen = false;
+                openSelectors.forEach(function(sel) {
+                    if (document.querySelector(sel)) anyOpen = true;
+                });
+                if (stickyBar) {
+                    if (anyOpen) {
+                        stickyBar.classList.add('slw-sticky-bar--hidden-by-cart');
+                    } else {
+                        stickyBar.classList.remove('slw-sticky-bar--hidden-by-cart');
+                    }
+                }
+            }
+            syncStickyBar();
+
             try {
-                var observer = new MutationObserver(killAll);
-                observer.observe(document.body, { childList: true, subtree: true });
+                var observer = new MutationObserver(function() {
+                    closeOpened();
+                    syncStickyBar();
+                });
+                observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
             } catch (e) {}
 
-            // Block jQuery events that themes use to open the side cart.
+            // 4. Block jQuery events that themes use to open the side cart.
             if (typeof window.jQuery !== 'undefined') {
                 jQuery(document.body).off('added_to_cart wc_fragments_refreshed wc_fragments_loaded');
                 jQuery(document.body).on('added_to_cart wc_fragments_refreshed wc_fragments_loaded', function(e) {
                     e.stopImmediatePropagation();
+                    closeOpened();
                 });
             }
+
+            // 5. As a last resort, also try removing the cart icon DOM nodes
+            //    after a small delay so Elementor's initial render finishes
+            //    before we yank them. Only the visible icons -- NOT the
+            //    container divs, which Elementor sometimes needs in place.
+            setTimeout(function() {
+                ['.elementor-menu-cart__toggle', 'a.cart-contents'].forEach(function(sel) {
+                    document.querySelectorAll(sel).forEach(function(el) {
+                        el.style.display = 'none';
+                        el.style.pointerEvents = 'none';
+                    });
+                });
+            }, 300);
         })();
         </script>
+        <style id="slw-sticky-side-cart-coordination">
+            .slw-sticky-bar.slw-sticky-bar--hidden-by-cart,
+            .slw-cart-preview-sticky.slw-sticky-bar--hidden-by-cart {
+                transform: translateY(110%) !important;
+                opacity: 0 !important;
+                transition: transform 0.2s ease, opacity 0.2s ease !important;
+                pointer-events: none !important;
+            }
+        </style>
         <?php
     }
 
