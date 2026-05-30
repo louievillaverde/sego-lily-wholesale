@@ -3,7 +3,7 @@
  * Plugin Name:       Wholesale Portal
  * Plugin URI:        https://github.com/louievillaverde/sego-lily-wholesale
  * Description:       All-in-one B2B wholesale portal for WooCommerce. Customer portal, tiered pricing, application workflow, PDF invoices, email sequences with multi-provider support, NET payment terms, lead capture, trade show tools, and automated order reminders. Built by Lead Piranha.
- * Version:           4.6.110
+ * Version:           4.6.111
  * Author:            Lead Piranha
  * Author URI:        https://leadpiranha.com
  * Requires at least: 6.0
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SLW_VERSION', '4.6.110' );
+define( 'SLW_VERSION', '4.6.111' );
 define( 'SLW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SLW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -640,25 +640,37 @@ function slw_get_true_regular_price( $product ) {
         return (float) $override;
     }
 
-    // Variable / variable-subscription / variation lookups use a direct
-    // SQL MAX of raw _regular_price post-meta across siblings. This bypasses
-    // every filter chain (ours, WC Subscriptions', WCSATT's), so the
-    // returned number is always the true MSRP / one-time-price stored on
-    // the highest-priced variation -- not whatever the subscription plugin
-    // morphs get_price() into. This was the source of the "subscription
-    // prices showing through" bug: even with our filter detached, WCS
-    // still rewrote get_price() to the recurring rate.
-    $walk_parent_id = 0;
-    if ( method_exists( $product, 'get_children' ) && (
+    // For variations: prefer the variation's OWN raw _regular_price.
+    // The previous MAX-walk-across-siblings logic was a workaround for
+    // variable-subscription products where the variation we were pricing
+    // might be the recurring rate; it broke size-attribute products
+    // where 2oz and 4oz are sibling variations -- the 2oz variation
+    // would get the 4oz price via MAX, then wholesale = MAX * 0.5
+    // gave the same number for both jars. Reading the variation's
+    // own meta directly fixes this. We only fall back to the MAX walk
+    // when the variation has no per-variation price set at all (the
+    // original subscription-rate-bleed scenario).
+    if ( $product->is_type( 'variation' ) ) {
+        $own_raw = get_post_meta( $product_id, '_regular_price', true );
+        if ( is_numeric( $own_raw ) && (float) $own_raw > 0 ) {
+            return (float) $own_raw;
+        }
+        $own_price = get_post_meta( $product_id, '_price', true );
+        if ( is_numeric( $own_price ) && (float) $own_price > 0 ) {
+            return (float) $own_price;
+        }
+        if ( $parent_id > 0 ) {
+            $max = slw_max_variation_regular_price( $parent_id );
+            if ( $max > 0 ) return $max;
+        }
+    } elseif ( method_exists( $product, 'get_children' ) && (
             $product->is_type( 'variable' ) ||
             $product->is_type( 'variable-subscription' )
     ) ) {
-        $walk_parent_id = $product_id;
-    } elseif ( $product->is_type( 'variation' ) && $parent_id ) {
-        $walk_parent_id = $parent_id;
-    }
-    if ( $walk_parent_id > 0 ) {
-        $max = slw_max_variation_regular_price( $walk_parent_id );
+        // Parent product (variable / variable-subscription): walk
+        // children for MAX. Used by the catalog price range display
+        // and the linesheet "from $X" fallbacks.
+        $max = slw_max_variation_regular_price( $product_id );
         if ( $max > 0 ) {
             return $max;
         }
