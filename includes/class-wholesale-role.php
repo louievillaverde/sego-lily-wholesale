@@ -857,6 +857,24 @@ class SLW_Wholesale_Role {
                 . 'a[href$="/cart/"],'
                 . 'a[href$="/cart"]'
                 . '{display:none!important;visibility:hidden!important;pointer-events:none!important}'
+                // Without the cart icon next to it the member / account
+                // icon collapses into the adjacent Shop CTA. Restore the
+                // breathing room that the cart icon used to occupy by
+                // adding margin to common account-icon widget selectors.
+                . '.elementor-widget-woocommerce-my-account-page-title,'
+                . '.elementor-icon-list-item:has(a[href*="account"]),'
+                . '.elementor-icon-list-item:has(a[href*="portal"]),'
+                . '.elementor-widget-icon-list a[href*="account"],'
+                . '.elementor-widget-icon-list a[href*="portal"],'
+                . '.header-account-icon,'
+                . '.my-account-link,'
+                . '.user-account-icon,'
+                . '.account-icon,'
+                . 'a[href$="/wholesale-portal/"],'
+                . 'a[href$="/wholesale-portal"],'
+                . 'a[href$="/my-account/"],'
+                . 'a[href$="/my-account"]'
+                . '{margin-left:18px!important}'
                 . '</style>';
         } );
     }

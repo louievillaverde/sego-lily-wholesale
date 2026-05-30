@@ -116,7 +116,7 @@ class SLW_Order_Form {
      * Cart Preview without a page reload. Mirrors the boot payload that
      * order-form.php renders inline on initial load.
      */
-    private static function cart_state_payload() {
+    public static function cart_state_payload() {
         $items = array();
         if ( function_exists( 'WC' ) && WC()->cart && ! WC()->cart->is_empty() ) {
             foreach ( WC()->cart->get_cart() as $key => $ci ) {
@@ -383,18 +383,20 @@ class SLW_Order_Form {
 
         if ( $added > 0 && empty( $failures ) ) {
             wp_send_json_success( array(
-                'message'  => $added . ' product(s) added to your cart.',
-                'cart_url' => wc_get_cart_url(),
+                'message'    => $added . ' product(s) added to your cart.',
+                'cart_url'   => wc_get_cart_url(),
+                'cart_state' => self::cart_state_payload(),
             ));
         } elseif ( $added > 0 ) {
             wp_send_json_success( array(
-                'message'  => sprintf(
+                'message'    => sprintf(
                     '%d added, %d skipped: %s',
                     $added,
                     count( $failures ),
                     implode( '; ', $failures )
                 ),
-                'cart_url' => wc_get_cart_url(),
+                'cart_url'   => wc_get_cart_url(),
+                'cart_state' => self::cart_state_payload(),
             ));
         } else {
             $msg = empty( $failures )

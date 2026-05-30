@@ -14,8 +14,18 @@ $first_name = $user->first_name ?: $user->display_name;
 $has_ordered = get_user_meta( $user->ID, 'slw_first_order_placed', true );
 $minimum = (float) slw_get_option( 'first_order_minimum', 300 );
 $reorder_minimum = (float) slw_get_option( 'reorder_minimum', 0 );
-$active_minimum  = $has_ordered ? $reorder_minimum : $minimum;
-$active_min_label = $has_ordered ? 'reorder minimum' : 'first-order minimum';
+// Returning customers see the reorder minimum if Holly has set one,
+// otherwise fall back to the first-order minimum so the progress bar
+// always surfaces a meaningful target. The check at woocommerce_check_
+// _cart_items still uses the actual reorder_minimum value (0 = no
+// floor) so we don't accidentally block returning customers.
+if ( $has_ordered ) {
+    $active_minimum  = $reorder_minimum > 0 ? $reorder_minimum : $minimum;
+    $active_min_label = $reorder_minimum > 0 ? 'reorder minimum' : 'suggested order minimum';
+} else {
+    $active_minimum  = $minimum;
+    $active_min_label = 'first-order minimum';
+}
 $nonce = wp_create_nonce( 'slw_order_form' );
 $ajax_url = admin_url( 'admin-ajax.php' );
 
@@ -1289,25 +1299,28 @@ $products = $all_products; // keep for empty check
 .slw-cart-preview__name { color: #2C2C2C; text-wrap: pretty; }
 .slw-cart-preview__total { font-weight: 600; color: #2C2C2C; white-space: nowrap; }
 .slw-cart-preview__remove {
-    width: 24px;
-    height: 24px;
+    width: 26px;
+    height: 26px;
     border-radius: 50%;
-    border: 1px solid transparent;
-    background: transparent;
-    color: #b27474;
-    font-size: 18px;
+    border: 1px solid #d4cebc;
+    background: #ffffff;
+    color: #628393;
+    font-size: 20px;
     line-height: 1;
     cursor: pointer;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
     padding: 0;
+    font-weight: 600;
+    box-shadow: 0 1px 2px rgba(56, 97, 116, 0.06);
 }
 .slw-cart-preview__remove:hover {
     background: #fff0f0;
-    border-color: #d4a8a8;
+    border-color: #b27474;
     color: #6e3a3a;
+    transform: scale(1.05);
 }
 .slw-cart-preview__remove:disabled { opacity: 0.4; cursor: not-allowed; }
 /* Reposition + restyle the WooCommerce "added to cart" notice on the
@@ -2071,13 +2084,25 @@ body.page-wholesale-order .woocommerce-message .restore-item,
 
             if (resp && resp.success) {
                 showMessage(resp.data.message, 'success');
-                // Move successfully-added rows from 'staged' into the
-                // 'in cart' bucket so the Cart Preview reflects reality.
+                // Prefer the server's canonical cart state so the Cart
+                // Preview reflects EVERYTHING in the cart (catches dedup,
+                // qty merges, anything WC did differently than what we
+                // expected locally). Fall back to local merge if the
+                // server didn't return state (older endpoints).
+                if (resp.data.cart_state && Array.isArray(resp.data.cart_state.items)) {
+                    inCartItems = resp.data.cart_state.items;
+                } else {
+                    items.forEach(function(it) {
+                        var prodId = parseInt(it.product_id, 10) || 0;
+                        var varId  = parseInt(it.variation_id, 10) || 0;
+                        mergeIntoCart({ product_id: prodId, variation_id: varId, qty: parseInt(it.quantity, 10) || 0 });
+                    });
+                }
+                // Zero matching row qty inputs whether we merged locally
+                // or refreshed from server.
                 items.forEach(function(it) {
                     var prodId = parseInt(it.product_id, 10) || 0;
                     var varId  = parseInt(it.variation_id, 10) || 0;
-                    mergeIntoCart({ product_id: prodId, variation_id: varId, qty: parseInt(it.quantity, 10) || 0 });
-                    // Zero the matching row's qty input only.
                     var selector = varId
                         ? '.slw-qty-input[data-variation-id="' + varId + '"]'
                         : '.slw-qty-input[data-product-id="' + prodId + '"]:not([data-variation-id])';
