@@ -217,7 +217,7 @@ $products = $all_products; // keep for empty check
             <div class="slw-saved-orders" id="slw-saved-orders">
                 <select class="slw-saved-orders__select" id="slw-saved-orders-select" data-nonce="<?php echo esc_attr( $saved_carts_nonce ); ?>" <?php echo $has_saved ? '' : 'disabled'; ?>>
                     <?php if ( $has_saved ) : ?>
-                        <option value="">Order Templates</option>
+                        <option value="">Saved Orders</option>
                         <?php foreach ( $saved_carts as $slug => $tpl ) :
                             $item_count = isset( $tpl['items'] ) ? count( $tpl['items'] ) : 0;
                             $label = sprintf(
@@ -231,7 +231,7 @@ $products = $all_products; // keep for empty check
                             <option value="<?php echo esc_attr( $slug ); ?>"><?php echo esc_html( $label ); ?></option>
                         <?php endforeach; ?>
                     <?php else : ?>
-                        <option value="">Save your go-to orders here!</option>
+                        <option value="">Saved orders show here</option>
                     <?php endif; ?>
                 </select>
             </div>
