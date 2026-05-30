@@ -203,6 +203,33 @@ $products = $all_products; // keep for empty check
                     <path d="M2 10v3h12v-3M8 2v9M4 6l4-4 4 4"/>
                 </svg>Bulk Import skus
             </button>
+
+            <?php
+            // Saved-order picker. Pulled inline from user_meta so we
+            // don't need an extra AJAX round-trip on page load.
+            $saved_carts = get_user_meta( $user->ID, 'slw_saved_carts', true );
+            if ( is_array( $saved_carts ) && ! empty( $saved_carts ) ) :
+                $saved_carts_nonce = wp_create_nonce( 'slw_saved_carts' );
+                ?>
+                <div class="slw-saved-orders" id="slw-saved-orders">
+                    <label class="slw-saved-orders__label" for="slw-saved-orders-select">Saved orders</label>
+                    <select class="slw-saved-orders__select" id="slw-saved-orders-select" data-nonce="<?php echo esc_attr( $saved_carts_nonce ); ?>">
+                        <option value="">Load a saved order…</option>
+                        <?php foreach ( $saved_carts as $slug => $tpl ) :
+                            $item_count = isset( $tpl['items'] ) ? count( $tpl['items'] ) : 0;
+                            $label = sprintf(
+                                '%s (%d item%s, saved %s)',
+                                $tpl['name'] ?? 'Untitled',
+                                $item_count,
+                                $item_count === 1 ? '' : 's',
+                                $tpl['created'] ?? ''
+                            );
+                            ?>
+                            <option value="<?php echo esc_attr( $slug ); ?>"><?php echo esc_html( $label ); ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+            <?php endif; ?>
         </div>
 
         <div class="slw-bulk-import-modal" id="slw-bulk-import-modal" hidden>
@@ -1028,6 +1055,40 @@ $products = $all_products; // keep for empty check
 }
 .slw-order-header-tools .slw-order-search { margin-top: 0; flex: 1; min-width: 240px; }
 .slw-bulk-import-btn { flex-shrink: 0; }
+
+.slw-saved-orders {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+.slw-saved-orders__label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #386174;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    white-space: nowrap;
+}
+.slw-saved-orders__select {
+    padding: 8px 10px;
+    border: 1px solid #d4cebc;
+    border-radius: 6px;
+    background: #ffffff;
+    color: #2C2C2C;
+    font-size: 13px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    cursor: pointer;
+    min-width: 200px;
+    max-width: 280px;
+    transition: border-color 0.15s;
+}
+.slw-saved-orders__select:hover { border-color: #386174; }
+.slw-saved-orders__select:focus {
+    outline: none;
+    border-color: #386174;
+    box-shadow: 0 0 0 3px rgba(56, 97, 116, 0.12);
+}
 .slw-minimum-note {
     margin-top: 0 !important;
     margin-bottom: 18px;
@@ -2717,6 +2778,60 @@ body.page-wholesale-order .woocommerce-message .restore-item,
     }
     bindCheckout(checkoutBtn);
     bindCheckout(stickyCheckoutBtn);
+
+    // Saved-order picker: applies a previously-saved template to the cart
+    // and reloads so the order form reflects the loaded items.
+    var savedOrdersSelect = document.getElementById('slw-saved-orders-select');
+    if (savedOrdersSelect) {
+        savedOrdersSelect.addEventListener('change', function() {
+            var slug = this.value;
+            if (!slug) return;
+            if (!window.confirm('Load this saved order? Your current cart will be replaced.')) {
+                this.value = '';
+                return;
+            }
+            var savedNonce = this.getAttribute('data-nonce') || '';
+            this.disabled = true;
+            var fd = new FormData();
+            fd.append('action', 'slw_load_cart');
+            fd.append('nonce', savedNonce);
+            fd.append('slug', slug);
+            fetch(ajaxUrl, { method: 'POST', credentials: 'same-origin', body: fd })
+                .then(function(r) { return r.json(); })
+                .then(function(json) {
+                    if (json && json.success) {
+                        showMessage(json.data.message || 'Saved order loaded.', 'success');
+                        setTimeout(function() { window.location.reload(); }, 600);
+                    } else {
+                        var msg = (json && json.data && json.data.message) ? json.data.message : 'Could not load the saved order.';
+                        showMessage(msg, 'error');
+                        savedOrdersSelect.disabled = false;
+                        savedOrdersSelect.value = '';
+                    }
+                })
+                .catch(function() {
+                    showMessage('Network error loading the saved order.', 'error');
+                    savedOrdersSelect.disabled = false;
+                    savedOrdersSelect.value = '';
+                });
+        });
+    }
+
+    // Lightweight diagnostic surface so we can verify what data the
+    // client side actually has when something doesn't show up. Type
+    // `SLW_DEBUG.dump()` in the browser console to log SLW_DATA +
+    // inCartItems + computed violations.
+    window.SLW_DEBUG = {
+        dump: function() {
+            console.log('[SLW DEBUG] SLW_DATA:', window.SLW_DATA);
+            console.log('[SLW DEBUG] inCartItems:', inCartItems);
+            try {
+                console.log('[SLW DEBUG] violations:', computeViolations());
+            } catch (e) {
+                console.log('[SLW DEBUG] computeViolations threw:', e);
+            }
+        }
+    };
 
     // "Save Order Preset" button
     var saveTemplateBtn = document.getElementById('slw-save-template-btn');
