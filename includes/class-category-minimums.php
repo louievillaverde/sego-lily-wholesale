@@ -107,32 +107,40 @@ class SLW_Category_Minimums {
         if ( ! slw_is_wholesale_context() ) {
             return;
         }
-        $mins = self::get_minimums();
-        if ( empty( $mins ) ) {
-            return;
+        foreach ( self::get_violations() as $msg ) {
+            wc_add_notice( $msg, 'error' );
         }
+    }
 
+    /**
+     * Compute the list of category-minimum violations for the current
+     * cart. Returns an array of human-readable message strings. Shared
+     * by enforce_category_minimums() (server-side notice) and the
+     * order-form template (in-page violations panel) so both surfaces
+     * stay in sync.
+     */
+    public static function get_violations() {
+        $out = array();
+        if ( ! slw_is_wholesale_context() ) return $out;
+        $mins = self::get_minimums();
+        if ( empty( $mins ) ) return $out;
         $totals = self::sum_cart_by_category();
-
         foreach ( $mins as $term_id => $min_qty ) {
             $cart_qty = $totals[ $term_id ] ?? 0;
-            if ( $cart_qty <= 0 ) {
-                continue; // Nothing in this category. Skip silently.
-            }
+            if ( $cart_qty <= 0 ) continue;
             if ( $cart_qty < $min_qty ) {
                 $term = get_term( $term_id, 'product_cat' );
                 $cat_name = $term && ! is_wp_error( $term ) ? $term->name : 'this category';
-                wc_add_notice(
-                    sprintf(
-                        '%s requires a minimum of %d units (you can mix and match across scents). You currently have %d.',
-                        esc_html( $cat_name ),
-                        $min_qty,
-                        $cart_qty
-                    ),
-                    'error'
+                $out[] = sprintf(
+                    '%s minimum: %d units. You have %d. Add %d more (mix & match across scents).',
+                    $cat_name,
+                    (int) $min_qty,
+                    (int) $cart_qty,
+                    (int) $min_qty - (int) $cart_qty
                 );
             }
         }
+        return $out;
     }
 
     /**

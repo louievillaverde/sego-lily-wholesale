@@ -4143,6 +4143,44 @@ button.slw-reorder-btn:hover {
     padding-top: 14px !important;
 }
 
+/* Brand-warm rust styling for WC's native error notices on /checkout
+   so a minimum-not-met message (Tallow Butter needs 6, etc.) reads
+   like the rest of the wholesale UI instead of the universal browser
+   error pink. Matches .slw-cart-violations + .slw-notice-error. */
+.slw-checkout-page .woocommerce-error,
+.slw-checkout-page .woocommerce-NoticeGroup-checkout .woocommerce-error,
+.slw-checkout-page ul.woocommerce-error,
+.slw-checkout-page .woocommerce-message,
+body.woocommerce-checkout .woocommerce-error,
+body.woocommerce-checkout ul.woocommerce-error {
+    background: #fff5f0 !important;
+    border: 1px solid #f0c8a8 !important;
+    border-left: 4px solid #c0703a !important;
+    border-radius: 8px !important;
+    color: #6b3b1a !important;
+    padding: 16px 20px !important;
+    list-style: none !important;
+    margin: 0 0 20px !important;
+    font-size: 14px !important;
+    line-height: 1.5 !important;
+}
+.slw-checkout-page .woocommerce-error li,
+.slw-checkout-page ul.woocommerce-error li,
+body.woocommerce-checkout .woocommerce-error li,
+body.woocommerce-checkout ul.woocommerce-error li {
+    color: #6b3b1a !important;
+    padding-left: 0 !important;
+    margin-bottom: 6px !important;
+    text-wrap: pretty;
+}
+.slw-checkout-page .woocommerce-error li:last-child,
+body.woocommerce-checkout .woocommerce-error li:last-child { margin-bottom: 0 !important; }
+.slw-checkout-page .woocommerce-error strong,
+body.woocommerce-checkout .woocommerce-error strong { color: #5e2f15 !important; }
+.slw-checkout-page .woocommerce-error::before,
+.slw-checkout-page .woocommerce-message::before,
+body.woocommerce-checkout .woocommerce-error::before { color: #c0703a !important; }
+
 .slw-checkout-page #place_order {
     background: linear-gradient(135deg, #E5C246 0%, #D4AF37 50%, #B6932A 100%) !important;
     color: #1E2A30 !important;

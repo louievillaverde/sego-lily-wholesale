@@ -971,9 +971,26 @@ $products = $all_products; // keep for empty check
             <button type="button" class="slw-cart-preview__clear" id="slw-cart-preview-clear" hidden>Clear cart</button>
         </div>
         <ul class="slw-cart-preview__list" id="slw-cart-preview-list"></ul>
-        <div class="slw-cart-violations" id="slw-cart-violations" hidden>
+        <?php
+        // Server-side initial render of the violations panel so the
+        // customer sees minimum issues immediately on page load -- no
+        // dependency on JS having to recompute after first paint. JS
+        // still overwrites this on cart changes via renderViolations().
+        $boot_violations = array();
+        if ( class_exists( 'SLW_Product_Minimums' ) ) {
+            $boot_violations = array_merge( $boot_violations, (array) SLW_Product_Minimums::get_violations() );
+        }
+        if ( class_exists( 'SLW_Category_Minimums' ) ) {
+            $boot_violations = array_merge( $boot_violations, (array) SLW_Category_Minimums::get_violations() );
+        }
+        ?>
+        <div class="slw-cart-violations" id="slw-cart-violations" <?php echo empty( $boot_violations ) ? 'hidden' : ''; ?>>
             <div class="slw-cart-violations__title">Cart needs attention before checkout</div>
-            <ul class="slw-cart-violations__list" id="slw-cart-violations-list"></ul>
+            <ul class="slw-cart-violations__list" id="slw-cart-violations-list">
+                <?php foreach ( $boot_violations as $v ) : ?>
+                    <li><?php echo esc_html( $v ); ?></li>
+                <?php endforeach; ?>
+            </ul>
         </div>
     </div>
     <script>

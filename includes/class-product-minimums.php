@@ -85,12 +85,21 @@ class SLW_Product_Minimums {
 		if ( ! slw_is_wholesale_context() ) {
 			return;
 		}
+		foreach ( self::get_violations() as $msg ) {
+			wc_add_notice( $msg, 'error' );
+		}
+	}
 
-		// Aggregate cart quantities by parent product so the minimum is
-		// satisfied as a "mix & match across scents" total -- a min of 6
-		// on Natural Tallow Deodorant means 6 deodorants in total across
-		// any scent, not 6 of each. Matches Holly's intent and the
-		// client-side warning in the order-form Cart Preview.
+	/**
+	 * Compute the list of per-product minimum violations for the current
+	 * cart (aggregated across siblings -- mix & match across scents).
+	 * Returns human-readable message strings.
+	 */
+	public static function get_violations() {
+		$out = array();
+		if ( ! slw_is_wholesale_context() ) return $out;
+		if ( ! function_exists( 'WC' ) || ! WC()->cart ) return $out;
+
 		$totals = array();
 		$labels = array();
 		foreach ( WC()->cart->get_cart() as $cart_item ) {
@@ -110,17 +119,16 @@ class SLW_Product_Minimums {
 			$min = self::get_product_minimum( $lookup_id );
 			if ( $min <= 0 ) continue;
 			if ( $qty < $min ) {
-				wc_add_notice(
-					sprintf(
-						'%s requires a minimum wholesale quantity of %d (mix & match across scents). You have %d in your cart.',
-						esc_html( $labels[ $lookup_id ] ),
-						$min,
-						$qty
-					),
-					'error'
+				$out[] = sprintf(
+					'%s minimum: %d. You have %d (mix & match across scents). Add %d more.',
+					$labels[ $lookup_id ],
+					(int) $min,
+					(int) $qty,
+					(int) $min - (int) $qty
 				);
 			}
 		}
+		return $out;
 	}
 
 	// ── Order Form Integration ────────────────────────────────────────────
