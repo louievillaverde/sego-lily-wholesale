@@ -2798,6 +2798,27 @@ button.slw-reorder-btn:hover {
     margin-top: 16px;
 }
 
+.slw-shipping-fallback {
+    background: #FAF6E6;
+    border: 1px solid #e6d9a8;
+    border-left: 4px solid #D4AF37;
+    border-radius: 8px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    color: #6b5719;
+    font-size: 13.5px;
+    line-height: 1.5;
+}
+.slw-shipping-fallback strong {
+    color: #5e4b13;
+    font-weight: 700;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 15px;
+}
+.slw-shipping-fallback span { color: #826a3e; text-wrap: pretty; }
+
 .slw-shipping-rates {
     display: flex;
     flex-direction: column;

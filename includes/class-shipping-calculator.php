@@ -105,32 +105,35 @@ class SLW_Shipping_Calculator {
         }
 
         if ( empty( $rates ) ) {
-            // Build a useful diagnostic: list how many packages WC built,
-            // whether each had rates, and the matched zone if any. Helps
-            // distinguish "no zones cover destination" from "items have
-            // no weight" from "method allow-list excluded everything".
-            $diag_pkgs = array();
-            foreach ( $packages as $idx => $pkg ) {
-                $zone_name = '';
-                if ( class_exists( 'WC_Shipping_Zones' ) && isset( $pkg['destination']['country'] ) ) {
-                    $zone = WC_Shipping_Zones::get_zone_matching_package( $pkg );
-                    if ( $zone ) $zone_name = $zone->get_zone_name();
+            // No usable shipping methods from WC. Rather than error out,
+            // surface the wholesale-industry-standard fallback: we'll
+            // weigh your packed order and invoice the actual carrier rate
+            // after pick-and-pack. Many wholesale shops operate this way
+            // regardless of what WC zone config says. Customer gets a
+            // useful answer instead of "$0" or a cryptic failure.
+            $admin_diag = '';
+            if ( current_user_can( 'manage_woocommerce' ) ) {
+                $diag_pkgs = array();
+                foreach ( $packages as $idx => $pkg ) {
+                    $zone_name = '';
+                    if ( class_exists( 'WC_Shipping_Zones' ) && isset( $pkg['destination']['country'] ) ) {
+                        $zone = WC_Shipping_Zones::get_zone_matching_package( $pkg );
+                        if ( $zone ) $zone_name = $zone->get_zone_name();
+                    }
+                    $diag_pkgs[] = sprintf(
+                        'package %d: zone="%s", rates=%d',
+                        $idx,
+                        $zone_name ?: 'no match',
+                        isset( $pkg['rates'] ) ? count( $pkg['rates'] ) : 0
+                    );
                 }
-                $diag_pkgs[] = sprintf(
-                    'package %d: zone="%s", rates=%d',
-                    $idx,
-                    $zone_name ?: 'no match',
-                    isset( $pkg['rates'] ) ? count( $pkg['rates'] ) : 0
-                );
+                $admin_diag = $diag_pkgs ? ' [admin diag: ' . implode( '; ', $diag_pkgs ) . ']' : ' [admin diag: no packages]';
             }
-            $diag = $diag_pkgs ? ' [' . implode( '; ', $diag_pkgs ) . ']' : ' [no packages]';
-            wp_send_json_error( array(
-                'message' => sprintf(
-                    'No shipping rates for %s %s.%s Verify WC Shipping Zones cover this destination and that products have weight set.',
-                    esc_html( $state ?: $country ),
-                    esc_html( $zip ),
-                    $diag
-                ),
+            wp_send_json_success( array(
+                'rates'           => array(),
+                'fallback'        => true,
+                'fallback_label'  => 'Shipping invoiced separately',
+                'fallback_detail' => 'We weigh your packed order and invoice the actual carrier rate after pick-and-pack. Most wholesale orders ship via UPS Ground or USPS Priority.' . $admin_diag,
             ) );
         }
 

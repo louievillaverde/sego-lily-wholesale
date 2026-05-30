@@ -2478,24 +2478,36 @@ body.page-wholesale-order .woocommerce-message .restore-item,
             var resp;
             try { resp = JSON.parse(xhr.responseText); } catch(e) { resp = null; }
 
-            if (resp && resp.success && resp.data.rates) {
-                var html = '<div class="slw-shipping-rates">';
-                resp.data.rates.forEach(function(rate) {
-                    html += '<div class="slw-shipping-rate">';
-                    html += '<span class="slw-shipping-rate-label">' + rate.label + '</span>';
-                    html += '<span class="slw-shipping-rate-cost">' + rate.cost + '</span>';
+            if (resp && resp.success && resp.data) {
+                // Fallback: WC couldn't find a usable rate -> wholesale
+                // shop standard is to weigh + invoice after pack-out.
+                if (resp.data.fallback) {
+                    resultsEl.innerHTML =
+                        '<div class="slw-shipping-fallback">' +
+                            '<strong>' + (resp.data.fallback_label || 'Shipping invoiced separately') + '</strong>' +
+                            '<span>' + (resp.data.fallback_detail || '') + '</span>' +
+                        '</div>';
+                    var shipLine = document.getElementById('slw-of-shipping-line');
+                    if (shipLine) shipLine.innerHTML = '+ shipping invoiced separately';
+                } else if (Array.isArray(resp.data.rates) && resp.data.rates.length > 0) {
+                    var html = '<div class="slw-shipping-rates">';
+                    resp.data.rates.forEach(function(rate) {
+                        html += '<div class="slw-shipping-rate">';
+                        html += '<span class="slw-shipping-rate-label">' + rate.label + '</span>';
+                        html += '<span class="slw-shipping-rate-cost">' + rate.cost + '</span>';
+                        html += '</div>';
+                    });
                     html += '</div>';
-                });
-                html += '</div>';
-                resultsEl.innerHTML = html;
-                // Mirror the cheapest rate up to the summary card so the
-                // customer sees an estimated grand total without scrolling.
-                if (resp.data.rates.length > 0) {
+                    resultsEl.innerHTML = html;
+                    // Mirror the cheapest rate up to the summary card so the
+                    // customer sees an estimated grand total without scrolling.
                     var shipLine = document.getElementById('slw-of-shipping-line');
                     if (shipLine) {
                         var firstRate = resp.data.rates[0];
                         shipLine.innerHTML = '+ shipping est. <strong>' + firstRate.cost + '</strong>';
                     }
+                } else {
+                    resultsEl.innerHTML = '<div class="slw-shipping-notice slw-shipping-notice-error">Could not calculate shipping.</div>';
                 }
             } else {
                 var msg = (resp && resp.data && resp.data.message) ? resp.data.message : 'Could not calculate shipping.';
