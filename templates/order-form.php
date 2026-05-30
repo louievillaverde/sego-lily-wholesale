@@ -156,11 +156,12 @@ $products = $all_products; // keep for empty check
 <div class="slw-order-form-wrap">
 
     <?php
-    // Wholesale top nav (tabs + Sign out). Order form is a standalone
-    // page outside the portal shortcode, so render the nav inline here
-    // -- otherwise customers lose access to Invoices/Account/etc while
-    // they shop.
-    if ( class_exists( 'SLW_Customer_Portal' ) ) {
+    // Wholesale top nav (tabs + Sign out). Render only when the order
+    // form is on its standalone /wholesale-order page -- when this
+    // template runs from inside the portal shortcode (e.g. at
+    // /wholesale-portal?tab=orders), the portal already renders the
+    // nav, so a second render here would duplicate the whole tab strip.
+    if ( class_exists( 'SLW_Customer_Portal' ) && empty( $GLOBALS['slw_in_portal_render'] ) ) {
         SLW_Customer_Portal::render_nav( 'orders' );
     }
     ?>
