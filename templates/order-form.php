@@ -1872,11 +1872,6 @@ body.page-wholesale-order .woocommerce-message .restore-item,
         var data = window.SLW_DATA || {};
 
         // Per-product minimum check, aggregated across siblings.
-        // Holly's intent: a product min of 6 on Natural Tallow Deodorant
-        // means "6 total deodorants in the cart, customer can mix &
-        // match scents" -- NOT 6 of each scent. The server-side check
-        // in class-product-minimums.php was changed to match in this
-        // release.
         var prodTotals       = {};
         (inCartItems || []).forEach(function(ci) {
             var pid = parseInt(ci.product_id, 10) || 0;
@@ -1890,7 +1885,14 @@ body.page-wholesale-order .woocommerce-message .restore-item,
             var rule = data.productMins[pid];
             var have = prodTotals[pid] || 0;
             if (have > 0 && have < rule.min) {
-                productMessages.push(rule.name + ' minimum: ' + rule.min + '. You have ' + have + ' (mix & match across scents). Add ' + (rule.min - have) + ' more.');
+                productMessages.push({
+                    type:  'product',
+                    name:  rule.name,
+                    have:  have,
+                    min:   rule.min,
+                    add:   rule.min - have,
+                    label: rule.name + ' minimum: ' + rule.min + '. You have ' + have + ' (mix & match across scents). Add ' + (rule.min - have) + ' more.'
+                });
                 productViolators[pid] = true;
             }
         });
@@ -1916,41 +1918,41 @@ body.page-wholesale-order .woocommerce-message .restore-item,
             var rule = data.categoryMins[tid];
             var have = catTotals[tid] || 0;
             if (have > 0 && have < rule.min) {
-                // Dedupe: if exactly one product in the cart is in this
-                // category AND that product is independently violating
-                // its own min, skip -- fixing the product fixes both.
                 var contributors = Object.keys(catContributors[tid] || {});
-                if (contributors.length === 1 && productViolators[contributors[0]]) {
-                    return;
-                }
-                categoryMessages.push(rule.name + ' minimum: ' + rule.min + ' units. You have ' + have + '. Add ' + (rule.min - have) + ' more (mix & match across scents).');
+                if (contributors.length === 1 && productViolators[contributors[0]]) return;
+                categoryMessages.push({
+                    type:  'category',
+                    name:  rule.name,
+                    have:  have,
+                    min:   rule.min,
+                    add:   rule.min - have,
+                    label: rule.name + ' minimum: ' + rule.min + ' units. You have ' + have + '. Add ' + (rule.min - have) + ' more (mix & match across scents).'
+                });
             }
         });
 
-        // Cart-total minimum (first-order or explicit reorder). Read
-        // from the sticky bar's data attrs so we don't duplicate state.
+        // Cart-total minimum (first-order or explicit reorder).
         var bar = document.getElementById('slw-sticky-bar');
         if (bar) {
             var minVal      = parseFloat(bar.getAttribute('data-min')) || 0;
             var minLabel    = bar.getAttribute('data-min-label') || 'order minimum';
             var isHardFloor = bar.getAttribute('data-suggestion') !== '1';
-            // Compute cart total + item count from inCartItems since
-            // updateSubtotal's locals aren't in scope here.
             var cartTotal = 0;
             var cartItemCount = 0;
             (inCartItems || []).forEach(function(ci) {
                 cartTotal     += (ci.lineTotal || 0);
                 cartItemCount += parseInt(ci.qty, 10) || 0;
             });
-            // Only surface as a violation once the customer has SOMETHING
-            // in cart -- otherwise the empty-cart state is just empty.
             if (isHardFloor && minVal > 0 && cartItemCount > 0 && cartTotal < minVal) {
                 var diff = minVal - cartTotal;
-                productMessages.unshift(
-                    'Order ' + minLabel + ': ' + formatPrice(minVal) +
-                    '. Cart total is ' + formatPrice(cartTotal) +
-                    '. Add ' + formatPrice(diff) + ' more.'
-                );
+                productMessages.unshift({
+                    type:  'order',
+                    name:  minLabel,
+                    have:  cartTotal,
+                    min:   minVal,
+                    add:   diff,
+                    label: 'Order ' + minLabel + ': ' + formatPrice(minVal) + '. Cart total is ' + formatPrice(cartTotal) + '. Add ' + formatPrice(diff) + ' more.'
+                });
             }
         }
 
@@ -1965,9 +1967,9 @@ body.page-wholesale-order .woocommerce-message .restore-item,
             return v;
         }
         violationsEl.hidden = false;
-        v.forEach(function(line) {
+        v.forEach(function(item) {
             var li = document.createElement('li');
-            li.textContent = line;
+            li.textContent = item.label || item;
             violationsListEl.appendChild(li);
         });
         return v;
@@ -2362,13 +2364,25 @@ body.page-wholesale-order .woocommerce-message .restore-item,
                 if (stickyPct) stickyPct.textContent = '· ' + Math.round(combined) + '%';
 
                 if (isSuggestion) {
-                    // Returning customer mode: never block, never nag.
-                    // The bar is a heads-up about their typical order
-                    // size, not a checkout gate.
+                    // Returning customer mode: never block on dollar
+                    // amount, but DO block on category / product
+                    // minimum violations -- those are real rules.
                     stickyBar.classList.remove('slw-sticky-bar--met');
                     if (stickyMsg) {
                         if (currentViolations.length > 0) {
-                            stickyMsg.textContent = 'Cart needs attention: ' + currentViolations.length + ' minimum not met. See below.';
+                            var top = currentViolations[0];
+                            // Override the bar fill to show progress
+                            // toward the most-pressing violation when
+                            // it's a category or product min.
+                            if (top && top.type !== 'order' && stickyFill && top.min > 0) {
+                                var pct = Math.min(100, (top.have / top.min) * 100);
+                                stickyFill.style.width = pct + '%';
+                                if (stickyStagedFill) stickyStagedFill.style.width = '0%';
+                                if (stickyPct) stickyPct.textContent = '· ' + Math.round(pct) + '%';
+                            }
+                            stickyMsg.textContent = (top && top.type !== 'order')
+                                ? (top.have + ' of ' + top.min + ' ' + top.name + ', add ' + top.add + ' more' + (currentViolations.length > 1 ? ' (+ ' + (currentViolations.length - 1) + ' more rule' + (currentViolations.length === 2 ? '' : 's') + ' to fix)' : ''))
+                                : ((top && top.label) || ('Cart needs attention: ' + currentViolations.length + ' minimum not met. See below.'));
                         } else if (cartTotal >= minimum) {
                             stickyMsg.textContent = 'Above ' + minLabel + '. Ready to check out.';
                         } else if (cartTotal > 0) {
@@ -2389,7 +2403,18 @@ body.page-wholesale-order .woocommerce-message .restore-item,
                         if (stickyCta) stickyCta.disabled = false;
                     } else if (currentViolations.length > 0) {
                         stickyBar.classList.remove('slw-sticky-bar--met');
-                        if (stickyMsg) stickyMsg.textContent = 'Cart needs attention: ' + currentViolations.length + ' minimum not met. See below.';
+                        var topH = currentViolations[0];
+                        if (topH && topH.type !== 'order' && stickyFill && topH.min > 0) {
+                            var pctH = Math.min(100, (topH.have / topH.min) * 100);
+                            stickyFill.style.width = pctH + '%';
+                            if (stickyStagedFill) stickyStagedFill.style.width = '0%';
+                            if (stickyPct) stickyPct.textContent = '· ' + Math.round(pctH) + '%';
+                        }
+                        if (stickyMsg) {
+                            stickyMsg.textContent = (topH && topH.type !== 'order')
+                                ? (topH.have + ' of ' + topH.min + ' ' + topH.name + ', add ' + topH.add + ' more' + (currentViolations.length > 1 ? ' (+ ' + (currentViolations.length - 1) + ' more rule' + (currentViolations.length === 2 ? '' : 's') + ' to fix)' : ''))
+                                : ((topH && topH.label) || ('Cart needs attention: ' + currentViolations.length + ' minimum not met. See below.'));
+                        }
                         if (stickyCta) stickyCta.disabled = true;
                     } else {
                         stickyBar.classList.remove('slw-sticky-bar--met');
