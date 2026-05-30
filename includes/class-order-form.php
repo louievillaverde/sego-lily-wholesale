@@ -38,20 +38,25 @@ class SLW_Order_Form {
         if ( ! function_exists( 'WC' ) || ! WC()->cart ) {
             wp_send_json_error( array( 'message' => 'Cart unavailable.' ), 500 );
         }
+        // Hydrate cart from session in case lazy-load hasn't fired yet.
+        if ( WC()->session && method_exists( WC()->cart, 'get_cart_from_session' ) ) {
+            WC()->cart->get_cart_from_session();
+        }
         $cart_key = isset( $_POST['cart_key'] ) ? sanitize_text_field( wp_unslash( $_POST['cart_key'] ) ) : '';
         $qty      = max( 0, (int) ( $_POST['qty'] ?? 0 ) );
+        $pid      = absint( $_POST['product_id']   ?? 0 );
+        $vid      = absint( $_POST['variation_id'] ?? 0 );
+        $cart_items   = WC()->cart->get_cart();
         $resolved_key = '';
-        if ( $cart_key && isset( WC()->cart->get_cart()[ $cart_key ] ) ) {
+        if ( $cart_key && isset( $cart_items[ $cart_key ] ) ) {
             $resolved_key = $cart_key;
         } else {
-            $pid = absint( $_POST['product_id']   ?? 0 );
-            $vid = absint( $_POST['variation_id'] ?? 0 );
-            foreach ( WC()->cart->get_cart() as $key => $ci ) {
-                if ( (int) ( $ci['product_id'] ?? 0 ) === $pid
-                    && (int) ( $ci['variation_id'] ?? 0 ) === $vid ) {
-                    $resolved_key = $key;
-                    break;
-                }
+            foreach ( $cart_items as $key => $ci ) {
+                $ci_pid = (int) ( $ci['product_id']   ?? 0 );
+                $ci_vid = (int) ( $ci['variation_id'] ?? 0 );
+                if ( $pid > 0 && $vid > 0 && $ci_pid === $pid && $ci_vid === $vid ) { $resolved_key = $key; break; }
+                if ( $pid > 0 && $vid === 0 && $ci_pid === $pid ) { $resolved_key = $key; break; }
+                if ( $vid > 0 && $ci_vid === $vid ) { $resolved_key = $key; break; }
             }
         }
         if ( $resolved_key ) {
@@ -60,6 +65,17 @@ class SLW_Order_Form {
             } else {
                 WC()->cart->set_quantity( $resolved_key, $qty, true );
             }
+            WC()->cart->calculate_totals();
+            if ( method_exists( WC()->cart, 'set_session' ) ) {
+                WC()->cart->set_session();
+            }
+        } else {
+            error_log( sprintf(
+                '[SLW set-cart-qty] no match. posted cart_key="%s" pid=%d vid=%d qty=%d -- cart has %d items: keys=%s',
+                $cart_key, $pid, $vid, $qty,
+                count( $cart_items ),
+                implode( ',', array_keys( $cart_items ) )
+            ) );
         }
         wp_send_json_success( self::cart_state_payload() );
     }
@@ -77,22 +93,61 @@ class SLW_Order_Form {
         if ( ! function_exists( 'WC' ) || ! WC()->cart ) {
             wp_send_json_error( array( 'message' => 'Cart unavailable.' ), 500 );
         }
+        // Make sure the WC cart is hydrated from session (AJAX context
+        // sometimes lazy-loads later, leaving an empty cart_contents at
+        // the top of the handler).
+        if ( WC()->session && method_exists( WC()->cart, 'get_cart_from_session' ) ) {
+            WC()->cart->get_cart_from_session();
+        }
+
         $cart_key = isset( $_POST['cart_key'] ) ? sanitize_text_field( wp_unslash( $_POST['cart_key'] ) ) : '';
-        if ( $cart_key && ! WC()->cart->is_empty() && isset( WC()->cart->get_cart()[ $cart_key ] ) ) {
-            WC()->cart->remove_cart_item( $cart_key );
-        } else {
-            // Fallback: caller passed product_id/variation_id (the JS path
-            // when it doesn't have the cart_key handy).
-            $pid = absint( $_POST['product_id']   ?? 0 );
-            $vid = absint( $_POST['variation_id'] ?? 0 );
-            foreach ( WC()->cart->get_cart() as $key => $ci ) {
-                if ( (int) ( $ci['product_id'] ?? 0 ) === $pid
-                    && (int) ( $ci['variation_id'] ?? 0 ) === $vid ) {
-                    WC()->cart->remove_cart_item( $key );
-                    break;
+        $pid      = absint( $_POST['product_id']   ?? 0 );
+        $vid      = absint( $_POST['variation_id'] ?? 0 );
+
+        $cart_items = WC()->cart->get_cart();
+        $removed_key = '';
+
+        // Path A: exact cart_key match (fastest, most common)
+        if ( $cart_key && isset( $cart_items[ $cart_key ] ) ) {
+            $removed_key = $cart_key;
+        }
+
+        // Path B: match by product_id + variation_id pair (when the JS
+        // cart_key drifted from the session's key)
+        if ( ! $removed_key && ( $pid > 0 || $vid > 0 ) ) {
+            foreach ( $cart_items as $key => $ci ) {
+                $ci_pid = (int) ( $ci['product_id']   ?? 0 );
+                $ci_vid = (int) ( $ci['variation_id'] ?? 0 );
+                if ( $pid > 0 && $vid > 0 && $ci_pid === $pid && $ci_vid === $vid ) {
+                    $removed_key = $key; break;
+                }
+                if ( $pid > 0 && $vid === 0 && $ci_pid === $pid ) {
+                    $removed_key = $key; break;
+                }
+                if ( $vid > 0 && $ci_vid === $vid ) {
+                    $removed_key = $key; break;
                 }
             }
         }
+
+        if ( $removed_key ) {
+            WC()->cart->remove_cart_item( $removed_key );
+            // Belt-and-suspenders: explicit session save in case any
+            // filter on woocommerce_cart_item_removed prevents WC's
+            // own end-of-request persist.
+            WC()->cart->calculate_totals();
+            if ( method_exists( WC()->cart, 'set_session' ) ) {
+                WC()->cart->set_session();
+            }
+        } else {
+            error_log( sprintf(
+                '[SLW remove-cart-line] no match. posted cart_key="%s" pid=%d vid=%d -- cart has %d items: keys=%s',
+                $cart_key, $pid, $vid,
+                count( $cart_items ),
+                implode( ',', array_keys( $cart_items ) )
+            ) );
+        }
+
         wp_send_json_success( self::cart_state_payload() );
     }
 
