@@ -39,19 +39,23 @@ class SLW_Shipping_Calculator {
     }
 
     /**
-     * Strip $0 shipping rates that aren't Local Pickup. Holly's setup has
-     * a "Flexible Shipping (Free)" rate appearing that nobody set up
-     * intentionally; the only legitimate free option for wholesale is
-     * Local Pickup. Applies everywhere WC computes shipping packages.
-     *
-     * If after stripping the only remaining rate is Local Pickup, append
-     * an "Invoiced separately" pseudo-rate so the customer isn't forced
-     * to choose pickup when they need shipping.
+     * Filter shipping rates for wholesale users:
+     *   1. Strip bogus free rates (anything cost <= 0 that isn't Local
+     *      Pickup), e.g. an inadvertent "Flexible Shipping (Free)".
+     *   2. Restrict Local Pickup to Montana destinations (Holly's HQ).
+     *      Out-of-state customers can't realistically pick up.
+     *   3. If no real paid shipping method survived (typical when Holly
+     *      hasn't fully configured carrier zones), inject estimated
+     *      USPS Priority + UPS Ground rates calculated from cart weight
+     *      so the customer sees REAL approximate numbers instead of
+     *      $0/pickup-only. Estimates noted as "approx." and Holly can
+     *      reconcile actual cost when packing.
      */
     public static function filter_bogus_free_rates( $rates, $package ) {
         if ( ! function_exists( 'slw_is_wholesale_context' ) || ! slw_is_wholesale_context() ) {
             return $rates;
         }
+        // Step 1: strip bogus free rates
         foreach ( $rates as $rate_id => $rate ) {
             $cost      = (float) $rate->get_cost();
             $method_id = $rate->get_method_id();
@@ -59,27 +63,92 @@ class SLW_Shipping_Calculator {
                 unset( $rates[ $rate_id ] );
             }
         }
-        // Inject the "Invoiced separately" pseudo-rate when no real
-        // shipping method survived the filter (only LP, or nothing).
-        $non_pickup = array_filter( $rates, function( $r ) {
-            return $r->get_method_id() !== 'local_pickup'
-                && $r->get_method_id() !== 'slw_invoice_shipping';
-        } );
-        if ( empty( $non_pickup ) ) {
-            $fallback_id = 'slw_invoice_shipping';
-            $rate_id = $fallback_id . ':1';
-            if ( ! isset( $rates[ $rate_id ] ) ) {
-                $rate = new WC_Shipping_Rate(
-                    $rate_id,
-                    'Shipping invoiced separately',
-                    0,
-                    array(),
-                    $fallback_id
-                );
+        // Step 2: restrict Local Pickup to Montana
+        $dest_state    = isset( $package['destination']['state'] ) ? strtoupper( $package['destination']['state'] ) : '';
+        $dest_postcode = isset( $package['destination']['postcode'] ) ? $package['destination']['postcode'] : '';
+        $is_montana    = ( $dest_state === 'MT' ) || ( strlen( $dest_postcode ) >= 2 && substr( $dest_postcode, 0, 2 ) === '59' );
+        if ( ! $is_montana ) {
+            foreach ( $rates as $rate_id => $rate ) {
+                if ( $rate->get_method_id() === 'local_pickup' ) {
+                    unset( $rates[ $rate_id ] );
+                }
+            }
+        }
+        // Step 3: inject weight-based estimates if no real paid method
+        // is available. Skipped when Holly's zones already returned
+        // real carrier rates.
+        $has_real_rate = false;
+        foreach ( $rates as $rate ) {
+            $mid  = $rate->get_method_id();
+            $cost = (float) $rate->get_cost();
+            if ( $mid === 'local_pickup' ) continue;
+            if ( $mid === 'slw_invoice_shipping' ) continue;
+            if ( $mid === 'slw_estimate' ) continue;
+            if ( $cost > 0 ) { $has_real_rate = true; break; }
+        }
+        if ( ! $has_real_rate ) {
+            foreach ( self::weight_based_estimates( $package ) as $rate_id => $rate ) {
                 $rates[ $rate_id ] = $rate;
             }
         }
         return $rates;
+    }
+
+    /**
+     * Compute approximate shipping rates from cart weight. Returns an
+     * array of WC_Shipping_Rate objects: USPS Priority Mail estimate
+     * and UPS Ground estimate. Used as a fallback when Holly's WC
+     * carrier zones don't return real rates so the customer still sees
+     * useful approximate numbers.
+     *
+     * Heuristic (zone 4-5, typical US wholesale):
+     *   USPS Priority: $9 base + $2.25/lb
+     *   UPS Ground:    $12 base + $1.75/lb
+     * These are rough; Holly reconciles the actual carrier rate when
+     * she prints labels.
+     */
+    private static function weight_based_estimates( $package ) {
+        $weight = 0;
+        if ( ! empty( $package['contents'] ) ) {
+            foreach ( $package['contents'] as $item ) {
+                if ( empty( $item['data'] ) || ! is_object( $item['data'] ) ) continue;
+                $unit_weight = (float) $item['data']->get_weight();
+                if ( $unit_weight <= 0 ) {
+                    // Default 0.75 lb / unit assumption for tallow jars
+                    // when product weight isn't set in WC. Better than
+                    // ignoring the item entirely.
+                    $unit_weight = 0.75;
+                }
+                $weight += $unit_weight * (int) $item['quantity'];
+            }
+        }
+        // Convert from store weight unit to lb if needed
+        $weight_unit = get_option( 'woocommerce_weight_unit', 'lbs' );
+        if ( $weight_unit === 'kg' )  $weight = $weight * 2.20462;
+        if ( $weight_unit === 'g' )   $weight = $weight * 0.00220462;
+        if ( $weight_unit === 'oz' )  $weight = $weight * 0.0625;
+
+        if ( $weight <= 0 ) $weight = 1; // safety: at least 1 lb
+
+        $usps_cost = round( 9  + $weight * 2.25, 2 );
+        $ups_cost  = round( 12 + $weight * 1.75, 2 );
+
+        $out = array();
+        $out['slw_estimate:usps'] = new WC_Shipping_Rate(
+            'slw_estimate:usps',
+            sprintf( 'USPS Priority Mail (approx. %0.1f lb)', $weight ),
+            $usps_cost,
+            array(),
+            'slw_estimate'
+        );
+        $out['slw_estimate:ups'] = new WC_Shipping_Rate(
+            'slw_estimate:ups',
+            sprintf( 'UPS Ground (approx. %0.1f lb)', $weight ),
+            $ups_cost,
+            array(),
+            'slw_estimate'
+        );
+        return $out;
     }
 
     /**
