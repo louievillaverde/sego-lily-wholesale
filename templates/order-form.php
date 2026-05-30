@@ -1469,10 +1469,46 @@ $products = $all_products; // keep for empty check
     font-size: 14px !important;
     font-weight: 700 !important;
     min-height: 46px;
+    transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.1s ease, color 0.2s ease !important;
 }
-.slw-sticky-bar__cta:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
+/* Not-ready state (any violation, empty cart, or below first-order
+   minimum). Muted desaturated teal so it visibly is NOT the click
+   target -- different than the gold-glow active state below. */
+.slw-sticky-bar__cta:disabled,
+.slw-sticky-bar__cta[disabled] {
+    background: #a3b5bc !important;
+    background-image: none !important;
+    color: rgba(247, 246, 243, 0.88) !important;
+    cursor: not-allowed !important;
+    box-shadow: none !important;
+    border-color: #a3b5bc !important;
+    text-shadow: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+}
+.slw-sticky-bar__cta:disabled:hover,
+.slw-sticky-bar__cta[disabled]:hover {
+    background: #a3b5bc !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+/* Ready state: gold-ring + glow on the CTA so customers visibly
+   see when they can check out. Applied via the bar's --met class. */
+.slw-sticky-bar--met .slw-sticky-bar__cta:not(:disabled) {
+    background: linear-gradient(135deg, #386174 0%, #2C4F5E 100%) !important;
+    color: #F7F6F3 !important;
+    box-shadow:
+        0 0 0 2px rgba(212, 175, 55, 0.65),
+        0 6px 18px rgba(212, 175, 55, 0.30),
+        0 2px 6px rgba(30, 42, 48, 0.25) !important;
+}
+.slw-sticky-bar--met .slw-sticky-bar__cta:not(:disabled):hover {
+    background: linear-gradient(135deg, #2C4F5E 0%, #1E3D49 100%) !important;
+    transform: translateY(-1px) !important;
+    box-shadow:
+        0 0 0 2px rgba(212, 175, 55, 0.80),
+        0 10px 24px rgba(212, 175, 55, 0.40),
+        0 4px 10px rgba(30, 42, 48, 0.30) !important;
 }
 /* Clear space at page bottom so the sticky bar doesn't cover content */
 .slw-order-form-wrap { padding-bottom: 120px; }
@@ -2367,7 +2403,11 @@ body.page-wholesale-order .woocommerce-message .restore-item,
                     // Returning customer mode: never block on dollar
                     // amount, but DO block on category / product
                     // minimum violations -- those are real rules.
-                    stickyBar.classList.remove('slw-sticky-bar--met');
+                    // Apply the --met class whenever the CTA is
+                    // actually ready (cart has items + zero violations)
+                    // so the gold-ring "ready" CSS state fires.
+                    var readyToCheckout = (cartItemCount > 0 && currentViolations.length === 0);
+                    stickyBar.classList.toggle('slw-sticky-bar--met', readyToCheckout);
                     if (stickyMsg) {
                         if (currentViolations.length > 0) {
                             var top = currentViolations[0];
