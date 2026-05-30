@@ -1862,60 +1862,69 @@ body.page-wholesale-order .woocommerce-message .restore-item,
     }
 
     // Cart Preview: per-line remove + qty +/- + direct input + clear-all
-    if (previewListEl) {
-        previewListEl.addEventListener('click', function(e) {
-            var removeBtn = e.target.closest('.slw-cart-preview__remove');
-            if (removeBtn) {
-                e.preventDefault();
-                removeBtn.disabled = true;
-                var ckey = removeBtn.getAttribute('data-cart-key')     || '';
-                var pid  = removeBtn.getAttribute('data-product-id')   || '0';
-                var vid  = removeBtn.getAttribute('data-variation-id') || '0';
-                // Optimistic local removal: drop the row from inCartItems
-                // and re-render immediately so the X feels instant. If the
-                // server reconciles with a different cart state, the next
-                // server response overwrites our local view.
-                var snapshot = inCartItems.slice();
-                inCartItems = inCartItems.filter(function(ci) {
-                    if (ckey && ci.cart_key === ckey) return false;
-                    if (pid !== '0' && vid !== '0'
-                        && String(ci.product_id) === pid
-                        && String(ci.variation_id) === vid) return false;
-                    if (pid !== '0' && vid === '0'
-                        && String(ci.product_id) === pid
-                        && (!ci.variation_id || ci.variation_id === 0)) return false;
-                    return true;
+    //
+    // NOTE on event binding: we delegate from `document` instead of the
+    // <ul id="slw-cart-preview-list"> so the click handler still fires
+    // even if the previewListEl reference goes stale (the inner HTML is
+    // rewritten by updateSubtotal every render -- the parent ul is
+    // stable, but on some themes the entire .slw-cart-preview card gets
+    // moved by a child theme / Elementor template, and any delegation
+    // bound to the ul reference would silently stop firing). Document-
+    // level is the safest scope.
+    document.addEventListener('click', function(e) {
+        var removeBtn = e.target.closest('.slw-cart-preview__remove');
+        if (!removeBtn) return;
+        // Existence diagnostic: brief teal toast confirms the click reached
+        // the handler. If you don't see this when X is clicked, the
+        // handler isn't binding (CSS overlay, theme injection, etc).
+        showMessage('Removing from cart…', 'info');
+        e.preventDefault();
+        removeBtn.disabled = true;
+        var ckey = removeBtn.getAttribute('data-cart-key')     || '';
+        var pid  = removeBtn.getAttribute('data-product-id')   || '0';
+        var vid  = removeBtn.getAttribute('data-variation-id') || '0';
+        // Optimistic local removal: drop the row from inCartItems and
+        // re-render immediately so the X feels instant. If the server
+        // reconciles with a different cart state, the next server
+        // response overwrites our local view.
+        var snapshot = inCartItems.slice();
+        inCartItems = inCartItems.filter(function(ci) {
+            if (ckey && ci.cart_key === ckey) return false;
+            if (pid !== '0' && vid !== '0'
+                && String(ci.product_id) === pid
+                && String(ci.variation_id) === vid) return false;
+            if (pid !== '0' && vid === '0'
+                && String(ci.product_id) === pid
+                && (!ci.variation_id || ci.variation_id === 0)) return false;
+            return true;
+        });
+        updateSubtotal();
+        postCartAction('slw_remove_cart_line', {
+            cart_key:     ckey,
+            product_id:   pid,
+            variation_id: vid
+        }).then(function(json) {
+            if (json && json.success && json.data && Array.isArray(json.data.items)) {
+                var stillThere = json.data.items.some(function(ci) {
+                    if (ckey) return ci.cart_key === ckey;
+                    if (pid !== '0' && vid !== '0') return String(ci.product_id) === pid && String(ci.variation_id) === vid;
+                    return String(ci.product_id) === pid;
                 });
+                if (stillThere) {
+                    inCartItems = snapshot;
+                    updateSubtotal();
+                    showMessage('Could not remove the item. Try Clear Cart and re-adding what you want.', 'error');
+                }
+            } else if (!json || !json.success) {
+                inCartItems = snapshot;
                 updateSubtotal();
-                postCartAction('slw_remove_cart_line', {
-                    cart_key:     ckey,
-                    product_id:   pid,
-                    variation_id: vid
-                }).then(function(json) {
-                    // If the server response still includes the item (server
-                    // didn't actually remove it), restore the snapshot and
-                    // surface an error so we can see the failure.
-                    if (json && json.success && json.data && Array.isArray(json.data.items)) {
-                        var stillThere = json.data.items.some(function(ci) {
-                            if (ckey) return ci.cart_key === ckey;
-                            if (pid !== '0' && vid !== '0') return String(ci.product_id) === pid && String(ci.variation_id) === vid;
-                            return String(ci.product_id) === pid;
-                        });
-                        if (stillThere) {
-                            inCartItems = snapshot;
-                            updateSubtotal();
-                            showMessage('Could not remove the item. Try Clear Cart and re-adding what you want.', 'error');
-                        }
-                    } else if (!json || !json.success) {
-                        inCartItems = snapshot;
-                        updateSubtotal();
-                        showMessage('Could not remove the item (AJAX error). Check console.', 'error');
-                    }
-                });
-                return;
+                showMessage('Could not remove the item (AJAX error). Check console.', 'error');
             }
         });
-        // Direct edit: debounce on input, immediate on blur / Enter
+    });
+
+    // Direct edit: debounce on input, immediate on blur / Enter
+    if (previewListEl) {
         var qtyInputDebounce = null;
         function commitQty(input) {
             var next = Math.max(0, parseInt(input.value, 10) || 0);
@@ -1960,15 +1969,26 @@ body.page-wholesale-order .woocommerce-message .restore-item,
             document.querySelectorAll('.slw-qty-input').forEach(function(input) {
                 input.value = 0;
             });
-            // Hide the savings element immediately so the customer
-            // doesn't see a flash of stale numbers between the AJAX
-            // call and updateSubtotal running.
+            // Wipe stale summary numbers immediately so the customer
+            // doesn't see a flash of stale data between the AJAX call
+            // and updateSubtotal running.
             var savingsEl = document.getElementById('slw-of-savings');
             if (savingsEl) savingsEl.hidden = true;
+            var shipLine = document.getElementById('slw-of-shipping-line');
+            if (shipLine) shipLine.innerHTML = '';
+            var shipResults = document.getElementById('slw-shipping-results');
+            if (shipResults) {
+                shipResults.innerHTML = '';
+                shipResults.style.display = 'none';
+            }
+            inCartItems = [];
+            updateSubtotal();
             postCartAction('slw_clear_cart').finally(function() {
                 clearCartBtn.disabled = false;
-                // Force a recompute now that inputs are reset and
-                // inCartItems is empty.
+                // Re-hide just in case the server response triggered a
+                // re-render with stale staged inputs.
+                if (savingsEl) savingsEl.hidden = true;
+                if (shipLine) shipLine.innerHTML = '';
                 updateSubtotal();
             });
         });
