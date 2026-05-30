@@ -17,10 +17,11 @@ $reorder_minimum = (float) slw_get_option( 'reorder_minimum', 0 );
 
 // Recommended target amount based on the customer's order history.
 // Averages the last 5 completed orders (any type -- retail or
-// wholesale), floored at $150 so we don't recommend $0 for someone
-// whose only past order was a $5 sample. Falls back to the first-
-// order minimum if there's no history at all.
-$recommended_amount = $minimum;
+// wholesale). NO floor. Some of Holly's small wholesale suppliers
+// have legitimately low typical orders; we don't push a $150 target
+// onto them. If a customer only has one $300+ first order on record,
+// that order IS their average and becomes the recommendation.
+$recommended_amount = 0;
 $past_order_count = 0;
 if ( $user->ID ) {
     $past_orders = wc_get_orders( array(
@@ -42,24 +43,32 @@ if ( $user->ID ) {
             }
         }
         if ( $cnt > 0 ) {
-            $recommended_amount = max( 150, round( $sum / $cnt, 0 ) );
+            $recommended_amount = round( $sum / $cnt, 0 );
             $past_order_count = $cnt;
         }
     }
 }
 
-// Returning customers see the reorder minimum if Holly has set one,
-// otherwise fall back to the recommended amount. The check at
-// woocommerce_check_cart_items still uses the actual reorder_minimum
-// value (0 = no floor) so we don't accidentally block returning
-// customers; the bar is purely a visual reference.
+// Two distinct concepts: HARD floor (blocks checkout) and SUGGESTED
+// target (visual reference only).
+//   - First-time wholesale customers: hard floor = first_order_min
+//     (matches the validation at woocommerce_check_cart_items).
+//   - Returning customers: hard floor = reorder_min (0 unless Holly
+//     explicitly set one). They are NOT blocked from checking out at
+//     a small amount. Bar shows their typical order as a suggestion.
+$is_suggestion_only = false;
 if ( $has_ordered ) {
     if ( $reorder_minimum > 0 ) {
         $active_minimum  = $reorder_minimum;
         $active_min_label = 'reorder minimum';
-    } else {
+    } elseif ( $recommended_amount > 0 ) {
         $active_minimum  = $recommended_amount;
-        $active_min_label = $past_order_count > 0 ? 'your typical order' : 'suggested target';
+        $active_min_label = $past_order_count === 1 ? 'your last order' : 'your typical order';
+        $is_suggestion_only = true;
+    } else {
+        $active_minimum  = 0;
+        $active_min_label = '';
+        $is_suggestion_only = true;
     }
 } else {
     $active_minimum  = $minimum;
@@ -934,7 +943,7 @@ $products = $all_products; // keep for empty check
 <!-- Sticky progress + checkout bar. Pinned to the bottom of the
      viewport so the customer always sees how close they are to the
      minimum and can hit checkout from anywhere on the page. -->
-<div class="slw-sticky-bar" id="slw-sticky-bar" data-min="<?php echo esc_attr( (float) $active_minimum ); ?>" data-min-label="<?php echo esc_attr( $active_min_label ); ?>">
+<div class="slw-sticky-bar" id="slw-sticky-bar" data-min="<?php echo esc_attr( (float) $active_minimum ); ?>" data-min-label="<?php echo esc_attr( $active_min_label ); ?>" data-suggestion="<?php echo $is_suggestion_only ? '1' : '0'; ?>">
     <div class="slw-sticky-bar__inner">
         <div class="slw-sticky-bar__status">
             <div class="slw-sticky-bar__line">
@@ -1270,6 +1279,19 @@ $products = $all_products; // keep for empty check
 }
 .slw-sticky-bar--met .slw-sticky-bar__fill {
     background: linear-gradient(90deg, #1d6b2c 0%, #2e9a3d 100%);
+}
+/* Suggestion mode (returning customers): soften the bar so it doesn't
+   read as a hard gate. Cream-to-teal gradient, lighter message text. */
+.slw-sticky-bar--suggest .slw-sticky-bar__fill {
+    background: linear-gradient(90deg, #d4cebc 0%, #386174 100%);
+    opacity: 0.7;
+}
+.slw-sticky-bar--suggest .slw-sticky-bar__status-msg {
+    color: #628393;
+    font-style: normal;
+}
+.slw-sticky-bar--suggest .slw-sticky-bar__min {
+    color: #826a3e;
 }
 .slw-sticky-bar__status-msg {
     margin-top: 6px;
@@ -1942,8 +1964,11 @@ body.page-wholesale-order .woocommerce-message .restore-item,
                     stickyStaged.textContent = '';
                 }
             }
-            var minimum = parseFloat(stickyBar.getAttribute('data-min')) || 0;
-            stickyBar.classList.toggle('slw-sticky-bar--visible', totalItems > 0);
+            var minimum         = parseFloat(stickyBar.getAttribute('data-min')) || 0;
+            var minLabel        = stickyBar.getAttribute('data-min-label') || '';
+            var isSuggestion    = stickyBar.getAttribute('data-suggestion') === '1';
+            stickyBar.classList.toggle('slw-sticky-bar--visible',  totalItems > 0);
+            stickyBar.classList.toggle('slw-sticky-bar--suggest', isSuggestion);
             if (minimum > 0) {
                 var cartPct   = Math.min(100, (cartTotal   / minimum) * 100);
                 var stagedPct = Math.max(0, Math.min(100 - cartPct, (stagedTotal / minimum) * 100));
@@ -1954,19 +1979,41 @@ body.page-wholesale-order .woocommerce-message .restore-item,
                     stickyStagedFill.style.width = stagedPct + '%';
                 }
                 if (stickyPct) stickyPct.textContent = '· ' + Math.round(combined) + '%';
-                if (cartTotal >= minimum) {
-                    stickyBar.classList.add('slw-sticky-bar--met');
-                    if (stickyMsg) stickyMsg.textContent = 'Minimum met. Ready to check out.';
-                    if (stickyCta) stickyCta.disabled = false;
-                } else {
+
+                if (isSuggestion) {
+                    // Returning customer mode: never block, never nag.
+                    // The bar is a heads-up about their typical order
+                    // size, not a checkout gate.
                     stickyBar.classList.remove('slw-sticky-bar--met');
-                    var diff = minimum - cartTotal;
-                    var msg = 'Add ' + formatPrice(diff) + ' more (in cart) to reach the ' + (stickyBar.getAttribute('data-min-label') || 'minimum') + '.';
-                    if (stagedTotal > 0) {
-                        msg += ' Staged items count once you hit Add.';
+                    if (stickyMsg) {
+                        if (cartTotal >= minimum) {
+                            stickyMsg.textContent = 'Above ' + minLabel + '. Ready to check out.';
+                        } else if (cartTotal > 0) {
+                            stickyMsg.textContent = 'You can check out at any amount. ' + minLabel.charAt(0).toUpperCase() + minLabel.slice(1) + ' for reference: ' + formatPrice(minimum) + '.';
+                        } else if (stagedTotal > 0) {
+                            stickyMsg.textContent = 'Click Add on any product row to add it to your cart.';
+                        } else {
+                            stickyMsg.textContent = '';
+                        }
                     }
-                    if (stickyMsg) stickyMsg.textContent = msg;
                     if (stickyCta) stickyCta.disabled = cartItemCount === 0;
+                } else {
+                    // First-order mode: hard floor, checkout disabled
+                    // until the cart (not staged) meets the minimum.
+                    if (cartTotal >= minimum) {
+                        stickyBar.classList.add('slw-sticky-bar--met');
+                        if (stickyMsg) stickyMsg.textContent = 'Minimum met. Ready to check out.';
+                        if (stickyCta) stickyCta.disabled = false;
+                    } else {
+                        stickyBar.classList.remove('slw-sticky-bar--met');
+                        var diff = minimum - cartTotal;
+                        var msg = 'Add ' + formatPrice(diff) + ' more (in cart) to reach the ' + minLabel + '.';
+                        if (stagedTotal > 0) {
+                            msg += ' Staged items count once you hit Add.';
+                        }
+                        if (stickyMsg) stickyMsg.textContent = msg;
+                        if (stickyCta) stickyCta.disabled = cartItemCount === 0;
+                    }
                 }
             } else {
                 if (stickyMsg) stickyMsg.textContent = '';
