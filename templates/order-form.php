@@ -206,14 +206,18 @@ $products = $all_products; // keep for empty check
 
             <?php
             // Saved-order picker. Pulled inline from user_meta so we
-            // don't need an extra AJAX round-trip on page load.
-            $saved_carts = get_user_meta( $user->ID, 'slw_saved_carts', true );
-            if ( is_array( $saved_carts ) && ! empty( $saved_carts ) ) :
-                $saved_carts_nonce = wp_create_nonce( 'slw_saved_carts' );
-                ?>
-                <div class="slw-saved-orders" id="slw-saved-orders">
-                    <label class="slw-saved-orders__label" for="slw-saved-orders-select">Saved orders</label>
-                    <select class="slw-saved-orders__select" id="slw-saved-orders-select" data-nonce="<?php echo esc_attr( $saved_carts_nonce ); ?>">
+            // don't need an extra AJAX round-trip on page load. Always
+            // visible so the UI element is discoverable even before the
+            // customer has saved their first template.
+            $saved_carts        = get_user_meta( $user->ID, 'slw_saved_carts', true );
+            $saved_carts        = is_array( $saved_carts ) ? $saved_carts : array();
+            $saved_carts_nonce  = wp_create_nonce( 'slw_saved_carts' );
+            $has_saved          = ! empty( $saved_carts );
+            ?>
+            <div class="slw-saved-orders" id="slw-saved-orders">
+                <label class="slw-saved-orders__label" for="slw-saved-orders-select">Saved orders</label>
+                <select class="slw-saved-orders__select" id="slw-saved-orders-select" data-nonce="<?php echo esc_attr( $saved_carts_nonce ); ?>" <?php echo $has_saved ? '' : 'disabled'; ?>>
+                    <?php if ( $has_saved ) : ?>
                         <option value="">Load a saved order…</option>
                         <?php foreach ( $saved_carts as $slug => $tpl ) :
                             $item_count = isset( $tpl['items'] ) ? count( $tpl['items'] ) : 0;
@@ -227,9 +231,11 @@ $products = $all_products; // keep for empty check
                             ?>
                             <option value="<?php echo esc_attr( $slug ); ?>"><?php echo esc_html( $label ); ?></option>
                         <?php endforeach; ?>
-                    </select>
-                </div>
-            <?php endif; ?>
+                    <?php else : ?>
+                        <option value="">No saved orders yet — save current cart below</option>
+                    <?php endif; ?>
+                </select>
+            </div>
         </div>
 
         <div class="slw-bulk-import-modal" id="slw-bulk-import-modal" hidden>
@@ -1293,6 +1299,10 @@ $products = $all_products; // keep for empty check
     flex-wrap: wrap;
     font-size: 13px;
 }
+/* Force-hide when JS sets the HTML hidden attr -- the display: flex
+   rule above would otherwise win and the savings row would stay
+   visible after Clear Cart. */
+.slw-os-savings[hidden] { display: none !important; }
 .slw-os-savings__label { color: #386174; font-weight: 600; font-family: Georgia, 'Times New Roman', serif; }
 .slw-os-savings__value { color: #1d6b2c; font-weight: 700; font-size: 18px; font-family: Georgia, 'Times New Roman', serif; }
 .slw-os-savings__pct { color: #1d6b2c; font-weight: 600; font-size: 13px; }
