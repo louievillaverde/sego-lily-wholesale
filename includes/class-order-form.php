@@ -564,6 +564,12 @@ class SLW_Order_Form {
         );
         do_action( 'woocommerce_add_to_cart', $cart_id, $product_id, $quantity, $variation_id, $variation, $cart_item_data );
         WC()->cart->calculate_totals();
+        // Persist to the WC session so subsequent requests (the JS-side
+        // Remove / Set Qty handlers) see the same cart. Without this,
+        // the in-memory cart_contents change disappears the moment the
+        // request ends and the X button has nothing to remove on its
+        // next AJAX call.
+        WC()->cart->set_session();
 
         return $cart_id;
     }
