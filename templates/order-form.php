@@ -1754,8 +1754,14 @@ body.page-wholesale-order .woocommerce-message .restore-item,
     var violationsListEl = document.getElementById('slw-cart-violations-list');
     function computeViolations() {
         var data = window.SLW_DATA || {};
-        var catTotals  = {};
-        var prodTotals = {};
+        var catTotals       = {};
+        var prodTotals      = {};
+        // Track which products in the cart contribute to each category
+        // so we can dedupe: when only one product in the cart is in a
+        // violating category AND that product is also independently
+        // violating, the customer fixes both by adding to that product.
+        // Surfacing two messages is noise.
+        var catContributors = {};
         (inCartItems || []).forEach(function(ci) {
             var pid = parseInt(ci.product_id, 10) || 0;
             var qty = parseInt(ci.qty, 10) || 0;
@@ -1764,24 +1770,64 @@ body.page-wholesale-order .woocommerce-message .restore-item,
             var cats = (data.productCategories || {})[pid] || [];
             cats.forEach(function(tid) {
                 catTotals[tid] = (catTotals[tid] || 0) + qty;
+                if (!catContributors[tid]) catContributors[tid] = {};
+                catContributors[tid][pid] = true;
             });
         });
-        var out = [];
-        Object.keys(data.categoryMins || {}).forEach(function(tid) {
-            var rule = data.categoryMins[tid];
-            var have = catTotals[tid] || 0;
-            if (have > 0 && have < rule.min) {
-                out.push(rule.name + ' minimum: ' + rule.min + ' units. You have ' + have + '. Add ' + (rule.min - have) + ' more (mix & match across scents).');
-            }
-        });
+        var productViolators = {};
+        var productMessages  = [];
         Object.keys(data.productMins || {}).forEach(function(pid) {
             var rule = data.productMins[pid];
             var have = prodTotals[pid] || 0;
             if (have > 0 && have < rule.min) {
-                out.push(rule.name + ' minimum: ' + rule.min + '. You have ' + have + '. Add ' + (rule.min - have) + ' more.');
+                productViolators[pid] = true;
+                productMessages.push(rule.name + ' minimum: ' + rule.min + '. You have ' + have + '. Add ' + (rule.min - have) + ' more.');
             }
         });
-        return out;
+        var categoryMessages = [];
+        Object.keys(data.categoryMins || {}).forEach(function(tid) {
+            var rule = data.categoryMins[tid];
+            var have = catTotals[tid] || 0;
+            if (have > 0 && have < rule.min) {
+                // Dedupe: if exactly one product in the cart is in this
+                // category AND that product is independently violating
+                // its own min, skip -- fixing the product fixes both.
+                var contributors = Object.keys(catContributors[tid] || {});
+                if (contributors.length === 1 && productViolators[contributors[0]]) {
+                    return;
+                }
+                categoryMessages.push(rule.name + ' minimum: ' + rule.min + ' units. You have ' + have + '. Add ' + (rule.min - have) + ' more (mix & match across scents).');
+            }
+        });
+
+        // Cart-total minimum (first-order or explicit reorder). Read
+        // from the sticky bar's data attrs so we don't duplicate state.
+        var bar = document.getElementById('slw-sticky-bar');
+        if (bar) {
+            var minVal      = parseFloat(bar.getAttribute('data-min')) || 0;
+            var minLabel    = bar.getAttribute('data-min-label') || 'order minimum';
+            var isHardFloor = bar.getAttribute('data-suggestion') !== '1';
+            // Compute cart total + item count from inCartItems since
+            // updateSubtotal's locals aren't in scope here.
+            var cartTotal = 0;
+            var cartItemCount = 0;
+            (inCartItems || []).forEach(function(ci) {
+                cartTotal     += (ci.lineTotal || 0);
+                cartItemCount += parseInt(ci.qty, 10) || 0;
+            });
+            // Only surface as a violation once the customer has SOMETHING
+            // in cart -- otherwise the empty-cart state is just empty.
+            if (isHardFloor && minVal > 0 && cartItemCount > 0 && cartTotal < minVal) {
+                var diff = minVal - cartTotal;
+                productMessages.unshift(
+                    'Order ' + minLabel + ': ' + formatPrice(minVal) +
+                    '. Cart total is ' + formatPrice(cartTotal) +
+                    '. Add ' + formatPrice(diff) + ' more.'
+                );
+            }
+        }
+
+        return productMessages.concat(categoryMessages);
     }
     function renderViolations() {
         if (!violationsEl || !violationsListEl) return [];
