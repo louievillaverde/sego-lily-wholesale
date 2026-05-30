@@ -2322,13 +2322,8 @@ body.page-wholesale-order .woocommerce-message .restore-item,
         msg.className = 'slw-of-toast__msg';
         msg.textContent = text;
         toast.appendChild(msg);
-        if (type === 'success' && checkoutUrl) {
-            var link = document.createElement('a');
-            link.href = checkoutUrl;
-            link.className = 'slw-of-toast__cta';
-            link.textContent = 'Checkout →';
-            toast.appendChild(link);
-        }
+        // No inline Checkout CTA -- the sticky bottom bar already has
+        // Proceed to Checkout, so the toast is just confirmation.
         document.body.appendChild(toast);
         requestAnimationFrame(function() { toast.classList.add('slw-of-toast--in'); });
         setTimeout(function() {
