@@ -3757,69 +3757,93 @@ button.slw-reorder-btn:hover {
 .slw-price-list-stats {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
-    gap: 12px;
-    margin-bottom: 28px;
+    gap: 14px;
+    margin-bottom: 32px;
 }
 .slw-price-list-stat {
-    background: var(--pl-cream);
+    background: linear-gradient(180deg, #ffffff 0%, var(--pl-cream-warm) 100%);
     border: 1px solid var(--pl-border);
-    border-radius: 8px;
-    padding: 16px 18px;
+    border-radius: 12px;
+    padding: 20px 22px;
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    transition: border-color 0.18s, transform 0.18s;
+    gap: 6px;
+    transition: border-color 0.18s, transform 0.18s, box-shadow 0.18s;
+    box-shadow: 0 1px 2px rgba(56, 97, 116, 0.04);
 }
 .slw-price-list-stat:hover {
     border-color: var(--pl-gold);
-    transform: translateY(-1px);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(212, 175, 55, 0.14);
 }
 .slw-price-list-stat__number {
     font-family: Georgia, 'Times New Roman', serif;
-    font-size: 28px;
+    font-size: 32px;
     line-height: 1;
     color: var(--pl-teal);
     font-weight: 700;
+    text-wrap: balance;
 }
 .slw-price-list-stat__label {
     font-size: 11px;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.07em;
     color: var(--pl-muted);
-    font-weight: 600;
+    font-weight: 700;
 }
+
+/* Section cards: more presence, layered shadow, gold left accent */
 .slw-price-list-section {
-    margin-bottom: 28px;
-    background: #fff;
+    margin-bottom: 32px;
+    background: #ffffff;
     border: 1px solid var(--pl-border);
-    border-radius: 10px;
+    border-radius: 12px;
     overflow: hidden;
+    box-shadow: 0 1px 3px rgba(56, 97, 116, 0.05), 0 4px 14px rgba(56, 97, 116, 0.05);
+}
+.slw-price-list-section__head {
+    background: linear-gradient(180deg, var(--pl-cream-warm) 0%, #ffffff 100%);
+    border-bottom: 1px solid var(--pl-border);
+    padding: 18px 24px 16px;
+    position: relative;
+}
+.slw-price-list-section__head::before {
+    content: '';
+    position: absolute;
+    top: 18px;
+    bottom: 16px;
+    left: 0;
+    width: 4px;
+    background: linear-gradient(180deg, var(--pl-gold) 0%, var(--pl-teal) 100%);
+    border-radius: 0 4px 4px 0;
 }
 .slw-price-list-section__title {
     margin: 0;
-    padding: 14px 20px;
-    background: linear-gradient(180deg, var(--pl-cream-warm) 0%, var(--pl-cream) 100%);
-    border-bottom: 1px solid var(--pl-border);
+    padding: 0 0 0 8px;
     font-family: Georgia, 'Times New Roman', serif;
     color: var(--pl-teal);
-    font-size: 17px;
+    font-size: 20px;
+    font-weight: 700;
     display: flex;
-    align-items: center;
-    gap: 10px;
+    align-items: baseline;
+    gap: 12px;
+    text-wrap: balance;
 }
 .slw-price-list-section__count {
-    background: var(--pl-teal);
-    color: var(--pl-cream);
+    background: transparent;
+    color: var(--pl-muted);
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
     font-size: 11px;
-    font-weight: 600;
-    padding: 2px 8px;
-    border-radius: 999px;
-    line-height: 1.5;
+    font-weight: 700;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    line-height: 1.2;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
 }
-.slw-price-list-table-wrap {
-    overflow-x: auto;
-}
+
+.slw-price-list-table-wrap { overflow-x: auto; }
 .slw-price-list-table {
     width: 100%;
     border-collapse: collapse;
@@ -3827,41 +3851,47 @@ button.slw-reorder-btn:hover {
 }
 .slw-price-list-table thead th {
     text-align: left;
-    padding: 10px 16px;
+    padding: 12px 18px;
     font-size: 11px;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.07em;
     color: var(--pl-muted);
-    font-weight: 600;
+    font-weight: 700;
     background: #fafaf7;
-    border-bottom: 1px solid var(--pl-border);
+    border-bottom: 2px solid var(--pl-border);
 }
 .slw-price-list-table tbody td {
-    padding: 12px 16px;
+    padding: 16px 18px;
     border-bottom: 1px solid #f0eee9;
     color: #2C2C2C;
     vertical-align: middle;
+    transition: background 0.12s;
 }
-.slw-price-list-table tbody tr:last-child td {
-    border-bottom: none;
-}
+.slw-price-list-table tbody tr:nth-child(even) td { background: #fcfbf6; }
+.slw-price-list-table tbody tr:last-child td { border-bottom: none; }
 .slw-price-list-table tbody tr:hover td {
-    background: #fcfbf6;
+    background: #fff8e3;
+    box-shadow: inset 3px 0 0 var(--pl-gold);
 }
 .slw-price-list-table__name {
-    font-weight: 600;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-weight: 700;
     color: var(--pl-teal-dark);
+    font-size: 15px;
+    text-wrap: balance;
 }
 .slw-price-list-table__sku {
     width: 110px;
     color: var(--pl-muted);
-    font-size: 13px;
+    font-size: 12.5px;
     font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+    letter-spacing: 0.02em;
 }
 .slw-price-list-table__qty {
     width: 80px;
     text-align: center;
     color: var(--pl-muted);
+    font-weight: 600;
 }
 .slw-price-list-table__price {
     width: 110px;
@@ -3873,27 +3903,53 @@ button.slw-reorder-btn:hover {
 .slw-price-list-table__price--retail {
     color: var(--pl-muted);
     text-decoration: line-through;
-    text-decoration-color: rgba(98,131,147,0.4);
+    text-decoration-color: rgba(98, 131, 147, 0.5);
     font-size: 14px;
+    font-weight: 500;
 }
+.slw-price-list-table__price--your { width: 130px; }
 .slw-price-list-table__price--wholesale {
     color: var(--pl-teal);
     font-weight: 700;
-    font-size: 15px;
+    font-size: 17px;
+    font-family: Georgia, 'Times New Roman', serif;
 }
-.slw-price-list-table tbody td > span,
-.slw-price-list-table tbody td.slw-price-list-table__price {
-    vertical-align: middle;
+.slw-price-list-table__savings { width: 110px; text-align: center; }
+.slw-price-list-table__savings-pill {
+    display: inline-block;
+    background: linear-gradient(135deg, var(--pl-gold) 0%, #B6932A 100%);
+    color: #1E2A30;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 999px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    box-shadow: 0 1px 3px rgba(212, 175, 55, 0.25);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
 }
+
 .slw-price-list-footnote {
     text-align: center;
     color: var(--pl-muted);
     font-size: 12px;
-    margin-top: 24px;
-    padding: 14px;
+    margin-top: 28px;
+    padding: 16px 20px;
     background: var(--pl-cream);
-    border-radius: 8px;
-    border: 1px dashed var(--pl-border);
+    border-radius: 10px;
+    border: 1px solid var(--pl-border);
+    border-left: 4px solid var(--pl-gold);
+    text-wrap: pretty;
+    font-style: italic;
+    letter-spacing: 0.02em;
+}
+
+@media (max-width: 720px) {
+    .slw-price-list-stats { grid-template-columns: repeat(2, 1fr); }
+    .slw-price-list-stat__number { font-size: 26px; }
+    .slw-price-list-table thead th,
+    .slw-price-list-table tbody td { padding: 12px 12px; }
+    .slw-price-list-section__title { font-size: 17px; }
 }
 
 @media (max-width: 768px) {

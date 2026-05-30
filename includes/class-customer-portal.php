@@ -881,7 +881,12 @@ class SLW_Customer_Portal {
 
                 <?php foreach ( $products_by_cat as $category_name => $items ) : ?>
                     <div class="slw-price-list-section">
-                        <h4 class="slw-price-list-section__title"><?php echo esc_html( $category_name ); ?> <span class="slw-price-list-section__count"><?php echo count( $items ); ?></span></h4>
+                        <div class="slw-price-list-section__head">
+                            <h4 class="slw-price-list-section__title">
+                                <?php echo esc_html( $category_name ); ?>
+                                <span class="slw-price-list-section__count"><?php echo count( $items ); ?> product<?php echo count( $items ) === 1 ? '' : 's'; ?></span>
+                            </h4>
+                        </div>
                         <div class="slw-price-list-table-wrap">
                             <table class="slw-price-list-table">
                                 <thead>
@@ -889,18 +894,30 @@ class SLW_Customer_Portal {
                                         <th>Product</th>
                                         <th class="slw-price-list-table__sku">SKU</th>
                                         <th class="slw-price-list-table__qty">Min Qty</th>
-                                        <th class="slw-price-list-table__price">Retail</th>
-                                        <th class="slw-price-list-table__price">Wholesale</th>
+                                        <th class="slw-price-list-table__price">MSRP</th>
+                                        <th class="slw-price-list-table__price slw-price-list-table__price--your">Your Price</th>
+                                        <th class="slw-price-list-table__savings">You Save</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <?php foreach ( $items as $item ) : ?>
+                                    <?php foreach ( $items as $item ) :
+                                        $retail = (float) $item['retail_price'];
+                                        $whsl   = (float) $item['wholesale_price'];
+                                        $pct    = ( $retail > 0 ) ? max( 0, round( ( 1 - $whsl / $retail ) * 100 ) ) : 0;
+                                    ?>
                                         <tr>
                                             <td class="slw-price-list-table__name"><?php echo esc_html( $item['name'] ); ?></td>
                                             <td class="slw-price-list-table__sku"><?php echo $item['sku'] ? esc_html( $item['sku'] ) : '&mdash;'; ?></td>
                                             <td class="slw-price-list-table__qty"><?php echo $item['min_qty'] ? esc_html( $item['min_qty'] ) : '&mdash;'; ?></td>
-                                            <td class="slw-price-list-table__price slw-price-list-table__price--retail"><?php echo wp_kses_post( wc_price( $item['retail_price'] ) ); ?></td>
-                                            <td class="slw-price-list-table__price slw-price-list-table__price--wholesale"><?php echo wp_kses_post( wc_price( $item['wholesale_price'] ) ); ?></td>
+                                            <td class="slw-price-list-table__price slw-price-list-table__price--retail"><?php echo wp_kses_post( wc_price( $retail ) ); ?></td>
+                                            <td class="slw-price-list-table__price slw-price-list-table__price--wholesale"><?php echo wp_kses_post( wc_price( $whsl ) ); ?></td>
+                                            <td class="slw-price-list-table__savings">
+                                                <?php if ( $pct > 0 ) : ?>
+                                                    <span class="slw-price-list-table__savings-pill"><?php echo esc_html( $pct ); ?>% off</span>
+                                                <?php else : ?>
+                                                    &mdash;
+                                                <?php endif; ?>
+                                            </td>
                                         </tr>
                                     <?php endforeach; ?>
                                 </tbody>
