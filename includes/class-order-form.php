@@ -318,7 +318,22 @@ class SLW_Order_Form {
                 // text attribute options.
                 $variation = self::prime_variation_attributes( $product, (array) $variation, $variation_id );
 
-                $result = WC()->cart->add_to_cart( $product_id, $quantity, $variation_id, $variation );
+                // Variety Gift Sets keep hitting WC's required-field
+                // validation no matter what we prime, because the
+                // "Gift Box Varieties" attribute has no real terms to
+                // assign and the parent has no default for it. Bypass
+                // WC's validation entirely by inserting into the cart
+                // directly. Manual cart_contents insertion runs the same
+                // pipeline WC uses internally minus the variation-attr
+                // gate.
+                $is_variety = (bool) preg_match( '/variety|gift\s*set/i', $product->get_name() );
+                if ( $is_variety ) {
+                    $result = self::add_variety_to_cart_directly(
+                        $product_id, $quantity, $variation_id, $variation
+                    );
+                } else {
+                    $result = WC()->cart->add_to_cart( $product_id, $quantity, $variation_id, $variation );
+                }
             } elseif ( $type === 'grouped' ) {
                 // Grouped products must be added child-by-child. Apply
                 // quantity to each child so the gift-set/bundle adds
@@ -474,6 +489,81 @@ class SLW_Order_Form {
                               . ( ! empty( $failed ) ? '. Skipped: ' . implode( ', ', $failed ) : '' ),
             'checkout_url' => $checkout_url,
         ) );
+    }
+
+    /**
+     * Insert a variety-gift-set line directly into WC()->cart->cart_contents,
+     * skipping WC_Cart::add_to_cart()'s variation-attribute validation.
+     * The validation requires a non-empty value for every "used for
+     * variation" attribute and rejects with "X is a required field" --
+     * Variety Gift Sets are configured with "Any" for one of those
+     * attributes and have no parent default to fall back on, so the
+     * validation can never pass via the normal path. We bypass it.
+     *
+     * Same pipeline WC uses internally otherwise: generate_cart_id,
+     * apply woocommerce_add_cart_item filter, fire the woocommerce_
+     * add_to_cart action, recalculate totals.
+     */
+    private static function add_variety_to_cart_directly( $product_id, $quantity, $variation_id, $variation ) {
+        if ( ! function_exists( 'WC' ) || ! WC()->cart ) return false;
+
+        $product_data = $variation_id > 0
+            ? wc_get_product( $variation_id )
+            : wc_get_product( $product_id );
+        if ( ! $product_data || ! $product_data->is_purchasable() ) {
+            error_log( sprintf(
+                '[SLW variety-direct-add] product %d not purchasable',
+                $variation_id ?: $product_id
+            ) );
+            return false;
+        }
+        if ( ! $product_data->is_in_stock() ) {
+            error_log( sprintf(
+                '[SLW variety-direct-add] product %d out of stock',
+                $variation_id ?: $product_id
+            ) );
+            return false;
+        }
+
+        $cart_item_data = (array) apply_filters(
+            'woocommerce_add_cart_item_data', array(), $product_id, $variation_id, $quantity
+        );
+
+        $cart_id = WC()->cart->generate_cart_id( $product_id, $variation_id, $variation, $cart_item_data );
+
+        // If the same item is already in the cart, increment its qty
+        // instead of inserting a duplicate.
+        $existing_key = WC()->cart->find_product_in_cart( $cart_id );
+        if ( $existing_key ) {
+            $new_qty = (int) WC()->cart->cart_contents[ $existing_key ]['quantity'] + (int) $quantity;
+            WC()->cart->set_quantity( $existing_key, $new_qty, true );
+            return $existing_key;
+        }
+
+        WC()->cart->cart_contents[ $cart_id ] = apply_filters(
+            'woocommerce_add_cart_item',
+            array_merge(
+                $cart_item_data,
+                array(
+                    'key'          => $cart_id,
+                    'product_id'   => (int) $product_id,
+                    'variation_id' => (int) $variation_id,
+                    'variation'    => $variation,
+                    'quantity'     => (int) $quantity,
+                    'data'         => $product_data,
+                    'data_hash'    => function_exists( 'wc_get_cart_item_data_hash' ) ? wc_get_cart_item_data_hash( $product_data ) : '',
+                )
+            ),
+            $cart_id
+        );
+
+        WC()->cart->cart_contents = apply_filters(
+            'woocommerce_cart_contents_changed', WC()->cart->cart_contents
+        );
+        do_action( 'woocommerce_add_to_cart', $cart_id, $product_id, $quantity, $variation_id, $variation, $cart_item_data );
+        WC()->cart->calculate_totals();
+
+        return $cart_id;
     }
 
     private static function prime_variation_attributes( $product, $variation, $variation_id ) {

@@ -91,15 +91,27 @@ class SLW_Shipping_Calculator {
         foreach ( $packages as $package ) {
             if ( empty( $package['rates'] ) ) continue;
             foreach ( $package['rates'] as $rate_id => $rate ) {
+                $method_id   = $rate->get_method_id();
+                $cost        = (float) $rate->get_cost();
+
                 if ( ! empty( $wholesale_methods ) ) {
-                    $method_key = $rate->get_method_id() . ':' . $rate->get_instance_id();
+                    $method_key = $method_id . ':' . $rate->get_instance_id();
                     if ( ! in_array( $method_key, $wholesale_methods, true ) ) continue;
                 }
+
+                // Filter out free rates that aren't Local Pickup. Holly's
+                // setup has a "Flexible Shipping (Free)" rate showing up
+                // that shouldn't apply to wholesale orders. The only
+                // legitimately free option for wholesale is Local Pickup.
+                if ( $cost <= 0 && $method_id !== 'local_pickup' ) {
+                    continue;
+                }
+
                 $rates[] = array(
                     'id'       => esc_html( $rate_id ),
                     'label'    => esc_html( $rate->get_label() ),
-                    'cost'     => html_entity_decode( wp_strip_all_tags( wc_price( $rate->get_cost() ) ) ),
-                    'cost_raw' => (float) $rate->get_cost(),
+                    'cost'     => html_entity_decode( wp_strip_all_tags( wc_price( $cost ) ) ),
+                    'cost_raw' => $cost,
                 );
             }
         }
