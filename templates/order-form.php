@@ -1754,35 +1754,43 @@ body.page-wholesale-order .woocommerce-message .restore-item,
     var violationsListEl = document.getElementById('slw-cart-violations-list');
     function computeViolations() {
         var data = window.SLW_DATA || {};
+
+        // PER-LINE product minimum check. Server-side enforces this
+        // per cart line item (each scent / variation must independently
+        // meet the parent's min), not aggregated across siblings, so
+        // we mirror that here. Using the line label (parent name +
+        // variation attrs from the cart payload) so the message names
+        // the specific scent the customer needs to top up.
+        var productMessages  = [];
+        var productViolators = {};
+        (inCartItems || []).forEach(function(ci) {
+            var pid = parseInt(ci.product_id, 10) || 0;
+            var qty = parseInt(ci.qty, 10) || 0;
+            if (pid <= 0 || qty <= 0) return;
+            var rule = (data.productMins || {})[pid];
+            if (!rule || !rule.min || rule.min <= 0) return;
+            if (qty < rule.min) {
+                var lineLabel = ci.label || rule.name;
+                productMessages.push(lineLabel + ' minimum: ' + rule.min + '. You have ' + qty + '. Add ' + (rule.min - qty) + ' more.');
+                productViolators[pid] = true;
+            }
+        });
+
+        // Per-category total check: aggregate qty across ALL cart items
+        // belonging to a category, since the category "mix & match
+        // across scents" allowance is exactly the cross-line sum.
         var catTotals       = {};
-        var prodTotals      = {};
-        // Track which products in the cart contribute to each category
-        // so we can dedupe: when only one product in the cart is in a
-        // violating category AND that product is also independently
-        // violating, the customer fixes both by adding to that product.
-        // Surfacing two messages is noise.
         var catContributors = {};
         (inCartItems || []).forEach(function(ci) {
             var pid = parseInt(ci.product_id, 10) || 0;
             var qty = parseInt(ci.qty, 10) || 0;
             if (pid <= 0 || qty <= 0) return;
-            prodTotals[pid] = (prodTotals[pid] || 0) + qty;
             var cats = (data.productCategories || {})[pid] || [];
             cats.forEach(function(tid) {
                 catTotals[tid] = (catTotals[tid] || 0) + qty;
                 if (!catContributors[tid]) catContributors[tid] = {};
                 catContributors[tid][pid] = true;
             });
-        });
-        var productViolators = {};
-        var productMessages  = [];
-        Object.keys(data.productMins || {}).forEach(function(pid) {
-            var rule = data.productMins[pid];
-            var have = prodTotals[pid] || 0;
-            if (have > 0 && have < rule.min) {
-                productViolators[pid] = true;
-                productMessages.push(rule.name + ' minimum: ' + rule.min + '. You have ' + have + '. Add ' + (rule.min - have) + ' more.');
-            }
         });
         var categoryMessages = [];
         Object.keys(data.categoryMins || {}).forEach(function(tid) {
