@@ -1755,23 +1755,26 @@ body.page-wholesale-order .woocommerce-message .restore-item,
     function computeViolations() {
         var data = window.SLW_DATA || {};
 
-        // PER-LINE product minimum check. Server-side enforces this
-        // per cart line item (each scent / variation must independently
-        // meet the parent's min), not aggregated across siblings, so
-        // we mirror that here. Using the line label (parent name +
-        // variation attrs from the cart payload) so the message names
-        // the specific scent the customer needs to top up.
-        var productMessages  = [];
-        var productViolators = {};
+        // Per-product minimum check, aggregated across siblings.
+        // Holly's intent: a product min of 6 on Natural Tallow Deodorant
+        // means "6 total deodorants in the cart, customer can mix &
+        // match scents" -- NOT 6 of each scent. The server-side check
+        // in class-product-minimums.php was changed to match in this
+        // release.
+        var prodTotals       = {};
         (inCartItems || []).forEach(function(ci) {
             var pid = parseInt(ci.product_id, 10) || 0;
             var qty = parseInt(ci.qty, 10) || 0;
             if (pid <= 0 || qty <= 0) return;
-            var rule = (data.productMins || {})[pid];
-            if (!rule || !rule.min || rule.min <= 0) return;
-            if (qty < rule.min) {
-                var lineLabel = ci.label || rule.name;
-                productMessages.push(lineLabel + ' minimum: ' + rule.min + '. You have ' + qty + '. Add ' + (rule.min - qty) + ' more.');
+            prodTotals[pid] = (prodTotals[pid] || 0) + qty;
+        });
+        var productMessages  = [];
+        var productViolators = {};
+        Object.keys(data.productMins || {}).forEach(function(pid) {
+            var rule = data.productMins[pid];
+            var have = prodTotals[pid] || 0;
+            if (have > 0 && have < rule.min) {
+                productMessages.push(rule.name + ' minimum: ' + rule.min + '. You have ' + have + ' (mix & match across scents). Add ' + (rule.min - have) + ' more.');
                 productViolators[pid] = true;
             }
         });

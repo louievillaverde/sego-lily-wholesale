@@ -86,27 +86,34 @@ class SLW_Product_Minimums {
 			return;
 		}
 
+		// Aggregate cart quantities by parent product so the minimum is
+		// satisfied as a "mix & match across scents" total -- a min of 6
+		// on Natural Tallow Deodorant means 6 deodorants in total across
+		// any scent, not 6 of each. Matches Holly's intent and the
+		// client-side warning in the order-form Cart Preview.
+		$totals = array();
+		$labels = array();
 		foreach ( WC()->cart->get_cart() as $cart_item ) {
 			$product = $cart_item['data'];
-			if ( ! $product ) {
-				continue;
+			if ( ! $product ) continue;
+			$parent_id  = $product->get_parent_id();
+			$lookup_id  = $parent_id ? $parent_id : $product->get_id();
+			if ( ! isset( $totals[ $lookup_id ] ) ) {
+				$totals[ $lookup_id ] = 0;
+				$parent_product = $parent_id ? wc_get_product( $parent_id ) : $product;
+				$labels[ $lookup_id ] = $parent_product ? $parent_product->get_name() : $product->get_name();
 			}
+			$totals[ $lookup_id ] += (int) $cart_item['quantity'];
+		}
 
-			// For variations, check the parent product's minimum too
-			$product_id = $product->get_id();
-			$parent_id = $product->get_parent_id();
-			$min = self::get_product_minimum( $parent_id ? $parent_id : $product_id );
-
-			if ( $min <= 0 ) {
-				continue;
-			}
-
-			$qty = (int) $cart_item['quantity'];
+		foreach ( $totals as $lookup_id => $qty ) {
+			$min = self::get_product_minimum( $lookup_id );
+			if ( $min <= 0 ) continue;
 			if ( $qty < $min ) {
 				wc_add_notice(
 					sprintf(
-						'%s requires a minimum wholesale quantity of %d. You have %d in your cart.',
-						esc_html( $product->get_name() ),
+						'%s requires a minimum wholesale quantity of %d (mix & match across scents). You have %d in your cart.',
+						esc_html( $labels[ $lookup_id ] ),
 						$min,
 						$qty
 					),
