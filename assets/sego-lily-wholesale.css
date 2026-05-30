@@ -449,22 +449,29 @@ a.slw-btn-ghost:hover {
     color: #2e7d32;
 }
 
+/* Error: warm brand-rust on cream. Reads as "attention" without
+   the harsh universal browser-red. Matches the cart-violations card. */
 .slw-notice-error {
-    background: #fbe9e7;
-    border: 1px solid #ef9a9a;
-    color: #c62828;
+    background: #fff5f0;
+    border: 1px solid #f0c8a8;
+    border-left: 4px solid #c0703a;
+    color: #6b3b1a;
 }
 
+/* Warning: brand cream with gold accent. */
 .slw-notice-warning {
-    background: #fff8e1;
-    border: 1px solid #ffe082;
-    color: #e65100;
+    background: #fff8e3;
+    border: 1px solid #f0d780;
+    border-left: 4px solid #D4AF37;
+    color: #6b4f0a;
 }
 
+/* Info: brand teal in a low-key surface. */
 .slw-notice-info {
-    background: #e3f2fd;
-    border: 1px solid #90caf9;
-    color: #1565c0;
+    background: #eaf1f4;
+    border: 1px solid #b9cdd4;
+    border-left: 4px solid #386174;
+    color: #2a4a59;
 }
 
 .slw-notice h3 {

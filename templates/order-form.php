@@ -1629,6 +1629,10 @@ body.page-wholesale-order .woocommerce-message .restore-item,
 .slw-of-toast--in { opacity: 1; transform: translateY(0); }
 .slw-of-toast--success { background: #1F5D3A; }
 .slw-of-toast--info { background: #386174; }
+.slw-of-toast--error {
+    background: #6b3b1a;
+    border-left: 4px solid #D4AF37;
+}
 .slw-of-toast__msg { flex: 1 1 auto; }
 .slw-of-toast__cta {
     flex: 0 0 auto;
