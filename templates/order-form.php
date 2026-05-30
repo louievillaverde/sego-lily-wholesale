@@ -1080,37 +1080,61 @@ $products = $all_products; // keep for empty check
 .slw-bulk-import-btn { flex-shrink: 0; }
 
 .slw-saved-orders {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
+    position: relative;
     flex-shrink: 0;
 }
 .slw-saved-orders__label {
-    font-size: 12px;
+    display: block;
+    font-size: 10px;
     font-weight: 700;
-    color: #386174;
+    color: #628393;
     text-transform: uppercase;
-    letter-spacing: 0.4px;
+    letter-spacing: 0.6px;
+    margin-bottom: 4px;
     white-space: nowrap;
+    padding-left: 2px;
 }
 .slw-saved-orders__select {
-    padding: 8px 10px;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    padding: 10px 36px 10px 14px;
     border: 1px solid #d4cebc;
-    border-radius: 6px;
-    background: #ffffff;
+    border-radius: 8px;
+    background-color: #ffffff;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8' fill='none'><path d='M1 1.5L6 6.5L11 1.5' stroke='%23386174' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 12px 8px;
     color: #2C2C2C;
-    font-size: 13px;
+    font-size: 13.5px;
+    font-weight: 600;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
     cursor: pointer;
-    min-width: 200px;
-    max-width: 280px;
-    transition: border-color 0.15s;
+    min-width: 240px;
+    max-width: 320px;
+    height: 38px;
+    transition: border-color 0.15s, box-shadow 0.15s, background-color 0.15s;
+    box-shadow: 0 1px 2px rgba(56, 97, 116, 0.04);
 }
-.slw-saved-orders__select:hover { border-color: #386174; }
+.slw-saved-orders__select:hover:not(:disabled) {
+    border-color: #386174;
+    background-color: #FAF8F2;
+}
 .slw-saved-orders__select:focus {
     outline: none;
     border-color: #386174;
     box-shadow: 0 0 0 3px rgba(56, 97, 116, 0.12);
+}
+.slw-saved-orders__select:disabled {
+    background-color: #FAF8F2;
+    color: #8a9aa1;
+    cursor: not-allowed;
+    opacity: 0.85;
+    border-style: dashed;
+}
+@media (max-width: 720px) {
+    .slw-saved-orders__select { min-width: 200px; }
 }
 .slw-minimum-note {
     margin-top: 0 !important;
@@ -2201,6 +2225,20 @@ body.page-wholesale-order .woocommerce-message .restore-item,
         var cartTotal = inCartItems.reduce(function(sum, ci) { return sum + (ci.lineTotal || 0); }, 0);
         var cartItemCount = inCartItems.reduce(function(sum, ci) { return sum + (ci.qty || 0); }, 0);
         subtotalEl.textContent = formatPrice(stagedTotal + cartTotal);
+
+        // When there's nothing in cart, also wipe the shipping line in
+        // the summary card AND the shipping results panel. Otherwise a
+        // shipping estimate calculated against a previous cart state
+        // lingers visually after Clear Cart / last item removed.
+        if (cartItemCount === 0 && stagedItemCount === 0) {
+            var slShipLine = document.getElementById('slw-of-shipping-line');
+            if (slShipLine) slShipLine.innerHTML = '';
+            var slShipResults = document.getElementById('slw-shipping-results');
+            if (slShipResults && slShipResults.innerHTML) {
+                slShipResults.innerHTML = '';
+                slShipResults.style.display = 'none';
+            }
+        }
 
         // Cart preview: WC cart items first (already in cart), then any
         // staged-but-not-yet-added rows below.
