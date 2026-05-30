@@ -1263,8 +1263,10 @@ $products = $all_products; // keep for empty check
 .slw-cart-preview__list { list-style: none; margin: 0; padding: 0; }
 .slw-cart-preview__item { display: grid; grid-template-columns: 80px 1fr auto 28px; gap: 14px; align-items: center; padding: 12px 0; border-bottom: 1px dashed rgba(224, 219, 208, 0.65); font-size: 13.5px; }
 .slw-cart-preview__item:last-child { border-bottom: none; }
-/* Match the look + behavior of .slw-qty-input on product rows so the
-   Cart Preview qty field reads as part of the same system. */
+/* Mirror the look + native spinner arrows of .slw-qty-input on the
+   product rows so the Cart Preview qty field reads as part of the
+   same system. Browser default spinner arrows are intentionally
+   kept (LV directive 2026-05-29). */
 .slw-cart-preview__qty-edit {
     width: 70px;
     padding: 6px 8px;
@@ -1276,17 +1278,11 @@ $products = $all_products; // keep for empty check
     color: #386174;
     font-weight: 600;
     transition: border-color 0.15s, box-shadow 0.15s;
-    -moz-appearance: textfield;
 }
 .slw-cart-preview__qty-edit:focus {
     outline: none;
     border-color: #386174;
     box-shadow: 0 0 0 3px rgba(56, 97, 116, 0.12);
-}
-.slw-cart-preview__qty-edit::-webkit-outer-spin-button,
-.slw-cart-preview__qty-edit::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
 }
 .slw-cart-preview__item:last-child { border-bottom: none; }
 .slw-cart-preview__qty { font-weight: 700; color: #386174; font-family: Georgia, 'Times New Roman', serif; }
@@ -1607,8 +1603,21 @@ body.page-wholesale-order .woocommerce-message .restore-item,
             e.preventDefault();
             if (!window.confirm('Remove every item from your cart?')) return;
             clearCartBtn.disabled = true;
+            // Reset every qty input on the product rows so staged
+            // values stop driving the savings / subtotal display.
+            document.querySelectorAll('.slw-qty-input').forEach(function(input) {
+                input.value = 0;
+            });
+            // Hide the savings element immediately so the customer
+            // doesn't see a flash of stale numbers between the AJAX
+            // call and updateSubtotal running.
+            var savingsEl = document.getElementById('slw-of-savings');
+            if (savingsEl) savingsEl.hidden = true;
             postCartAction('slw_clear_cart').finally(function() {
                 clearCartBtn.disabled = false;
+                // Force a recompute now that inputs are reset and
+                // inCartItems is empty.
+                updateSubtotal();
             });
         });
     }

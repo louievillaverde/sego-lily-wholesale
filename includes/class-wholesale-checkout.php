@@ -2,17 +2,18 @@
 /**
  * Wholesale Checkout
  *
- * The [sego_wholesale_checkout] shortcode now delegates the actual
- * checkout form to WC's native [woocommerce_checkout] shortcode. We
- * just gate access, wrap with the wholesale portal nav + brand
- * container, and let WC handle everything: payment gateways, shipping
- * zones, order creation, gateway tokenization. Cart prices flow through
- * apply_wholesale_price so the order summary matches the order form.
+ * The [sego_wholesale_checkout] shortcode is now a thin wrapper around
+ * WC's native [woocommerce_checkout]. We do four things here:
+ *   1. Gate access (logged-in, wholesale role, cart not empty)
+ *   2. Force the wholesale shopping context so prices stay wholesale
+ *   3. Render the wholesale portal nav at the top so customers can
+ *      navigate back to other portal sections
+ *   4. Add a small "Back to the order form" link
  *
- * Earlier iterations tried a fully-custom 2-column checkout to fix
- * Elementor-induced price drift, but the cost was a broken native
- * payment + shipping pipeline. Per LV directive 2026-05-29: lean on
- * WC core.
+ * The actual form, summary, payment gateways, and shipping methods are
+ * fully handled by WC core. That keeps payment + shipping working end-
+ * to-end. We don't inject any custom CSS into the WC markup -- the
+ * theme's stylesheet handles it.
  */
 
 if ( ! defined( 'ABSPATH' ) ) exit;
@@ -25,57 +26,34 @@ class SLW_Wholesale_Checkout {
 
     public static function render() {
         // Force wholesale shopping context for the checkout. Only write
-        // if the session isn't already wholesale to avoid a needless
-        // session save on every request.
+        // when not already set so we don't trigger a session save on
+        // every request.
         if ( is_user_logged_in() && function_exists( 'slw_is_wholesale_user' )
             && slw_is_wholesale_user() && function_exists( 'WC' ) && WC()->session
             && WC()->session->get( 'slw_shopping_context' ) !== 'wholesale' ) {
             WC()->session->set( 'slw_shopping_context', 'wholesale' );
         }
+
         if ( ! is_user_logged_in() ) {
-            return '<div class="slw-checkout-gate"><h2 class="slw-balance">Sign in to your wholesale account</h2><p class="slw-pretty"><a href="' . esc_url( wp_login_url( get_permalink() ) ) . '">Log in</a> to access wholesale checkout.</p></div>';
+            return '<div class="slw-checkout-gate"><h2>Sign in to your wholesale account</h2><p><a href="' . esc_url( wp_login_url( get_permalink() ) ) . '">Log in</a> to access wholesale checkout.</p></div>';
         }
         if ( ! function_exists( 'slw_is_wholesale_user' ) || ! slw_is_wholesale_user() ) {
-            return '<div class="slw-checkout-gate"><h2 class="slw-balance">Wholesale customers only</h2><p class="slw-pretty">This checkout is for approved wholesale partners. <a href="' . esc_url( home_url( '/wholesale-partners' ) ) . '">Apply for an account here</a>.</p></div>';
+            return '<div class="slw-checkout-gate"><h2>Wholesale customers only</h2><p>This checkout is for approved wholesale partners. <a href="' . esc_url( home_url( '/wholesale-partners' ) ) . '">Apply for an account here</a>.</p></div>';
         }
         if ( ! function_exists( 'WC' ) || ! WC()->cart || WC()->cart->is_empty() ) {
-            return '<div class="slw-checkout-gate slw-checkout-empty"><h2 class="slw-balance">Your cart is empty</h2><p class="slw-pretty">Nothing to check out yet. Pick up where you left off on the order form.</p><a class="slw-btn slw-btn-primary" href="' . esc_url( home_url( '/wholesale-order' ) ) . '">Back to the order form</a></div>';
+            return '<div class="slw-checkout-gate slw-checkout-empty"><h2>Your cart is empty</h2><p>Pick up where you left off on the order form.</p><a class="slw-btn slw-btn-primary" href="' . esc_url( home_url( '/wholesale-order' ) ) . '">Back to the order form</a></div>';
         }
 
         ob_start();
+        if ( class_exists( 'SLW_Customer_Portal' ) ) {
+            SLW_Customer_Portal::render_nav( 'orders' );
+        }
         ?>
-        <style>
-            /* Suppress the WP theme's page title; we render our own
-               in-shortcode header below. */
-            body.page .entry-title:not(.slw-balance),
-            body.page .wp-block-post-title:not(.slw-balance),
-            body.page .elementor-page-title__title,
-            body.page header.entry-header > h1 { display: none !important; }
-        </style>
-        <div class="slw-wholesale-checkout slw-wholesale-checkout--native">
-            <?php
-            if ( class_exists( 'SLW_Customer_Portal' ) ) {
-                SLW_Customer_Portal::render_nav( 'orders' );
-            }
-            ?>
-            <div class="slw-wc-header">
-                <h1 class="slw-balance">Wholesale Checkout</h1>
-                <p class="slw-pretty">One last step to ship your order. Prices below reflect your wholesale rate.</p>
-                <a class="slw-wc-back" href="<?php echo esc_url( home_url( '/wholesale-order' ) ); ?>">&larr; Back to the order form</a>
-            </div>
-
-            <div class="slw-wc-native-wrap">
-                <?php
-                // Delegate the actual checkout form to WC core. Every
-                // gateway (Stripe, NET 30, Square, etc.) attaches to
-                // the standard #payment / .woocommerce-checkout DOM.
-                // Shipping zones evaluate via the customer's address.
-                // The order summary reads cart line prices, which our
-                // apply_wholesale_price filter has already set to the
-                // wholesale rate.
-                echo do_shortcode( '[woocommerce_checkout]' );
-                ?>
-            </div>
+        <div class="slw-checkout-page">
+            <p class="slw-checkout-back-link">
+                <a href="<?php echo esc_url( home_url( '/wholesale-order' ) ); ?>">&larr; Back to the order form</a>
+            </p>
+            <?php echo do_shortcode( '[woocommerce_checkout]' ); ?>
         </div>
         <?php
         return ob_get_clean();
