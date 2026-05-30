@@ -800,12 +800,25 @@ a.slw-btn-ghost:hover {
 }
 
 /* -------------------------------------------------------
-   Wholesale Price Label
+   Wholesale Price Pill
+   Small inline pill shown next to wholesale-priced line items
+   on cart / checkout summary so customers can see at a glance
+   which prices reflect their wholesale rate.
    ------------------------------------------------------- */
 .slw-wholesale-label {
-    color: #1E2A30;
+    display: inline-block;
+    background: #386174;
+    color: #F7F6F3;
     font-weight: 700;
-    font-size: 0.95em;
+    font-size: 11px;
+    line-height: 1;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    margin-right: 6px;
+    vertical-align: 1px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
 }
 
 /* -------------------------------------------------------
@@ -3110,17 +3123,16 @@ button.slw-reorder-btn:hover {
     line-height: 1.5;
 }
 
-/* Wholesale label on single product pages */
-.slw-wholesale-label {
-    background: #386174;
-    color: #F7F6F3;
-    display: inline-block;
+/* Wholesale label on single product pages -- larger variant for
+   prominent product-page display. Cart / checkout use the compact
+   pill defined above (.slw-wholesale-label without this scope). */
+.single-product .slw-wholesale-label,
+.elementor-product-single .slw-wholesale-label {
     padding: 6px 14px;
-    border-radius: 4px;
     font-size: 14px;
-    font-weight: 600;
     margin: 8px 0;
     letter-spacing: 0.3px;
+    vertical-align: baseline;
 }
 
 /* -------------------------------------------------------

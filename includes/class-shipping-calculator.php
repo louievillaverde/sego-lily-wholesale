@@ -23,6 +23,32 @@ class SLW_Shipping_Calculator {
 
     public static function init() {
         add_action( 'wp_ajax_slw_estimate_shipping', array( __CLASS__, 'ajax_estimate_shipping' ) );
+        // Site-wide filter -- applies to the order-form AJAX estimate,
+        // the cart page, and the standard /checkout. Strips bogus
+        // free-shipping methods (e.g. Flexible Shipping (Free)) so they
+        // never appear to wholesale customers; Local Pickup is the
+        // only legitimately-free option.
+        add_filter( 'woocommerce_package_rates', array( __CLASS__, 'filter_bogus_free_rates' ), 100, 2 );
+    }
+
+    /**
+     * Strip $0 shipping rates that aren't Local Pickup. Holly's setup has
+     * a "Flexible Shipping (Free)" rate appearing that nobody set up
+     * intentionally; the only legitimate free option for wholesale is
+     * Local Pickup. Applies everywhere WC computes shipping packages.
+     */
+    public static function filter_bogus_free_rates( $rates, $package ) {
+        if ( ! function_exists( 'slw_is_wholesale_context' ) || ! slw_is_wholesale_context() ) {
+            return $rates;
+        }
+        foreach ( $rates as $rate_id => $rate ) {
+            $cost      = (float) $rate->get_cost();
+            $method_id = $rate->get_method_id();
+            if ( $cost <= 0 && $method_id !== 'local_pickup' ) {
+                unset( $rates[ $rate_id ] );
+            }
+        }
+        return $rates;
     }
 
     public static function ajax_estimate_shipping() {

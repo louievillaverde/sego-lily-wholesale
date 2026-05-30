@@ -90,6 +90,14 @@ class SLW_Wholesale_Role {
         // Add "Continue Shopping" link after add-to-cart on single product pages
         add_action( 'woocommerce_after_add_to_cart_button', array( __CLASS__, 'continue_shopping_link' ) );
 
+        // Coupon gating: block retail coupons for wholesale customers,
+        // allow only codes that signal wholesale-intent via a prefix
+        // (WHOLESALE-, WS-, WHOLE-) OR have the _slw_wholesale_allowed
+        // post meta set to '1' on the coupon. Default retail coupons
+        // never apply at wholesale prices.
+        add_filter( 'woocommerce_coupon_is_valid', array( __CLASS__, 'gate_coupon_for_wholesale' ), 10, 3 );
+        add_filter( 'woocommerce_coupon_error',    array( __CLASS__, 'coupon_error_for_wholesale' ), 10, 3 );
+
         // Bulk action: grant NET 30 to existing wholesale accounts
         add_filter( 'bulk_actions-users', array( __CLASS__, 'add_bulk_net30_action' ) );
         add_filter( 'handle_bulk_actions-users', array( __CLASS__, 'handle_bulk_net30_action' ), 10, 3 );
@@ -382,6 +390,40 @@ class SLW_Wholesale_Role {
         }
         ksort( $tiers );
         return $tiers;
+    }
+
+    /**
+     * Decide whether a coupon is valid for the current request. Wholesale
+     * customers get only coupons whose code starts with WHOLESALE-, WS-,
+     * or WHOLE- (case-insensitive) OR coupons explicitly flagged via
+     * _slw_wholesale_allowed meta. Retail coupons are blocked so they
+     * can't double-discount the already-wholesale prices.
+     */
+    public static function gate_coupon_for_wholesale( $is_valid, $coupon, $discounts = null ) {
+        if ( ! slw_is_wholesale_context() ) return $is_valid;
+        if ( ! $is_valid ) return $is_valid;
+        if ( ! is_object( $coupon ) || ! method_exists( $coupon, 'get_code' ) ) return $is_valid;
+
+        // Admin override
+        $allowed = get_post_meta( $coupon->get_id(), '_slw_wholesale_allowed', true );
+        if ( $allowed === '1' ) return $is_valid;
+
+        $code = strtoupper( (string) $coupon->get_code() );
+        $wholesale_prefixes = array( 'WHOLESALE-', 'WS-', 'WHOLE-', 'B2B-' );
+        foreach ( $wholesale_prefixes as $prefix ) {
+            if ( strpos( $code, $prefix ) === 0 ) return $is_valid;
+        }
+        return false;
+    }
+
+    /**
+     * Replace WC's generic "Coupon not valid" message with a wholesale-
+     * specific explanation when our filter rejected.
+     */
+    public static function coupon_error_for_wholesale( $err, $err_code, $coupon ) {
+        if ( ! slw_is_wholesale_context() ) return $err;
+        if ( (int) $err_code !== WC_Coupon::E_WC_COUPON_INVALID_FILTERED ) return $err;
+        return 'This coupon is for retail customers. Wholesale customers can use coupons with codes starting with WHOLESALE-, WS-, WHOLE-, or B2B-. Ask Holly if you need a wholesale-specific code.';
     }
 
     /**
