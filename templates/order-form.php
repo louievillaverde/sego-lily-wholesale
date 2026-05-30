@@ -215,10 +215,9 @@ $products = $all_products; // keep for empty check
             $has_saved          = ! empty( $saved_carts );
             ?>
             <div class="slw-saved-orders" id="slw-saved-orders">
-                <label class="slw-saved-orders__label" for="slw-saved-orders-select">Saved orders</label>
                 <select class="slw-saved-orders__select" id="slw-saved-orders-select" data-nonce="<?php echo esc_attr( $saved_carts_nonce ); ?>" <?php echo $has_saved ? '' : 'disabled'; ?>>
                     <?php if ( $has_saved ) : ?>
-                        <option value="">Load a saved order…</option>
+                        <option value="">Order Templates</option>
                         <?php foreach ( $saved_carts as $slug => $tpl ) :
                             $item_count = isset( $tpl['items'] ) ? count( $tpl['items'] ) : 0;
                             $label = sprintf(
@@ -232,7 +231,7 @@ $products = $all_products; // keep for empty check
                             <option value="<?php echo esc_attr( $slug ); ?>"><?php echo esc_html( $label ); ?></option>
                         <?php endforeach; ?>
                     <?php else : ?>
-                        <option value="">No saved orders yet — save current cart below</option>
+                        <option value="">Save your go-to orders here!</option>
                     <?php endif; ?>
                 </select>
             </div>
@@ -1083,58 +1082,58 @@ $products = $all_products; // keep for empty check
     position: relative;
     flex-shrink: 0;
 }
-.slw-saved-orders__label {
-    display: block;
-    font-size: 10px;
-    font-weight: 700;
-    color: #628393;
-    text-transform: uppercase;
-    letter-spacing: 0.6px;
-    margin-bottom: 4px;
-    white-space: nowrap;
-    padding-left: 2px;
-}
 .slw-saved-orders__select {
     appearance: none;
     -webkit-appearance: none;
     -moz-appearance: none;
-    padding: 10px 36px 10px 14px;
-    border: 1px solid #d4cebc;
+    padding: 0 38px 0 18px;
+    height: 42px;
+    border: 1px solid #386174;
     border-radius: 8px;
-    background-color: #ffffff;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8' fill='none'><path d='M1 1.5L6 6.5L11 1.5' stroke='%23386174' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    background-color: #386174;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8' fill='none'><path d='M1 1.5L6 6.5L11 1.5' stroke='%23F7F6F3' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/></svg>");
     background-repeat: no-repeat;
-    background-position: right 12px center;
+    background-position: right 14px center;
     background-size: 12px 8px;
-    color: #2C2C2C;
-    font-size: 13.5px;
-    font-weight: 600;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    color: #F7F6F3;
+    font-size: 14px;
+    font-weight: 700;
+    font-family: Georgia, 'Times New Roman', serif;
+    letter-spacing: 0.2px;
     cursor: pointer;
-    min-width: 240px;
+    min-width: 220px;
     max-width: 320px;
-    height: 38px;
-    transition: border-color 0.15s, box-shadow 0.15s, background-color 0.15s;
-    box-shadow: 0 1px 2px rgba(56, 97, 116, 0.04);
+    transition: background-color 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.1s;
+    box-shadow: 0 2px 6px rgba(56, 97, 116, 0.20);
 }
 .slw-saved-orders__select:hover:not(:disabled) {
-    border-color: #386174;
-    background-color: #FAF8F2;
+    background-color: #2C4F5E;
+    border-color: #2C4F5E;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(56, 97, 116, 0.32);
 }
 .slw-saved-orders__select:focus {
     outline: none;
-    border-color: #386174;
-    box-shadow: 0 0 0 3px rgba(56, 97, 116, 0.12);
+    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.45), 0 2px 6px rgba(56, 97, 116, 0.20);
+}
+.slw-saved-orders__select option {
+    color: #2C2C2C;
+    background: #ffffff;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-weight: 500;
 }
 .slw-saved-orders__select:disabled {
     background-color: #FAF8F2;
-    color: #8a9aa1;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8' fill='none'><path d='M1 1.5L6 6.5L11 1.5' stroke='%23b9a07c' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+    color: #826a3e;
+    border: 1px dashed #D4AF37;
     cursor: not-allowed;
-    opacity: 0.85;
-    border-style: dashed;
+    box-shadow: none;
+    opacity: 1;
 }
+.slw-saved-orders__select:disabled:hover { transform: none; }
 @media (max-width: 720px) {
-    .slw-saved-orders__select { min-width: 200px; }
+    .slw-saved-orders__select { min-width: 190px; height: 40px; }
 }
 .slw-minimum-note {
     margin-top: 0 !important;
