@@ -4122,6 +4122,20 @@ button.slw-reorder-btn:hover {
 .slw-checkout-back-link a:hover { color: #D4AF37; border-bottom-color: #D4AF37; }
 
 /* Brand polish on the WC place-order button. Minimal scoping. */
+/* WC order summary on /checkout: nudge the price column up so it
+   aligns with the top of the product name instead of sitting on the
+   baseline of the qty/x line. LV directive 2026-05-29. */
+.slw-checkout-page .shop_table.woocommerce-checkout-review-order-table td.product-name,
+.slw-checkout-page .shop_table.woocommerce-checkout-review-order-table td.product-total {
+    vertical-align: top !important;
+    padding-top: 12px !important;
+}
+.slw-checkout-page .shop_table.woocommerce-checkout-review-order-table td.product-total {
+    /* small upward nudge to land the dollar amount level with the
+       top line of the product name (vs the qty x N line below). */
+    padding-top: 14px !important;
+}
+
 .slw-checkout-page #place_order {
     background: linear-gradient(135deg, #E5C246 0%, #D4AF37 50%, #B6932A 100%) !important;
     color: #1E2A30 !important;

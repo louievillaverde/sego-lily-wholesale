@@ -77,6 +77,43 @@ if ( $has_ordered ) {
 $nonce = wp_create_nonce( 'slw_order_form' );
 $ajax_url = admin_url( 'admin-ajax.php' );
 
+// Build a JS-side map of category + product minimums so we can surface
+// violations in the Cart Preview without waiting for the customer to
+// reach checkout. Both maps are keyed by ID, values include the name
+// and the minimum so the warning can read naturally.
+$js_category_mins = array();
+if ( class_exists( 'SLW_Category_Minimums' ) ) {
+    $cat_mins = SLW_Category_Minimums::get_minimums();
+    foreach ( (array) $cat_mins as $term_id => $min_qty ) {
+        $term = get_term( $term_id, 'product_cat' );
+        $js_category_mins[ (int) $term_id ] = array(
+            'name' => $term && ! is_wp_error( $term ) ? $term->name : ( 'Category #' . $term_id ),
+            'min'  => (int) $min_qty,
+        );
+    }
+}
+$js_product_mins = array();
+$js_product_categories = array();
+if ( class_exists( 'SLW_Product_Minimums' ) ) {
+    foreach ( $all_products as $p ) {
+        $pid = $p->get_id();
+        $min = SLW_Product_Minimums::get_product_minimum( $pid );
+        if ( $min > 0 ) {
+            $js_product_mins[ $pid ] = array(
+                'name' => $p->get_name(),
+                'min'  => (int) $min,
+            );
+        }
+        // Map for category-min lookups: which categories does this
+        // product belong to? Pre-built once per page so the JS doesn't
+        // have to fetch per product.
+        $term_ids = wc_get_product_term_ids( $pid, 'product_cat' );
+        if ( ! empty( $term_ids ) ) {
+            $js_product_categories[ $pid ] = array_map( 'intval', $term_ids );
+        }
+    }
+}
+
 // Get all published products
 $all_products = wc_get_products( array(
     'status'  => 'publish',
@@ -907,7 +944,17 @@ $products = $all_products; // keep for empty check
             <button type="button" class="slw-cart-preview__clear" id="slw-cart-preview-clear" hidden>Clear cart</button>
         </div>
         <ul class="slw-cart-preview__list" id="slw-cart-preview-list"></ul>
+        <div class="slw-cart-violations" id="slw-cart-violations" hidden>
+            <div class="slw-cart-violations__title">Cart needs attention before checkout</div>
+            <ul class="slw-cart-violations__list" id="slw-cart-violations-list"></ul>
+        </div>
     </div>
+    <script>
+        window.SLW_DATA = window.SLW_DATA || {};
+        window.SLW_DATA.categoryMins      = <?php echo wp_json_encode( (object) $js_category_mins ); ?>;
+        window.SLW_DATA.productMins       = <?php echo wp_json_encode( (object) $js_product_mins ); ?>;
+        window.SLW_DATA.productCategories = <?php echo wp_json_encode( (object) $js_product_categories ); ?>;
+    </script>
 
     <!-- Order Subtotal -->
     <div class="slw-of-card slw-order-summary-card" aria-live="polite">
@@ -1430,6 +1477,37 @@ $products = $all_products; // keep for empty check
     transform: scale(1.05);
 }
 .slw-cart-preview__remove:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Cart minimum violations -- surfaces per-product + per-category
+   minimums before checkout so customers can fix in-page. */
+.slw-cart-violations {
+    margin-top: 14px;
+    padding: 14px 16px;
+    background: #fff5f0;
+    border: 1px solid #f0c8a8;
+    border-left: 4px solid #c0703a;
+    border-radius: 8px;
+    color: #6b3b1a;
+}
+.slw-cart-violations[hidden] { display: none !important; }
+.slw-cart-violations__title {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-weight: 700;
+    font-size: 14px;
+    color: #6b3b1a;
+    margin-bottom: 8px;
+    text-wrap: balance;
+}
+.slw-cart-violations__list {
+    list-style: disc;
+    margin: 0;
+    padding-left: 20px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #6b3b1a;
+}
+.slw-cart-violations__list li { margin-bottom: 4px; text-wrap: pretty; }
+.slw-cart-violations__list li:last-child { margin-bottom: 0; }
 /* Reposition + restyle the WooCommerce "added to cart" notice on the
    wholesale order form. Default behavior dumps a green block right above
    the Proceed to Checkout button -- looks sloppy and covers the CTA.
@@ -1667,6 +1745,59 @@ body.page-wholesale-order .woocommerce-message .restore-item,
     dismissWcToasts();
     if (typeof window.jQuery !== 'undefined') {
         jQuery(document.body).on('added_to_cart wc_fragments_refreshed wc_fragments_loaded', dismissWcToasts);
+    }
+
+    // Cart minimum violations: scan inCartItems against the server-built
+    // category + product minimums maps and surface any violations under
+    // the Cart Preview so the customer can fix BEFORE hitting checkout.
+    var violationsEl     = document.getElementById('slw-cart-violations');
+    var violationsListEl = document.getElementById('slw-cart-violations-list');
+    function computeViolations() {
+        var data = window.SLW_DATA || {};
+        var catTotals  = {};
+        var prodTotals = {};
+        (inCartItems || []).forEach(function(ci) {
+            var pid = parseInt(ci.product_id, 10) || 0;
+            var qty = parseInt(ci.qty, 10) || 0;
+            if (pid <= 0 || qty <= 0) return;
+            prodTotals[pid] = (prodTotals[pid] || 0) + qty;
+            var cats = (data.productCategories || {})[pid] || [];
+            cats.forEach(function(tid) {
+                catTotals[tid] = (catTotals[tid] || 0) + qty;
+            });
+        });
+        var out = [];
+        Object.keys(data.categoryMins || {}).forEach(function(tid) {
+            var rule = data.categoryMins[tid];
+            var have = catTotals[tid] || 0;
+            if (have > 0 && have < rule.min) {
+                out.push(rule.name + ' minimum: ' + rule.min + ' units. You have ' + have + '. Add ' + (rule.min - have) + ' more (mix & match across scents).');
+            }
+        });
+        Object.keys(data.productMins || {}).forEach(function(pid) {
+            var rule = data.productMins[pid];
+            var have = prodTotals[pid] || 0;
+            if (have > 0 && have < rule.min) {
+                out.push(rule.name + ' minimum: ' + rule.min + '. You have ' + have + '. Add ' + (rule.min - have) + ' more.');
+            }
+        });
+        return out;
+    }
+    function renderViolations() {
+        if (!violationsEl || !violationsListEl) return [];
+        var v = computeViolations();
+        violationsListEl.innerHTML = '';
+        if (v.length === 0) {
+            violationsEl.hidden = true;
+            return v;
+        }
+        violationsEl.hidden = false;
+        v.forEach(function(line) {
+            var li = document.createElement('li');
+            li.textContent = line;
+            violationsListEl.appendChild(li);
+        });
+        return v;
     }
 
     // Cart Preview: per-line remove + qty +/- + direct input + clear-all
@@ -1937,6 +2068,10 @@ body.page-wholesale-order .woocommerce-message .restore-item,
             }
         }
 
+        // Recompute violations (per-product + per-category minimums) so
+        // they surface in the Cart Preview before checkout, not after.
+        var currentViolations = renderViolations();
+
         // Sticky bar update.
         // Bar now reports CART total (committed via Add buttons) and
         // STAGED total (quantities typed but not yet added) separately
@@ -1986,7 +2121,9 @@ body.page-wholesale-order .woocommerce-message .restore-item,
                     // size, not a checkout gate.
                     stickyBar.classList.remove('slw-sticky-bar--met');
                     if (stickyMsg) {
-                        if (cartTotal >= minimum) {
+                        if (currentViolations.length > 0) {
+                            stickyMsg.textContent = 'Cart needs attention: ' + currentViolations.length + ' minimum not met. See below.';
+                        } else if (cartTotal >= minimum) {
                             stickyMsg.textContent = 'Above ' + minLabel + '. Ready to check out.';
                         } else if (cartTotal > 0) {
                             stickyMsg.textContent = 'You can check out at any amount. ' + minLabel.charAt(0).toUpperCase() + minLabel.slice(1) + ' for reference: ' + formatPrice(minimum) + '.';
@@ -1996,14 +2133,18 @@ body.page-wholesale-order .woocommerce-message .restore-item,
                             stickyMsg.textContent = '';
                         }
                     }
-                    if (stickyCta) stickyCta.disabled = cartItemCount === 0;
+                    if (stickyCta) stickyCta.disabled = cartItemCount === 0 || currentViolations.length > 0;
                 } else {
                     // First-order mode: hard floor, checkout disabled
                     // until the cart (not staged) meets the minimum.
-                    if (cartTotal >= minimum) {
+                    if (cartTotal >= minimum && currentViolations.length === 0) {
                         stickyBar.classList.add('slw-sticky-bar--met');
                         if (stickyMsg) stickyMsg.textContent = 'Minimum met. Ready to check out.';
                         if (stickyCta) stickyCta.disabled = false;
+                    } else if (currentViolations.length > 0) {
+                        stickyBar.classList.remove('slw-sticky-bar--met');
+                        if (stickyMsg) stickyMsg.textContent = 'Cart needs attention: ' + currentViolations.length + ' minimum not met. See below.';
+                        if (stickyCta) stickyCta.disabled = true;
                     } else {
                         stickyBar.classList.remove('slw-sticky-bar--met');
                         var diff = minimum - cartTotal;

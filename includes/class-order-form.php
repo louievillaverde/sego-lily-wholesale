@@ -262,7 +262,7 @@ class SLW_Order_Form {
             $type = $product->get_type();
             $result = false;
 
-            if ( $type === 'variable' ) {
+            if ( $type === 'variable' || $type === 'variable-subscription' ) {
                 // Variable products: the order form renders one row per
                 // variation, so $variation_id MUST be set for the add to
                 // succeed. If it's missing, fall back to the variation
