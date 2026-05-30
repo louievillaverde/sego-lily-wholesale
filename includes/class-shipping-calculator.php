@@ -27,8 +27,15 @@ class SLW_Shipping_Calculator {
         // the cart page, and the standard /checkout. Strips bogus
         // free-shipping methods (e.g. Flexible Shipping (Free)) so they
         // never appear to wholesale customers; Local Pickup is the
-        // only legitimately-free option.
+        // only legitimately-free option. Also injects an "Invoiced
+        // separately" pseudo-rate when Local Pickup would otherwise be
+        // the only choice (most wholesale buyers ship, not pick up).
         add_filter( 'woocommerce_package_rates', array( __CLASS__, 'filter_bogus_free_rates' ), 100, 2 );
+        // Prevent WC from auto-selecting Local Pickup just because it's
+        // the cheapest. Wholesale customers should make an explicit
+        // pickup choice; default to the "Invoiced separately" pseudo-
+        // rate or any real shipping method instead.
+        add_filter( 'woocommerce_shipping_chosen_method', array( __CLASS__, 'avoid_auto_local_pickup' ), 10, 2 );
     }
 
     /**
@@ -36,6 +43,10 @@ class SLW_Shipping_Calculator {
      * a "Flexible Shipping (Free)" rate appearing that nobody set up
      * intentionally; the only legitimate free option for wholesale is
      * Local Pickup. Applies everywhere WC computes shipping packages.
+     *
+     * If after stripping the only remaining rate is Local Pickup, append
+     * an "Invoiced separately" pseudo-rate so the customer isn't forced
+     * to choose pickup when they need shipping.
      */
     public static function filter_bogus_free_rates( $rates, $package ) {
         if ( ! function_exists( 'slw_is_wholesale_context' ) || ! slw_is_wholesale_context() ) {
@@ -48,7 +59,64 @@ class SLW_Shipping_Calculator {
                 unset( $rates[ $rate_id ] );
             }
         }
+        // Inject the "Invoiced separately" pseudo-rate when no real
+        // shipping method survived the filter (only LP, or nothing).
+        $non_pickup = array_filter( $rates, function( $r ) {
+            return $r->get_method_id() !== 'local_pickup'
+                && $r->get_method_id() !== 'slw_invoice_shipping';
+        } );
+        if ( empty( $non_pickup ) ) {
+            $fallback_id = 'slw_invoice_shipping';
+            $rate_id = $fallback_id . ':1';
+            if ( ! isset( $rates[ $rate_id ] ) ) {
+                $rate = new WC_Shipping_Rate(
+                    $rate_id,
+                    'Shipping invoiced separately',
+                    0,
+                    array(),
+                    $fallback_id
+                );
+                $rates[ $rate_id ] = $rate;
+            }
+        }
         return $rates;
+    }
+
+    /**
+     * Don't let WC auto-select Local Pickup as the default shipping
+     * method. WC picks whatever is first / cheapest; for wholesale
+     * customers we want the customer to make an explicit choice, so
+     * prefer (in order): any real paid shipping method, our
+     * "Invoiced separately" pseudo-rate, then finally Local Pickup
+     * only if nothing else is available.
+     */
+    public static function avoid_auto_local_pickup( $chosen_method, $available_methods ) {
+        if ( ! function_exists( 'slw_is_wholesale_context' ) || ! slw_is_wholesale_context() ) {
+            return $chosen_method;
+        }
+        if ( empty( $available_methods ) ) return $chosen_method;
+        // If WC's current choice isn't Local Pickup, leave it alone.
+        if ( isset( $available_methods[ $chosen_method ] ) ) {
+            $current = $available_methods[ $chosen_method ];
+            if ( $current && method_exists( $current, 'get_method_id' )
+                && $current->get_method_id() !== 'local_pickup' ) {
+                return $chosen_method;
+            }
+        }
+        // Prefer any non-pickup, non-invoice rate first
+        foreach ( $available_methods as $key => $rate ) {
+            $mid = $rate->get_method_id();
+            if ( $mid !== 'local_pickup' && $mid !== 'slw_invoice_shipping' ) {
+                return $key;
+            }
+        }
+        // Then our invoice-separately pseudo-rate
+        foreach ( $available_methods as $key => $rate ) {
+            if ( $rate->get_method_id() === 'slw_invoice_shipping' ) {
+                return $key;
+            }
+        }
+        return $chosen_method;
     }
 
     public static function ajax_estimate_shipping() {
