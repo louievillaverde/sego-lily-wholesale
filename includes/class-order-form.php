@@ -477,9 +477,9 @@ class SLW_Order_Form {
     }
 
     private static function prime_variation_attributes( $product, $variation, $variation_id ) {
-        // Customer-friendly aliases that should satisfy specific attribute
-        // names even when the actual terms don't include them. Holly will
-        // sometimes drop 'Gift' from product names; cover both forms.
+        // Aliases that should satisfy specific attribute names even when
+        // the canonical term slug doesn't include them. Holly sometimes
+        // drops 'Gift' from product names; cover both forms.
         $preferred_terms = array(
             'gift-box-varieties' => array( 'variety', 'varieties', 'variety-gift-set', 'variety-gift-sets', 'variety-set', 'variety-sets' ),
             'variety-gift-sets'  => array( 'variety', 'varieties', 'variety-gift-set', 'variety-gift-sets', 'variety-set', 'variety-sets' ),
@@ -487,7 +487,8 @@ class SLW_Order_Form {
             'gift-set-type'      => array( 'variety', 'varieties', 'variety-gift-set' ),
         );
 
-        // Pull the specific variation's own attribute values first (most authoritative).
+        // 1. Pull the specific variation's own attribute values first
+        //    (most authoritative).
         if ( $variation_id > 0 ) {
             $matched = wc_get_product( $variation_id );
             if ( $matched instanceof WC_Product_Variation ) {
@@ -500,9 +501,32 @@ class SLW_Order_Form {
             }
         }
 
-        // Fill remaining required attributes from the parent.
+        // 2. For each required-for-variation attribute that's STILL
+        //    missing, try a cascade of fallbacks:
+        //      a. preferred-term aliases (handles bespoke slugs)
+        //      b. terms assigned to the parent product
+        //      c. ANY value used by ANY sibling variation
+        //      d. first option configured on the attribute itself
         $attrs = $product->get_attributes();
         if ( ! is_array( $attrs ) ) return $variation;
+
+        // Pre-build a map of "values seen on any variation per attr key"
+        // so we can fall back to a sibling's value when the parent has
+        // none defined. Cheap one-pass scan of children.
+        $sibling_values = array();
+        if ( method_exists( $product, 'get_children' ) ) {
+            foreach ( (array) $product->get_children() as $child_id ) {
+                $child = wc_get_product( (int) $child_id );
+                if ( ! $child instanceof WC_Product_Variation ) continue;
+                foreach ( $child->get_attributes() as $tax => $value ) {
+                    if ( $value === '' || $value === null ) continue;
+                    $key = sanitize_title( $tax );
+                    if ( ! isset( $sibling_values[ $key ] ) ) {
+                        $sibling_values[ $key ] = $value;
+                    }
+                }
+            }
+        }
 
         foreach ( $attrs as $attr_key => $attr_obj ) {
             if ( ! is_object( $attr_obj ) || ! method_exists( $attr_obj, 'get_variation' ) ) continue;
@@ -511,36 +535,75 @@ class SLW_Order_Form {
             $field_key = 'attribute_' . sanitize_title( $attr_key );
             if ( ! empty( $variation[ $field_key ] ) ) continue;
 
-            // Build option list (taxonomy terms or product-level free-text).
-            $candidates = array();
+            $slug = sanitize_title( $attr_key );
+            $assigned = '';
+
+            // a. Preferred-term alias on the parent's term list
+            $parent_terms = array();
             if ( $attr_obj->is_taxonomy() ) {
-                $terms = wc_get_product_terms( $product->get_id(), $attr_obj->get_name(), array( 'fields' => 'slugs' ) );
-                if ( ! empty( $terms ) ) $candidates = (array) $terms;
+                $parent_terms = (array) wc_get_product_terms( $product->get_id(), $attr_obj->get_name(), array( 'fields' => 'slugs' ) );
             } else {
-                $options = $attr_obj->get_options();
-                foreach ( (array) $options as $opt ) {
-                    $candidates[] = sanitize_title( (string) $opt );
+                foreach ( (array) $attr_obj->get_options() as $opt ) {
+                    $parent_terms[] = sanitize_title( (string) $opt );
                 }
             }
-            if ( empty( $candidates ) ) continue;
 
-            // Prefer aliases when defined for this attribute.
-            $slug = sanitize_title( $attr_key );
             if ( isset( $preferred_terms[ $slug ] ) ) {
                 foreach ( $preferred_terms[ $slug ] as $alias ) {
-                    if ( in_array( $alias, $candidates, true ) ) {
-                        $variation[ $field_key ] = $alias;
-                        continue 2;
+                    if ( in_array( $alias, $parent_terms, true ) ) {
+                        $assigned = $alias;
+                        break;
                     }
                 }
-                // No alias in the candidate set: still accept the customer's
-                // intent and force one of the alias values through. WC's
-                // taxonomy validation only checks slugs match registered
-                // terms, so this only helps when the alias IS a real term.
             }
 
-            // Fallback: first candidate.
-            $variation[ $field_key ] = $candidates[0];
+            // b. First term assigned to the parent
+            if ( $assigned === '' && ! empty( $parent_terms ) ) {
+                $assigned = $parent_terms[0];
+            }
+
+            // c. ANY value seen on a sibling variation (catches "Any"
+            //    attribute setups where the parent has no terms but at
+            //    least one variation does)
+            if ( $assigned === '' && isset( $sibling_values[ $slug ] ) ) {
+                $assigned = $sibling_values[ $slug ];
+            }
+
+            // d. Final fallback: first configured option on the attribute
+            //    itself. wc_attribute_orderby for taxonomies, options for
+            //    product-level.
+            if ( $assigned === '' ) {
+                if ( $attr_obj->is_taxonomy() ) {
+                    $taxonomy = $attr_obj->get_name();
+                    $all_terms = get_terms( array( 'taxonomy' => $taxonomy, 'hide_empty' => false, 'fields' => 'slugs', 'number' => 1 ) );
+                    if ( ! is_wp_error( $all_terms ) && ! empty( $all_terms ) ) {
+                        $assigned = $all_terms[0];
+                    }
+                } else {
+                    $opts = (array) $attr_obj->get_options();
+                    if ( ! empty( $opts ) ) {
+                        $assigned = sanitize_title( (string) $opts[0] );
+                    }
+                }
+            }
+
+            if ( $assigned !== '' ) {
+                $variation[ $field_key ] = $assigned;
+            } else {
+                // Surface the failure so we can debug what's actually
+                // configured on Holly's side. Without this, the only
+                // signal is the customer-facing "X is a required field"
+                // error.
+                error_log( sprintf(
+                    '[SLW prime_variation_attributes] product %d (%s) attr "%s" (slug %s) -- no candidate value found (parent_terms=%d, sibling_values=%s)',
+                    $product->get_id(),
+                    $product->get_name(),
+                    $attr_key,
+                    $slug,
+                    count( $parent_terms ),
+                    isset( $sibling_values[ $slug ] ) ? 'yes' : 'no'
+                ) );
+            }
         }
 
         return $variation;
