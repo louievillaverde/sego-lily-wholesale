@@ -1864,10 +1864,49 @@ body.page-wholesale-order .woocommerce-message .restore-item,
             if (removeBtn) {
                 e.preventDefault();
                 removeBtn.disabled = true;
+                var ckey = removeBtn.getAttribute('data-cart-key')     || '';
+                var pid  = removeBtn.getAttribute('data-product-id')   || '0';
+                var vid  = removeBtn.getAttribute('data-variation-id') || '0';
+                // Optimistic local removal: drop the row from inCartItems
+                // and re-render immediately so the X feels instant. If the
+                // server reconciles with a different cart state, the next
+                // server response overwrites our local view.
+                var snapshot = inCartItems.slice();
+                inCartItems = inCartItems.filter(function(ci) {
+                    if (ckey && ci.cart_key === ckey) return false;
+                    if (pid !== '0' && vid !== '0'
+                        && String(ci.product_id) === pid
+                        && String(ci.variation_id) === vid) return false;
+                    if (pid !== '0' && vid === '0'
+                        && String(ci.product_id) === pid
+                        && (!ci.variation_id || ci.variation_id === 0)) return false;
+                    return true;
+                });
+                updateSubtotal();
                 postCartAction('slw_remove_cart_line', {
-                    cart_key:     removeBtn.getAttribute('data-cart-key')     || '',
-                    product_id:   removeBtn.getAttribute('data-product-id')   || '0',
-                    variation_id: removeBtn.getAttribute('data-variation-id') || '0'
+                    cart_key:     ckey,
+                    product_id:   pid,
+                    variation_id: vid
+                }).then(function(json) {
+                    // If the server response still includes the item (server
+                    // didn't actually remove it), restore the snapshot and
+                    // surface an error so we can see the failure.
+                    if (json && json.success && json.data && Array.isArray(json.data.items)) {
+                        var stillThere = json.data.items.some(function(ci) {
+                            if (ckey) return ci.cart_key === ckey;
+                            if (pid !== '0' && vid !== '0') return String(ci.product_id) === pid && String(ci.variation_id) === vid;
+                            return String(ci.product_id) === pid;
+                        });
+                        if (stillThere) {
+                            inCartItems = snapshot;
+                            updateSubtotal();
+                            showMessage('Could not remove the item. Try Clear Cart and re-adding what you want.', 'error');
+                        }
+                    } else if (!json || !json.success) {
+                        inCartItems = snapshot;
+                        updateSubtotal();
+                        showMessage('Could not remove the item (AJAX error). Check console.', 'error');
+                    }
                 });
                 return;
             }
