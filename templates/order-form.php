@@ -1533,6 +1533,9 @@ body.page-wholesale-order .woocommerce-message .restore-item,
 
     // Auto-dismiss the toast-styled WooCommerce notice after 4s. Adds a
     // leaving class for the slide-out animation, then removes from DOM.
+    // Listen to WC's own events instead of MutationObserver -- a body-
+    // subtree observer fires on every DOM mutation and was killing
+    // perf on Elementor pages.
     function dismissWcToasts() {
         var notices = document.querySelectorAll('.woocommerce-message, .wc-block-components-notice-banner, .wc-block-components-notice-snackbar');
         notices.forEach(function(n) {
@@ -1545,9 +1548,9 @@ body.page-wholesale-order .woocommerce-message .restore-item,
         });
     }
     dismissWcToasts();
-    try {
-        new MutationObserver(dismissWcToasts).observe(document.body, { childList: true, subtree: true });
-    } catch (e) {}
+    if (typeof window.jQuery !== 'undefined') {
+        jQuery(document.body).on('added_to_cart wc_fragments_refreshed wc_fragments_loaded', dismissWcToasts);
+    }
 
     // Cart Preview: per-line remove + qty +/- + direct input + clear-all
     if (previewListEl) {

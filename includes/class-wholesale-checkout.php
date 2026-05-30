@@ -24,13 +24,12 @@ class SLW_Wholesale_Checkout {
     }
 
     public static function render() {
-        // Force wholesale shopping context for the checkout. Same
-        // reasoning as the order form -- if a wholesale customer has
-        // a stale "retail" preference in their session, force-set to
-        // wholesale so apply_wholesale_price runs and the cart line
-        // totals match what the order form showed.
+        // Force wholesale shopping context for the checkout. Only write
+        // if the session isn't already wholesale to avoid a needless
+        // session save on every request.
         if ( is_user_logged_in() && function_exists( 'slw_is_wholesale_user' )
-            && slw_is_wholesale_user() && function_exists( 'WC' ) && WC()->session ) {
+            && slw_is_wholesale_user() && function_exists( 'WC' ) && WC()->session
+            && WC()->session->get( 'slw_shopping_context' ) !== 'wholesale' ) {
             WC()->session->set( 'slw_shopping_context', 'wholesale' );
         }
         if ( ! is_user_logged_in() ) {
@@ -42,12 +41,6 @@ class SLW_Wholesale_Checkout {
         if ( ! function_exists( 'WC' ) || ! WC()->cart || WC()->cart->is_empty() ) {
             return '<div class="slw-checkout-gate slw-checkout-empty"><h2 class="slw-balance">Your cart is empty</h2><p class="slw-pretty">Nothing to check out yet. Pick up where you left off on the order form.</p><a class="slw-btn slw-btn-primary" href="' . esc_url( home_url( '/wholesale-order' ) ) . '">Back to the order form</a></div>';
         }
-
-        // Re-prime cart prices in case anything in the cart bypassed our
-        // wholesale filter on add-to-cart. Recalculate ensures the
-        // summary shown on this page matches what the order form
-        // shows (apply_wholesale_price runs as the cart recalculates).
-        WC()->cart->calculate_totals();
 
         ob_start();
         ?>

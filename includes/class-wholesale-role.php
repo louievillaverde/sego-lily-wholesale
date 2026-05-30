@@ -892,73 +892,12 @@ class SLW_Wholesale_Role {
      * themes that auto-open a side cart on that event stay closed.
      */
     public static function suppress_side_cart_js() {
-        if ( is_admin() || ! slw_is_wholesale_context() ) {
-            return;
-        }
-        ?>
-        <script>
-        // Bottom Cart Preview bar coordination: hide it the moment a cart
-        // icon is clicked, restore it when the cart panel closes (or after
-        // a few seconds if we never observe the close). Simple. Direct.
-        (function() {
-            var iconSelectors = [
-                '.elementor-menu-cart__toggle',
-                '.elementor-menu-cart__toggle_button',
-                '.elementor-widget-woocommerce-menu-cart a',
-                '.menu-item-cart a',
-                '.header-cart a',
-                '.header-cart-link',
-                '.cart-toggle',
-                '.shopping-cart-icon',
-                'a.cart-contents',
-                '.wc-block-mini-cart__button',
-                'a[href$="/cart/"]',
-                'a[href$="/cart"]'
-            ];
-            var openClasses = [
-                '.elementor-menu-cart--shown',
-                '.elementor-menu-cart--opened',
-                '.wc-block-mini-cart--open'
-            ];
-            function hideBar() {
-                var bar = document.querySelector('.slw-sticky-bar');
-                if (bar) bar.classList.add('slw-sticky-bar--hidden-by-cart');
-            }
-            function showBar() {
-                var bar = document.querySelector('.slw-sticky-bar');
-                if (bar) bar.classList.remove('slw-sticky-bar--hidden-by-cart');
-            }
-            function isCartIcon(el) {
-                if (!el || el.nodeType !== 1) return false;
-                for (var i = 0; i < iconSelectors.length; i++) {
-                    try { if (el.closest && el.closest(iconSelectors[i])) return true; } catch (e) {}
-                }
-                return false;
-            }
-            // Click on any cart icon -> hide bar immediately.
-            document.addEventListener('click', function(e) {
-                if (isCartIcon(e.target)) hideBar();
-            });
-            // When the cart panel closes, show the bar again.
-            try {
-                new MutationObserver(function() {
-                    var anyOpen = openClasses.some(function(sel) { return !!document.querySelector(sel); });
-                    if (!anyOpen) showBar();
-                }).observe(document.documentElement, {
-                    subtree: true, attributes: true, attributeFilter: ['class']
-                });
-            } catch (e) {}
-        })();
-        </script>
-        <style id="slw-sticky-side-cart-coordination">
-            .slw-sticky-bar.slw-sticky-bar--hidden-by-cart {
-                transform: translateY(110%) !important;
-                opacity: 0 !important;
-                transition: transform 0.25s ease, opacity 0.25s ease !important;
-                pointer-events: none !important;
-            }
-        </style>
-        <?php
+        // The cart icon is hidden entirely via CSS for wholesale users
+        // (see hide_subscription_css). There's nothing left to coordinate
+        // with -- skip all JS. The previous MutationObserver on
+        // documentElement subtree was a perf killer on Elementor pages
+        // (fires for every class change in any descendant). Gone.
+        return;
     }
 
     /**

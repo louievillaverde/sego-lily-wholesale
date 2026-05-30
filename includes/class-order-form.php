@@ -190,12 +190,11 @@ class SLW_Order_Form {
         $is_admin_preview = isset( $_GET['slw_preview'] ) && current_user_can( 'manage_woocommerce' );
 
         // Force wholesale shopping context for wholesale users on this
-        // page. If a wholesale customer has previously toggled to
-        // "shopping for myself" retail mode, that preference would suppress
-        // apply_wholesale_price and leak retail prices into the order
-        // form. The order form IS wholesale by definition, so override.
+        // page. Only write if the session isn't already wholesale so
+        // we don't trigger a session save on every request.
         if ( ! $is_admin_preview && is_user_logged_in() && slw_is_wholesale_user()
-            && function_exists( 'WC' ) && WC()->session ) {
+            && function_exists( 'WC' ) && WC()->session
+            && WC()->session->get( 'slw_shopping_context' ) !== 'wholesale' ) {
             WC()->session->set( 'slw_shopping_context', 'wholesale' );
         }
 
