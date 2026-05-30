@@ -14,14 +14,53 @@ $first_name = $user->first_name ?: $user->display_name;
 $has_ordered = get_user_meta( $user->ID, 'slw_first_order_placed', true );
 $minimum = (float) slw_get_option( 'first_order_minimum', 300 );
 $reorder_minimum = (float) slw_get_option( 'reorder_minimum', 0 );
+
+// Recommended target amount based on the customer's order history.
+// Averages the last 5 completed orders (any type -- retail or
+// wholesale), floored at $150 so we don't recommend $0 for someone
+// whose only past order was a $5 sample. Falls back to the first-
+// order minimum if there's no history at all.
+$recommended_amount = $minimum;
+$past_order_count = 0;
+if ( $user->ID ) {
+    $past_orders = wc_get_orders( array(
+        'customer_id' => $user->ID,
+        'limit'       => 5,
+        'status'      => array( 'wc-processing', 'wc-completed' ),
+        'orderby'     => 'date',
+        'order'       => 'DESC',
+        'return'      => 'objects',
+    ) );
+    if ( ! empty( $past_orders ) && ! is_wp_error( $past_orders ) ) {
+        $sum = 0;
+        $cnt = 0;
+        foreach ( $past_orders as $past ) {
+            $t = (float) $past->get_total();
+            if ( $t > 0 ) {
+                $sum += $t;
+                $cnt++;
+            }
+        }
+        if ( $cnt > 0 ) {
+            $recommended_amount = max( 150, round( $sum / $cnt, 0 ) );
+            $past_order_count = $cnt;
+        }
+    }
+}
+
 // Returning customers see the reorder minimum if Holly has set one,
-// otherwise fall back to the first-order minimum so the progress bar
-// always surfaces a meaningful target. The check at woocommerce_check_
-// _cart_items still uses the actual reorder_minimum value (0 = no
-// floor) so we don't accidentally block returning customers.
+// otherwise fall back to the recommended amount. The check at
+// woocommerce_check_cart_items still uses the actual reorder_minimum
+// value (0 = no floor) so we don't accidentally block returning
+// customers; the bar is purely a visual reference.
 if ( $has_ordered ) {
-    $active_minimum  = $reorder_minimum > 0 ? $reorder_minimum : $minimum;
-    $active_min_label = $reorder_minimum > 0 ? 'reorder minimum' : 'suggested order minimum';
+    if ( $reorder_minimum > 0 ) {
+        $active_minimum  = $reorder_minimum;
+        $active_min_label = 'reorder minimum';
+    } else {
+        $active_minimum  = $recommended_amount;
+        $active_min_label = $past_order_count > 0 ? 'your typical order' : 'suggested target';
+    }
 } else {
     $active_minimum  = $minimum;
     $active_min_label = 'first-order minimum';
@@ -900,6 +939,8 @@ $products = $all_products; // keep for empty check
         <div class="slw-sticky-bar__status">
             <div class="slw-sticky-bar__line">
                 <span class="slw-sticky-bar__total" id="slw-sticky-total">$0.00</span>
+                <span class="slw-sticky-bar__cart-tag">in cart</span>
+                <span class="slw-sticky-bar__staged" id="slw-sticky-staged" hidden></span>
                 <?php if ( $active_minimum > 0 ) : ?>
                     <span class="slw-sticky-bar__sep">of</span>
                     <span class="slw-sticky-bar__min">$<?php echo number_format( $active_minimum, 0 ); ?> <?php echo esc_html( $active_min_label ); ?></span>
@@ -907,7 +948,10 @@ $products = $all_products; // keep for empty check
                 <span class="slw-sticky-bar__pct" id="slw-sticky-pct"></span>
             </div>
             <?php if ( $active_minimum > 0 ) : ?>
-                <div class="slw-sticky-bar__bar"><div class="slw-sticky-bar__fill" id="slw-sticky-fill"></div></div>
+                <div class="slw-sticky-bar__bar">
+                    <div class="slw-sticky-bar__fill" id="slw-sticky-fill"></div>
+                    <div class="slw-sticky-bar__staged-fill" id="slw-sticky-staged-fill"></div>
+                </div>
             <?php endif; ?>
             <div class="slw-sticky-bar__status-msg" id="slw-sticky-msg"></div>
         </div>
@@ -1169,19 +1213,60 @@ $products = $all_products; // keep for empty check
 .slw-sticky-bar__sep { color: #628393; }
 .slw-sticky-bar__min { color: #628393; font-weight: 500; }
 .slw-sticky-bar__pct { color: #386174; font-weight: 600; }
+.slw-sticky-bar__cart-tag {
+    background: #386174;
+    color: #F7F6F3;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    padding: 3px 7px;
+    border-radius: 4px;
+    line-height: 1;
+    vertical-align: middle;
+}
+.slw-sticky-bar__staged {
+    color: #826a3e;
+    background: rgba(212, 175, 55, 0.12);
+    border: 1px dashed #d4af37;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 999px;
+    line-height: 1;
+}
 .slw-sticky-bar__bar {
+    position: relative;
     margin-top: 8px;
-    height: 6px;
+    height: 7px;
     background: #e8e2d4;
     border-radius: 999px;
     overflow: hidden;
 }
 .slw-sticky-bar__fill {
+    position: absolute;
+    top: 0;
+    left: 0;
     height: 100%;
     width: 0%;
     background: linear-gradient(90deg, #D4AF37 0%, #386174 100%);
     border-radius: 999px;
     transition: width 0.3s ease;
+}
+.slw-sticky-bar__staged-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 0%;
+    background: repeating-linear-gradient(
+        45deg,
+        rgba(212, 175, 55, 0.5),
+        rgba(212, 175, 55, 0.5) 5px,
+        rgba(212, 175, 55, 0.2) 5px,
+        rgba(212, 175, 55, 0.2) 10px
+    );
+    transition: width 0.3s ease, left 0.3s ease;
 }
 .slw-sticky-bar--met .slw-sticky-bar__fill {
     background: linear-gradient(90deg, #1d6b2c 0%, #2e9a3d 100%);
@@ -1831,35 +1916,61 @@ body.page-wholesale-order .woocommerce-message .restore-item,
         }
 
         // Sticky bar update.
-        var stickyBar    = document.getElementById('slw-sticky-bar');
-        var stickyTotal  = document.getElementById('slw-sticky-total');
-        var stickyPct    = document.getElementById('slw-sticky-pct');
-        var stickyFill   = document.getElementById('slw-sticky-fill');
-        var stickyMsg    = document.getElementById('slw-sticky-msg');
-        var stickyCta    = document.getElementById('slw-sticky-checkout');
+        // Bar now reports CART total (committed via Add buttons) and
+        // STAGED total (quantities typed but not yet added) separately
+        // so customers don't mistake a rising "$X / $300" number for
+        // "I'm already in cart". Two-segment fill: solid teal for the
+        // cart portion, gold-tinted hatching for the staged extension.
+        var stickyBar        = document.getElementById('slw-sticky-bar');
+        var stickyTotal      = document.getElementById('slw-sticky-total');
+        var stickyStaged     = document.getElementById('slw-sticky-staged');
+        var stickyPct        = document.getElementById('slw-sticky-pct');
+        var stickyFill       = document.getElementById('slw-sticky-fill');
+        var stickyStagedFill = document.getElementById('slw-sticky-staged-fill');
+        var stickyMsg        = document.getElementById('slw-sticky-msg');
+        var stickyCta        = document.getElementById('slw-sticky-checkout');
         if (stickyBar) {
             var grandTotal = stagedTotal + cartTotal;
             var totalItems = stagedItemCount + cartItemCount;
-            if (stickyTotal) stickyTotal.textContent = formatPrice(grandTotal);
+            if (stickyTotal) stickyTotal.textContent = formatPrice(cartTotal);
+            if (stickyStaged) {
+                if (stagedTotal > 0) {
+                    stickyStaged.hidden = false;
+                    stickyStaged.textContent = '+ ' + formatPrice(stagedTotal) + ' staged';
+                } else {
+                    stickyStaged.hidden = true;
+                    stickyStaged.textContent = '';
+                }
+            }
             var minimum = parseFloat(stickyBar.getAttribute('data-min')) || 0;
             stickyBar.classList.toggle('slw-sticky-bar--visible', totalItems > 0);
             if (minimum > 0) {
-                var pct = Math.min(100, Math.round((grandTotal / minimum) * 100));
-                if (stickyPct) stickyPct.textContent = '· ' + pct + '%';
-                if (stickyFill) stickyFill.style.width = pct + '%';
-                if (grandTotal >= minimum) {
+                var cartPct   = Math.min(100, (cartTotal   / minimum) * 100);
+                var stagedPct = Math.max(0, Math.min(100 - cartPct, (stagedTotal / minimum) * 100));
+                var combined  = Math.min(100, cartPct + stagedPct);
+                if (stickyFill) stickyFill.style.width = cartPct + '%';
+                if (stickyStagedFill) {
+                    stickyStagedFill.style.left  = cartPct + '%';
+                    stickyStagedFill.style.width = stagedPct + '%';
+                }
+                if (stickyPct) stickyPct.textContent = '· ' + Math.round(combined) + '%';
+                if (cartTotal >= minimum) {
                     stickyBar.classList.add('slw-sticky-bar--met');
                     if (stickyMsg) stickyMsg.textContent = 'Minimum met. Ready to check out.';
                     if (stickyCta) stickyCta.disabled = false;
                 } else {
                     stickyBar.classList.remove('slw-sticky-bar--met');
-                    var diff = minimum - grandTotal;
-                    if (stickyMsg) stickyMsg.textContent = 'Add ' + formatPrice(diff) + ' more to reach the ' + (stickyBar.getAttribute('data-min-label') || 'minimum') + '.';
-                    if (stickyCta) stickyCta.disabled = true;
+                    var diff = minimum - cartTotal;
+                    var msg = 'Add ' + formatPrice(diff) + ' more (in cart) to reach the ' + (stickyBar.getAttribute('data-min-label') || 'minimum') + '.';
+                    if (stagedTotal > 0) {
+                        msg += ' Staged items count once you hit Add.';
+                    }
+                    if (stickyMsg) stickyMsg.textContent = msg;
+                    if (stickyCta) stickyCta.disabled = cartItemCount === 0;
                 }
             } else {
                 if (stickyMsg) stickyMsg.textContent = '';
-                if (stickyCta) stickyCta.disabled = totalItems === 0;
+                if (stickyCta) stickyCta.disabled = cartItemCount === 0;
             }
         }
 
