@@ -41,7 +41,10 @@ class SLW_Nav_Menu {
         // theme-built /checkout (often Elementor) get redirected to
         // /wholesale-checkout which uses the native WC checkout shortcode
         // and therefore respects apply_wholesale_price on every line item.
-        add_action( 'template_redirect', array( __CLASS__, 'redirect_checkout_for_wholesale' ) );
+        // NOTE: redirect_checkout_for_wholesale is no longer registered.
+        // LV directive 2026-05-29: wholesale customers use the standard
+        // WC /checkout page directly. apply_wholesale_price on cart
+        // line items keeps the prices correct without any custom flow.
 
         // Same problem for /cart: theme-built cart page often doesn't
         // apply wholesale prices, so wholesale users go to the wholesale

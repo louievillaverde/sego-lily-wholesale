@@ -1470,10 +1470,11 @@ body.page-wholesale-order .woocommerce-message .restore-item,
     <?php
     // Prefer the dedicated wholesale checkout (native WC, not Elementor)
     // since the theme's /checkout was silently dropping wholesale discounts.
-    $wholesale_checkout = get_page_by_path( 'wholesale-checkout' );
-    $checkout_target    = $wholesale_checkout ? get_permalink( $wholesale_checkout->ID ) : wc_get_checkout_url();
+    // Send wholesale customers to the standard WC /checkout page. WC
+    // core handles payment, shipping, gateways natively. Wholesale
+    // prices flow through apply_wholesale_price on cart line items.
     ?>
-    var checkoutUrl = <?php echo wp_json_encode( $checkout_target ); ?>;
+    var checkoutUrl = <?php echo wp_json_encode( wc_get_checkout_url() ); ?>;
 
     // Live order subtotal in the footer. Reads data-price + quantity off
     // every .slw-qty-input row and renders running totals so the wholesale

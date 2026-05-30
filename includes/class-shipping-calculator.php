@@ -45,6 +45,9 @@ class SLW_Shipping_Calculator {
         if ( WC()->cart->is_empty() ) {
             wp_send_json_error( array( 'message' => 'Add items to your cart first.' ) );
         }
+        if ( ! WC()->cart->needs_shipping() ) {
+            wp_send_json_error( array( 'message' => 'None of the items in your cart need shipping (all marked as virtual / downloadable).' ) );
+        }
 
         // Seed the customer destination so WC's zone matching has the
         // right address. Both shipping and billing -- some methods read
@@ -53,6 +56,7 @@ class SLW_Shipping_Calculator {
             WC()->customer->set_shipping_country( $country );
             WC()->customer->set_shipping_state( $state );
             WC()->customer->set_shipping_postcode( $zip );
+            WC()->customer->set_shipping_city( '' );
             WC()->customer->set_billing_country( $country );
             WC()->customer->set_billing_state( $state );
             WC()->customer->set_billing_postcode( $zip );
@@ -68,6 +72,16 @@ class SLW_Shipping_Calculator {
         WC()->cart->calculate_totals();
 
         $packages = WC()->shipping ? WC()->shipping->get_packages() : array();
+
+        // Diagnostic log so we can see why WC returned no rates if the
+        // customer reports a failure. Logged only at WP_DEBUG; safe in
+        // prod.
+        if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+            error_log( sprintf(
+                '[SLW shipping] dest=%s/%s/%s packages=%d',
+                $country, $state, $zip, count( $packages )
+            ) );
+        }
 
         // Optional admin-configured filter to allow-list specific
         // shipping methods for wholesale.
@@ -91,11 +105,31 @@ class SLW_Shipping_Calculator {
         }
 
         if ( empty( $rates ) ) {
+            // Build a useful diagnostic: list how many packages WC built,
+            // whether each had rates, and the matched zone if any. Helps
+            // distinguish "no zones cover destination" from "items have
+            // no weight" from "method allow-list excluded everything".
+            $diag_pkgs = array();
+            foreach ( $packages as $idx => $pkg ) {
+                $zone_name = '';
+                if ( class_exists( 'WC_Shipping_Zones' ) && isset( $pkg['destination']['country'] ) ) {
+                    $zone = WC_Shipping_Zones::get_zone_matching_package( $pkg );
+                    if ( $zone ) $zone_name = $zone->get_zone_name();
+                }
+                $diag_pkgs[] = sprintf(
+                    'package %d: zone="%s", rates=%d',
+                    $idx,
+                    $zone_name ?: 'no match',
+                    isset( $pkg['rates'] ) ? count( $pkg['rates'] ) : 0
+                );
+            }
+            $diag = $diag_pkgs ? ' [' . implode( '; ', $diag_pkgs ) . ']' : ' [no packages]';
             wp_send_json_error( array(
                 'message' => sprintf(
-                    'No shipping methods available for %s %s. Check WC shipping zones cover this destination.',
+                    'No shipping rates for %s %s.%s Verify WC Shipping Zones cover this destination and that products have weight set.',
                     esc_html( $state ?: $country ),
-                    esc_html( $zip )
+                    esc_html( $zip ),
+                    $diag
                 ),
             ) );
         }
