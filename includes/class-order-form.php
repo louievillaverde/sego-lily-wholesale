@@ -38,6 +38,12 @@ class SLW_Order_Form {
         if ( ! function_exists( 'WC' ) || ! WC()->cart ) {
             wp_send_json_error( array( 'message' => 'Cart unavailable.' ), 500 );
         }
+        // Same context flag the page-render path sets so admins
+        // testing in preview mode get the same wholesale violation
+        // computation through the AJAX path that they get on initial
+        // load. Real wholesale customers pass slw_is_wholesale_context
+        // via role check; this only matters for admin testing.
+        $GLOBALS['slw_in_portal_render'] = true;
         // Hydrate cart from session in case lazy-load hasn't fired yet.
         if ( WC()->session && method_exists( WC()->cart, 'get_cart_from_session' ) ) {
             WC()->cart->get_cart_from_session();
@@ -93,6 +99,7 @@ class SLW_Order_Form {
         if ( ! function_exists( 'WC' ) || ! WC()->cart ) {
             wp_send_json_error( array( 'message' => 'Cart unavailable.' ), 500 );
         }
+        $GLOBALS['slw_in_portal_render'] = true;
         // Make sure the WC cart is hydrated from session (AJAX context
         // sometimes lazy-loads later, leaving an empty cart_contents at
         // the top of the handler).
@@ -160,6 +167,7 @@ class SLW_Order_Form {
         if ( ! is_user_logged_in() || ! slw_is_wholesale_user() ) {
             wp_send_json_error( array( 'message' => 'Wholesale customers only.' ), 403 );
         }
+        $GLOBALS['slw_in_portal_render'] = true;
         if ( function_exists( 'WC' ) && WC()->cart ) {
             WC()->cart->empty_cart();
         }
@@ -296,6 +304,8 @@ class SLW_Order_Form {
         if ( ! slw_is_wholesale_user() ) {
             wp_send_json_error( array( 'message' => 'Wholesale access required.' ) );
         }
+
+        $GLOBALS['slw_in_portal_render'] = true;
 
         $items = json_decode( stripslashes( $_POST['items'] ?? '[]' ), true );
         if ( empty( $items ) || ! is_array( $items ) ) {
