@@ -217,11 +217,15 @@ class SLW_Category_Minimums {
                 }
                 $term = get_term( $term_id, 'product_cat' );
                 $cat_name = $term && ! is_wp_error( $term ) ? $term->name : 'this category';
+                // Spell out that the "have X" count is category-scoped,
+                // not the total cart, so a 6-item cart with only 4 in
+                // this category doesn't look like a bug to the customer.
                 $label = sprintf(
-                    '%s minimum: %d units. You have %d. Add %d more (mix & match across scents).',
+                    '%s minimum: %d units. You have %d %s in your cart. Add %d more (mix & match any scent/size).',
                     $cat_name,
                     (int) $min_qty,
                     (int) $cart_qty,
+                    $cat_name,
                     (int) $min_qty - (int) $cart_qty
                 );
                 if ( $structured ) {
