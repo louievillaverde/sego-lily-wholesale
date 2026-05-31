@@ -991,18 +991,15 @@ $products = $all_products; // keep for empty check
         // dependency on JS having to recompute after first paint. JS
         // still overwrites this on cart changes via renderViolations().
         $boot_violations = array();
-        if ( class_exists( 'SLW_Product_Minimums' ) ) {
-            $boot_violations = array_merge( $boot_violations, (array) SLW_Product_Minimums::get_violations() );
-        }
         if ( class_exists( 'SLW_Category_Minimums' ) ) {
-            $boot_violations = array_merge( $boot_violations, (array) SLW_Category_Minimums::get_violations() );
+            $boot_violations = (array) SLW_Category_Minimums::get_violations( true );
         }
         ?>
         <div class="slw-cart-violations" id="slw-cart-violations" <?php echo empty( $boot_violations ) ? 'hidden' : ''; ?>>
             <div class="slw-cart-violations__title">Cart needs attention before checkout</div>
             <ul class="slw-cart-violations__list" id="slw-cart-violations-list">
                 <?php foreach ( $boot_violations as $v ) : ?>
-                    <li><?php echo esc_html( $v ); ?></li>
+                    <li><?php echo esc_html( is_array( $v ) ? $v['label'] : $v ); ?></li>
                 <?php endforeach; ?>
             </ul>
         </div>
@@ -1012,6 +1009,12 @@ $products = $all_products; // keep for empty check
         window.SLW_DATA.categoryMins      = <?php echo wp_json_encode( (object) $js_category_mins ); ?>;
         window.SLW_DATA.productMins       = <?php echo wp_json_encode( (object) $js_product_mins ); ?>;
         window.SLW_DATA.productCategories = <?php echo wp_json_encode( (object) $js_product_categories ); ?>;
+        // Server-computed violations from the same code path that fires
+        // at /checkout. The JS uses this as the source of truth for the
+        // bottom-bar status, violations panel, and CTA gating -- no
+        // client-side category matching is involved, so a productCat
+        // map mismatch can't cause a false "ready" state.
+        window.SLW_DATA.violations = <?php echo wp_json_encode( array_values( $boot_violations ) ); ?>;
     </script>
 
     <!-- Order Subtotal -->
@@ -1949,6 +1952,11 @@ body.page-wholesale-order .woocommerce-message .restore-item,
     function refreshCartFromServer(payload) {
         if (!payload || !Array.isArray(payload.items)) return;
         inCartItems = payload.items;
+        // Server-computed violations replace any stale client view.
+        if (Array.isArray(payload.violations)) {
+            window.SLW_DATA = window.SLW_DATA || {};
+            window.SLW_DATA.violations = payload.violations;
+        }
         updateSubtotal();
     }
     function postCartAction(action, extra) {
@@ -1999,68 +2007,21 @@ body.page-wholesale-order .woocommerce-message .restore-item,
     var violationsListEl = document.getElementById('slw-cart-violations-list');
     function computeViolations() {
         var data = window.SLW_DATA || {};
+        var out = [];
 
-        // Per-product minimum check, aggregated across siblings.
-        var prodTotals       = {};
-        (inCartItems || []).forEach(function(ci) {
-            var pid = parseInt(ci.product_id, 10) || 0;
-            var qty = parseInt(ci.qty, 10) || 0;
-            if (pid <= 0 || qty <= 0) return;
-            prodTotals[pid] = (prodTotals[pid] || 0) + qty;
-        });
-        var productMessages  = [];
-        var productViolators = {};
-        Object.keys(data.productMins || {}).forEach(function(pid) {
-            var rule = data.productMins[pid];
-            var have = prodTotals[pid] || 0;
-            if (have > 0 && have < rule.min) {
-                productMessages.push({
-                    type:  'product',
-                    name:  rule.name,
-                    have:  have,
-                    min:   rule.min,
-                    add:   rule.min - have,
-                    label: rule.name + ' minimum: ' + rule.min + '. You have ' + have + ' (mix & match across scents). Add ' + (rule.min - have) + ' more.'
-                });
-                productViolators[pid] = true;
-            }
-        });
+        // SERVER-COMPUTED CATEGORY VIOLATIONS are the source of truth.
+        // PHP get_violations() runs against WC()->cart with the same
+        // rules that fire at /checkout. Refreshed from every AJAX cart
+        // mutation via refreshCartFromServer. No client-side category
+        // matching = no risk of a stale productCategories map causing
+        // a false "ready" state when the category min isn't met.
+        if (Array.isArray(data.violations)) {
+            out = data.violations.slice();
+        }
 
-        // Per-category total check: aggregate qty across ALL cart items
-        // belonging to a category, since the category "mix & match
-        // across scents" allowance is exactly the cross-line sum.
-        var catTotals       = {};
-        var catContributors = {};
-        (inCartItems || []).forEach(function(ci) {
-            var pid = parseInt(ci.product_id, 10) || 0;
-            var qty = parseInt(ci.qty, 10) || 0;
-            if (pid <= 0 || qty <= 0) return;
-            var cats = (data.productCategories || {})[pid] || [];
-            cats.forEach(function(tid) {
-                catTotals[tid] = (catTotals[tid] || 0) + qty;
-                if (!catContributors[tid]) catContributors[tid] = {};
-                catContributors[tid][pid] = true;
-            });
-        });
-        var categoryMessages = [];
-        Object.keys(data.categoryMins || {}).forEach(function(tid) {
-            var rule = data.categoryMins[tid];
-            var have = catTotals[tid] || 0;
-            if (have > 0 && have < rule.min) {
-                var contributors = Object.keys(catContributors[tid] || {});
-                if (contributors.length === 1 && productViolators[contributors[0]]) return;
-                categoryMessages.push({
-                    type:  'category',
-                    name:  rule.name,
-                    have:  have,
-                    min:   rule.min,
-                    add:   rule.min - have,
-                    label: rule.name + ' minimum: ' + rule.min + ' units. You have ' + have + '. Add ' + (rule.min - have) + ' more (mix & match across scents).'
-                });
-            }
-        });
-
-        // Cart-total minimum (first-order or explicit reorder).
+        // Cart-total minimum (first-order or explicit reorder) is still
+        // computed client-side because it tracks live optimistic
+        // updates as the customer types qty changes.
         var bar = document.getElementById('slw-sticky-bar');
         if (bar) {
             var minVal      = parseFloat(bar.getAttribute('data-min')) || 0;
@@ -2074,7 +2035,7 @@ body.page-wholesale-order .woocommerce-message .restore-item,
             });
             if (isHardFloor && minVal > 0 && cartItemCount > 0 && cartTotal < minVal) {
                 var diff = minVal - cartTotal;
-                productMessages.unshift({
+                out.unshift({
                     type:  'order',
                     name:  minLabel,
                     have:  cartTotal,
@@ -2085,7 +2046,7 @@ body.page-wholesale-order .woocommerce-message .restore-item,
             }
         }
 
-        return productMessages.concat(categoryMessages);
+        return out;
     }
     function renderViolations() {
         if (!violationsEl || !violationsListEl) return [];

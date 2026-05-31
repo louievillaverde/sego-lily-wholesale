@@ -131,7 +131,7 @@ class SLW_Category_Minimums {
      * order-form template (in-page violations panel) so both surfaces
      * stay in sync.
      */
-    public static function get_violations() {
+    public static function get_violations( $structured = false ) {
         $out = array();
         if ( ! slw_is_wholesale_context() ) {
             if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
@@ -202,13 +202,25 @@ class SLW_Category_Minimums {
                 }
                 $term = get_term( $term_id, 'product_cat' );
                 $cat_name = $term && ! is_wp_error( $term ) ? $term->name : 'this category';
-                $out[] = sprintf(
+                $label = sprintf(
                     '%s minimum: %d units. You have %d. Add %d more (mix & match across scents).',
                     $cat_name,
                     (int) $min_qty,
                     (int) $cart_qty,
                     (int) $min_qty - (int) $cart_qty
                 );
+                if ( $structured ) {
+                    $out[] = array(
+                        'type'  => 'category',
+                        'name'  => $cat_name,
+                        'have'  => (int) $cart_qty,
+                        'min'   => (int) $min_qty,
+                        'add'   => (int) $min_qty - (int) $cart_qty,
+                        'label' => $label,
+                    );
+                } else {
+                    $out[] = $label;
+                }
             }
         }
         return $out;

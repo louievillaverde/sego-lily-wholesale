@@ -187,7 +187,20 @@ class SLW_Order_Form {
                 );
             }
         }
-        return array( 'items' => $items );
+        // Compute violations server-side so the JS doesn't have to do
+        // its own client-side category matching (which depends on the
+        // productCategories map being complete + consistent). Sourcing
+        // from the same code path that fires at /checkout guarantees
+        // the bottom-bar status, violations panel, and the checkout
+        // notice all say the same thing.
+        $violations = array();
+        if ( class_exists( 'SLW_Category_Minimums' ) ) {
+            $violations = (array) SLW_Category_Minimums::get_violations( true );
+        }
+        return array(
+            'items'      => $items,
+            'violations' => $violations,
+        );
     }
 
     /**
