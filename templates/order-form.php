@@ -1548,18 +1548,40 @@ $products = $all_products; // keep for empty check
     transform: none !important;
     box-shadow: none !important;
 }
-/* Ready state: plain brand teal. No gold ring, no deep teal
-   gradient (LV directive 2026-05-30). Simply not-muted vs muted is
-   the only visual cue customers need. */
+/* Ready state: deep teal with a gold accent line that marches around
+   the outer edge. LV directive 2026-05-31. Realized via @property on
+   a CSS custom property driving a conic-gradient angle; the gold arc
+   (40deg of color in a 360deg ring) sweeps around continuously.
+   Fallback for browsers without @property: a static gold border. */
+@property --slw-cta-angle {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+}
 .slw-sticky-bar--met .slw-sticky-bar__cta:not(:disabled) {
-    background: #386174 !important;
     color: #F7F6F3 !important;
+    border: 2px solid transparent !important;
+    background:
+        linear-gradient(#386174, #386174) padding-box,
+        conic-gradient(from var(--slw-cta-angle), #D4AF37 0deg, #F0D77B 18deg, #D4AF37 36deg, rgba(212, 175, 55, 0) 60deg, rgba(212, 175, 55, 0) 300deg, #D4AF37 324deg, #F0D77B 342deg, #D4AF37 360deg) border-box !important;
     box-shadow: 0 2px 6px rgba(30, 42, 48, 0.18) !important;
+    animation: slw-cta-march 4s linear infinite;
 }
 .slw-sticky-bar--met .slw-sticky-bar__cta:not(:disabled):hover {
-    background: #2C4F5E !important;
+    background:
+        linear-gradient(#2C4F5E, #2C4F5E) padding-box,
+        conic-gradient(from var(--slw-cta-angle), #D4AF37 0deg, #F0D77B 18deg, #D4AF37 36deg, rgba(212, 175, 55, 0) 60deg, rgba(212, 175, 55, 0) 300deg, #D4AF37 324deg, #F0D77B 342deg, #D4AF37 360deg) border-box !important;
     transform: translateY(-1px) !important;
-    box-shadow: 0 4px 12px rgba(30, 42, 48, 0.25) !important;
+    box-shadow: 0 4px 12px rgba(30, 42, 48, 0.28) !important;
+}
+@keyframes slw-cta-march { to { --slw-cta-angle: 360deg; } }
+/* Fallback: static gold border when @property isn't supported. */
+@supports not (background: conic-gradient(from 0deg, red 0%, blue 100%)) {
+    .slw-sticky-bar--met .slw-sticky-bar__cta:not(:disabled) {
+        background: #386174 !important;
+        border: 2px solid #D4AF37 !important;
+        animation: none;
+    }
 }
 /* Clear space at page bottom so the sticky bar doesn't cover content */
 .slw-order-form-wrap { padding-bottom: 120px; }
