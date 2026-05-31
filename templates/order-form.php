@@ -2155,23 +2155,69 @@ body.page-wholesale-order .woocommerce-message .restore-item,
             var ckey = input.getAttribute('data-cart-key')     || '';
             var pid  = input.getAttribute('data-product-id')   || '0';
             var vid  = input.getAttribute('data-variation-id') || '0';
-            // Optimistic local update so the Order Subtotal + sticky
-            // bar reflect the change instantly. AJAX sync just persists.
+            // Optimistic local update of inCartItems so totals reflect
+            // immediately. Then update the visible row total + order
+            // subtotal INLINE (no full preview re-render) so the input
+            // the user is typing in doesn't get torn down mid-edit.
+            var newUnitPrice = 0;
             inCartItems = inCartItems.map(function(ci) {
                 var match = (ckey && ci.cart_key === ckey)
                     || (String(ci.product_id) === pid && String(ci.variation_id) === vid);
                 if (!match) return ci;
                 if (next === 0) return null;
                 var unit = ci.qty > 0 ? (ci.lineTotal / ci.qty) : 0;
+                newUnitPrice = unit;
                 return Object.assign({}, ci, { qty: next, lineTotal: unit * next });
             }).filter(Boolean);
-            updateSubtotal();
+
+            if (next === 0) {
+                // Row was removed -- re-render whole preview.
+                updateSubtotal();
+            } else {
+                // Just patch the visible row total + order subtotal +
+                // sticky bar progress. Don't touch the input.
+                var row = input.closest('.slw-cart-preview__item');
+                if (row) {
+                    var totalSpan = row.querySelector('.slw-cart-preview__total');
+                    if (totalSpan) totalSpan.textContent = formatPrice(newUnitPrice * next);
+                }
+                // Recompute the Order Subtotal + sticky bar without
+                // re-rendering the cart preview list.
+                refreshTotalsOnly();
+            }
+
             postCartAction('slw_set_cart_qty', {
                 cart_key:     ckey,
                 product_id:   pid,
                 variation_id: vid,
                 qty:          String(next)
             });
+        }
+
+        // Recompute Order Subtotal + sticky bar from current inCartItems
+        // without touching the cart preview list. Used during inline
+        // qty edits so the input the user is in stays focused.
+        function refreshTotalsOnly() {
+            var cartTotal = 0;
+            var cartItemCount = 0;
+            inCartItems.forEach(function(ci) {
+                cartTotal     += (ci.lineTotal || 0);
+                cartItemCount += parseInt(ci.qty, 10) || 0;
+            });
+            var stagedTotal = 0;
+            document.querySelectorAll('.slw-qty-input').forEach(function(qin) {
+                var q = parseInt(qin.value, 10) || 0;
+                if (q <= 0) return;
+                var p = parseFloat(qin.getAttribute('data-price')) || 0;
+                stagedTotal += q * p;
+            });
+            if (subtotalEl) subtotalEl.textContent = formatPrice(stagedTotal + cartTotal);
+            var stickyTotalLocal = document.getElementById('slw-sticky-total');
+            if (stickyTotalLocal) stickyTotalLocal.textContent = formatPrice(cartTotal);
+            // Let the full updateSubtotal handle violations + bar
+            // progress on the NEXT debounce tick; the inline patch
+            // above is good enough during typing.
+            try { renderViolations(); } catch (e) {}
         }
         previewListEl.addEventListener('input', function(e) {
             var input = e.target.closest('.slw-cart-preview__qty-edit');

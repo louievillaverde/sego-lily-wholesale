@@ -133,10 +133,27 @@ class SLW_Category_Minimums {
      */
     public static function get_violations() {
         $out = array();
-        if ( ! slw_is_wholesale_context() ) return $out;
+        if ( ! slw_is_wholesale_context() ) {
+            if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                error_log( '[SLW cat-mins] skipped: not wholesale context' );
+            }
+            return $out;
+        }
         $mins = self::get_minimums();
-        if ( empty( $mins ) ) return $out;
+        if ( empty( $mins ) ) {
+            if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                error_log( '[SLW cat-mins] skipped: no category minimums configured' );
+            }
+            return $out;
+        }
         $totals = self::sum_cart_by_category();
+        if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+            error_log( sprintf(
+                '[SLW cat-mins] mins=%s totals=%s',
+                wp_json_encode( $mins ),
+                wp_json_encode( $totals )
+            ) );
+        }
 
         // Dedupe: build a map of which products contribute to each
         // category, AND which products are independently violating

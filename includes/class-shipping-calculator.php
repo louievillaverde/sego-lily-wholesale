@@ -205,6 +205,14 @@ class SLW_Shipping_Calculator {
         if ( $zip === '' ) {
             wp_send_json_error( array( 'message' => 'Enter a zip code to estimate shipping.' ) );
         }
+        // Force-hydrate the cart from session before checking is_empty.
+        // In admin-ajax.php WC's cart sometimes lazy-loads later in the
+        // request -- without this, is_empty() returns true for a cart
+        // that actually has items, and the calc returns the misleading
+        // "add items first" error.
+        if ( WC()->session && method_exists( WC()->cart, 'get_cart_from_session' ) ) {
+            WC()->cart->get_cart_from_session();
+        }
         if ( WC()->cart->is_empty() ) {
             wp_send_json_error( array( 'message' => 'Add items to your cart first.' ) );
         }
