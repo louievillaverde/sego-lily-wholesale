@@ -1890,12 +1890,21 @@ body.page-wholesale-order .woocommerce-message .restore-item,
 <script>
 (function() {
     // Version marker so we can decisively tell whether the live site is
-    // running this build of the plugin or a stale cached copy. Visible
-    // in DevTools Console + as small muted text at the bottom of the
-    // order form. If the version printed isn't the latest GitHub
-    // release tag, the bug fixes haven't actually deployed.
+    // running this build of the plugin or a stale cached copy.
     console.log('%c[SLW] Sego Lily Wholesale v<?php echo defined( 'SLW_VERSION' ) ? esc_js( SLW_VERSION ) : 'unknown'; ?>',
         'color:#386174;font-weight:700;background:#F7F6F3;padding:2px 6px;border-radius:3px');
+    // Auto-log SLW_DATA so we can see exactly what category minimums +
+    // product-to-category map the JS has. If the categoryMins object
+    // is empty or the productCategories map doesn't include the
+    // term_id that holds the min, the violation can't fire and the
+    // bar will incorrectly show "ready".
+    setTimeout(function() {
+        if (window.SLW_DATA) {
+            console.log('[SLW] categoryMins:', window.SLW_DATA.categoryMins);
+            console.log('[SLW] productCategories sample (first 3):',
+                Object.fromEntries(Object.entries(window.SLW_DATA.productCategories || {}).slice(0, 3)));
+        }
+    }, 0);
     var ajaxUrl = '<?php echo esc_js( $ajax_url ); ?>';
     var nonce = '<?php echo esc_js( $nonce ); ?>';
     var msgEl = document.getElementById('slw-order-message');
@@ -2167,68 +2176,25 @@ body.page-wholesale-order .woocommerce-message .restore-item,
             var pid  = input.getAttribute('data-product-id')   || '0';
             var vid  = input.getAttribute('data-variation-id') || '0';
             // Optimistic local update of inCartItems so totals reflect
-            // immediately. Then update the visible row total + order
-            // subtotal INLINE (no full preview re-render) so the input
-            // the user is typing in doesn't get torn down mid-edit.
-            var newUnitPrice = 0;
+            // immediately. updateSubtotal() detects the focused qty
+            // input and skips ONLY the preview-list innerHTML rebuild
+            // while still updating the row total, Order Subtotal, X
+            // items meta, sticky bar, and violations.
             inCartItems = inCartItems.map(function(ci) {
                 var match = (ckey && ci.cart_key === ckey)
                     || (String(ci.product_id) === pid && String(ci.variation_id) === vid);
                 if (!match) return ci;
                 if (next === 0) return null;
                 var unit = ci.qty > 0 ? (ci.lineTotal / ci.qty) : 0;
-                newUnitPrice = unit;
                 return Object.assign({}, ci, { qty: next, lineTotal: unit * next });
             }).filter(Boolean);
-
-            if (next === 0) {
-                // Row was removed -- re-render whole preview.
-                updateSubtotal();
-            } else {
-                // Just patch the visible row total + order subtotal +
-                // sticky bar progress. Don't touch the input.
-                var row = input.closest('.slw-cart-preview__item');
-                if (row) {
-                    var totalSpan = row.querySelector('.slw-cart-preview__total');
-                    if (totalSpan) totalSpan.textContent = formatPrice(newUnitPrice * next);
-                }
-                // Recompute the Order Subtotal + sticky bar without
-                // re-rendering the cart preview list.
-                refreshTotalsOnly();
-            }
-
+            updateSubtotal();
             postCartAction('slw_set_cart_qty', {
                 cart_key:     ckey,
                 product_id:   pid,
                 variation_id: vid,
                 qty:          String(next)
             });
-        }
-
-        // Recompute Order Subtotal + sticky bar from current inCartItems
-        // without touching the cart preview list. Used during inline
-        // qty edits so the input the user is in stays focused.
-        function refreshTotalsOnly() {
-            var cartTotal = 0;
-            var cartItemCount = 0;
-            inCartItems.forEach(function(ci) {
-                cartTotal     += (ci.lineTotal || 0);
-                cartItemCount += parseInt(ci.qty, 10) || 0;
-            });
-            var stagedTotal = 0;
-            document.querySelectorAll('.slw-qty-input').forEach(function(qin) {
-                var q = parseInt(qin.value, 10) || 0;
-                if (q <= 0) return;
-                var p = parseFloat(qin.getAttribute('data-price')) || 0;
-                stagedTotal += q * p;
-            });
-            if (subtotalEl) subtotalEl.textContent = formatPrice(stagedTotal + cartTotal);
-            var stickyTotalLocal = document.getElementById('slw-sticky-total');
-            if (stickyTotalLocal) stickyTotalLocal.textContent = formatPrice(cartTotal);
-            // Let the full updateSubtotal handle violations + bar
-            // progress on the NEXT debounce tick; the inline patch
-            // above is good enough during typing.
-            try { renderViolations(); } catch (e) {}
         }
         previewListEl.addEventListener('input', function(e) {
             var input = e.target.closest('.slw-cart-preview__qty-edit');
@@ -2424,7 +2390,15 @@ body.page-wholesale-order .woocommerce-message .restore-item,
 
         // Cart preview: WC cart items first (already in cart), then any
         // staged-but-not-yet-added rows below.
-        if (previewListEl) {
+        //
+        // SKIP the full innerHTML rebuild when the user is actively
+        // typing in a qty input -- tearing the DOM down yanks their
+        // focus and breaks the optimistic-update UX. Just patch the
+        // visible totals on each affected row in-place instead.
+        var activeQtyEdit = document.activeElement
+            && document.activeElement.classList
+            && document.activeElement.classList.contains('slw-cart-preview__qty-edit');
+        if (previewListEl && !activeQtyEdit) {
             previewListEl.innerHTML = '';
             inCartItems.forEach(function(item) {
                 var li = document.createElement('li');
@@ -2443,21 +2417,32 @@ body.page-wholesale-order .woocommerce-message .restore-item,
                         ' data-variation-id="' + (item.variation_id || 0) + '">&times;</button>';
                 previewListEl.appendChild(li);
             });
-            // Staged items (qty changed but Add not clicked) are NOT
-            // rendered here -- they pollute the Cart Preview with
-            // "(staged)" rows that confuse customers. Cart Preview only
-            // shows what's actually in the cart. Use the Add buttons or
-            // category Add to Cart to commit a row.
-            if (previewMetaEl) {
-                if (cartItemCount === 0) {
-                    previewMetaEl.textContent = 'Add items above to populate.';
-                } else {
-                    previewMetaEl.textContent = cartItemCount + ' item' + (cartItemCount === 1 ? '' : 's') + ' in cart';
-                }
-            }
-            var clearBtn = document.getElementById('slw-cart-preview-clear');
-            if (clearBtn) clearBtn.hidden = cartItemCount === 0;
+        } else if (previewListEl && activeQtyEdit) {
+            // User is typing in a qty input -- patch JUST the visible
+            // row totals from inCartItems without rebuilding the DOM.
+            inCartItems.forEach(function(item) {
+                var input = previewListEl.querySelector(
+                    '.slw-cart-preview__qty-edit[data-cart-key="' + (item.cart_key || '') + '"]'
+                );
+                if (!input) return;
+                var row = input.closest('.slw-cart-preview__item');
+                if (!row) return;
+                var totalSpan = row.querySelector('.slw-cart-preview__total');
+                if (totalSpan) totalSpan.textContent = formatPrice(item.lineTotal);
+                if (document.activeElement !== input) input.value = item.qty;
+            });
         }
+        // Meta text + clear-cart visibility ALWAYS update -- they
+        // don't touch the qty input the user might be typing in.
+        if (previewMetaEl) {
+            if (cartItemCount === 0) {
+                previewMetaEl.textContent = 'Add items above to populate.';
+            } else {
+                previewMetaEl.textContent = cartItemCount + ' item' + (cartItemCount === 1 ? '' : 's') + ' in cart';
+            }
+        }
+        var clearBtn = document.getElementById('slw-cart-preview-clear');
+        if (clearBtn) clearBtn.hidden = cartItemCount === 0;
 
         // Savings vs retail (Tier 1 ROI element). Looks up each staged input's
         // data-retail-price; for in-cart items uses the same lookup. Skip if
