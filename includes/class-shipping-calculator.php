@@ -197,6 +197,13 @@ class SLW_Shipping_Calculator {
         if ( ! function_exists( 'WC' ) || ! WC()->cart ) {
             wp_send_json_error( array( 'message' => 'Cart unavailable.' ) );
         }
+        // Mark this request as portal context so filter_bogus_free_rates
+        // (and other wholesale-context-gated filters) recognize an admin
+        // in preview mode and apply the wholesale shipping rules: strip
+        // local_pickup outside Montana, inject weight-based USPS/UPS
+        // when WC's zones return only pickup. Real wholesale customers
+        // already pass slw_is_wholesale_context via role check.
+        $GLOBALS['slw_in_portal_render'] = true;
 
         $zip     = sanitize_text_field( wp_unslash( $_POST['zip_code'] ?? '' ) );
         $country = sanitize_text_field( wp_unslash( $_POST['country']  ?? 'US' ) );
