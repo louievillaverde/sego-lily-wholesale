@@ -4199,43 +4199,43 @@ button.slw-reorder-btn:hover {
     padding-top: 14px !important;
 }
 
-/* Brand-warm rust styling for WC's native error notices on /checkout
-   so a minimum-not-met message (Tallow Butter needs 6, etc.) reads
-   like the rest of the wholesale UI instead of the universal browser
-   error pink. Matches .slw-cart-violations + .slw-notice-error. */
+/* WC native error notices on /checkout: clean brand-cream card,
+   gold accent. Lighter than the in-page violations panel because
+   at checkout the customer is one step from buying, not deep in
+   the order form. (LV directive 2026-05-30.) */
 .slw-checkout-page .woocommerce-error,
 .slw-checkout-page .woocommerce-NoticeGroup-checkout .woocommerce-error,
 .slw-checkout-page ul.woocommerce-error,
-.slw-checkout-page .woocommerce-message,
 body.woocommerce-checkout .woocommerce-error,
 body.woocommerce-checkout ul.woocommerce-error {
-    background: #fff5f0 !important;
-    border: 1px solid #f0c8a8 !important;
-    border-left: 4px solid #c0703a !important;
+    background: #FAF8F2 !important;
+    border: 1px solid #e8e2d4 !important;
+    border-left: 3px solid #D4AF37 !important;
     border-radius: 8px !important;
-    color: #6b3b1a !important;
-    padding: 16px 20px !important;
+    color: #2C2C2C !important;
+    padding: 14px 18px !important;
     list-style: none !important;
-    margin: 0 0 20px !important;
-    font-size: 14px !important;
-    line-height: 1.5 !important;
+    margin: 0 0 18px !important;
+    font-size: 13.5px !important;
+    line-height: 1.55 !important;
+    box-shadow: 0 1px 2px rgba(56, 97, 116, 0.05) !important;
 }
 .slw-checkout-page .woocommerce-error li,
 .slw-checkout-page ul.woocommerce-error li,
 body.woocommerce-checkout .woocommerce-error li,
 body.woocommerce-checkout ul.woocommerce-error li {
-    color: #6b3b1a !important;
+    color: #2C2C2C !important;
     padding-left: 0 !important;
-    margin-bottom: 6px !important;
+    margin-bottom: 4px !important;
     text-wrap: pretty;
+    list-style: none !important;
 }
 .slw-checkout-page .woocommerce-error li:last-child,
 body.woocommerce-checkout .woocommerce-error li:last-child { margin-bottom: 0 !important; }
 .slw-checkout-page .woocommerce-error strong,
-body.woocommerce-checkout .woocommerce-error strong { color: #5e2f15 !important; }
+body.woocommerce-checkout .woocommerce-error strong { color: #386174 !important; font-weight: 700; }
 .slw-checkout-page .woocommerce-error::before,
-.slw-checkout-page .woocommerce-message::before,
-body.woocommerce-checkout .woocommerce-error::before { color: #c0703a !important; }
+body.woocommerce-checkout .woocommerce-error::before { display: none !important; }
 
 .slw-checkout-page #place_order {
     background: linear-gradient(135deg, #E5C246 0%, #D4AF37 50%, #B6932A 100%) !important;

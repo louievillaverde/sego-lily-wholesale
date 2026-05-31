@@ -91,8 +91,20 @@ class SLW_Category_Minimums {
 
             if ( empty( $term_ids ) ) continue;
 
-            $qty = (int) $cart_item['quantity'];
+            // Include ancestor categories so a min configured on a
+            // parent category (Tallow Butter) catches products tagged
+            // in a sub-category (Tallow Butter > Renewal).
+            $all_terms = $term_ids;
             foreach ( $term_ids as $tid ) {
+                $ancestors = get_ancestors( $tid, 'product_cat' );
+                if ( ! empty( $ancestors ) ) {
+                    $all_terms = array_merge( $all_terms, $ancestors );
+                }
+            }
+            $all_terms = array_unique( $all_terms );
+
+            $qty = (int) $cart_item['quantity'];
+            foreach ( $all_terms as $tid ) {
                 $totals[ $tid ] = ( $totals[ $tid ] ?? 0 ) + $qty;
             }
         }

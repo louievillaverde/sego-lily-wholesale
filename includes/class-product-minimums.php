@@ -82,20 +82,29 @@ class SLW_Product_Minimums {
 	 * uses for the order-total minimum, so both checks run together.
 	 */
 	public static function enforce_minimums() {
-		if ( ! slw_is_wholesale_context() ) {
-			return;
-		}
-		foreach ( self::get_violations() as $msg ) {
-			wc_add_notice( $msg, 'error' );
-		}
+		// Per-product minimum enforcement is DISABLED. Holly's wholesale
+		// minimums are configured at the category level (Tallow Butter
+		// category min 6, etc.); the per-product min on the parent
+		// product was a holdover from earlier setup that double-reports
+		// the same constraint. SLW_Category_Minimums::enforce_category_
+		// minimums is the active rule. (LV directive 2026-05-30.)
+		return;
 	}
 
 	/**
-	 * Compute the list of per-product minimum violations for the current
-	 * cart (aggregated across siblings -- mix & match across scents).
-	 * Returns human-readable message strings.
+	 * Returns empty -- per-product minimums no longer surface at
+	 * either the order form Cart Preview or /checkout. See
+	 * enforce_minimums() above for rationale.
 	 */
 	public static function get_violations() {
+		return array();
+	}
+
+	/**
+	 * Legacy implementation kept for reference. Not called.
+	 * @internal
+	 */
+	private static function _legacy_get_violations() {
 		$out = array();
 		if ( ! slw_is_wholesale_context() ) return $out;
 		if ( ! function_exists( 'WC' ) || ! WC()->cart ) return $out;

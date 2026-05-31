@@ -92,25 +92,27 @@ if ( class_exists( 'SLW_Category_Minimums' ) ) {
         );
     }
 }
-$js_product_mins = array();
+// Per-product minimums intentionally NOT exposed -- only category mins
+// drive the violations panel + sticky bar.
+$js_product_mins       = array();
 $js_product_categories = array();
-if ( class_exists( 'SLW_Product_Minimums' ) ) {
-    foreach ( $all_products as $p ) {
-        $pid = $p->get_id();
-        $min = SLW_Product_Minimums::get_product_minimum( $pid );
-        if ( $min > 0 ) {
-            $js_product_mins[ $pid ] = array(
-                'name' => $p->get_name(),
-                'min'  => (int) $min,
-            );
+foreach ( $all_products as $p ) {
+    $pid = $p->get_id();
+    // Map for category-min lookups: include the product's direct
+    // categories AND all ancestor (parent) categories, so a min
+    // configured on a parent category like "Tallow Butter" still
+    // matches products tagged in a sub-category like
+    // "Tallow Butter > Renewal".
+    $term_ids = wc_get_product_term_ids( $pid, 'product_cat' );
+    if ( ! empty( $term_ids ) ) {
+        $all_terms = $term_ids;
+        foreach ( $term_ids as $tid ) {
+            $ancestors = get_ancestors( $tid, 'product_cat' );
+            if ( ! empty( $ancestors ) ) {
+                $all_terms = array_merge( $all_terms, $ancestors );
+            }
         }
-        // Map for category-min lookups: which categories does this
-        // product belong to? Pre-built once per page so the JS doesn't
-        // have to fetch per product.
-        $term_ids = wc_get_product_term_ids( $pid, 'product_cat' );
-        if ( ! empty( $term_ids ) ) {
-            $js_product_categories[ $pid ] = array_map( 'intval', $term_ids );
-        }
+        $js_product_categories[ $pid ] = array_values( array_unique( array_map( 'intval', $all_terms ) ) );
     }
 }
 
@@ -215,26 +217,32 @@ $products = $all_products; // keep for empty check
             $saved_carts_nonce  = wp_create_nonce( 'slw_saved_carts' );
             $has_saved          = ! empty( $saved_carts );
             ?>
-            <div class="slw-saved-orders" id="slw-saved-orders">
-                <select class="slw-saved-orders__select" id="slw-saved-orders-select" data-nonce="<?php echo esc_attr( $saved_carts_nonce ); ?>" <?php echo $has_saved ? '' : 'disabled'; ?>>
-                    <?php if ( $has_saved ) : ?>
-                        <option value="">Saved Orders</option>
-                        <?php foreach ( $saved_carts as $slug => $tpl ) :
-                            $item_count = isset( $tpl['items'] ) ? count( $tpl['items'] ) : 0;
-                            $label = sprintf(
-                                '%s (%d item%s, saved %s)',
-                                $tpl['name'] ?? 'Untitled',
-                                $item_count,
-                                $item_count === 1 ? '' : 's',
-                                $tpl['created'] ?? ''
-                            );
-                            ?>
-                            <option value="<?php echo esc_attr( $slug ); ?>"><?php echo esc_html( $label ); ?></option>
-                        <?php endforeach; ?>
-                    <?php else : ?>
-                        <option value="">Saved orders show here</option>
-                    <?php endif; ?>
-                </select>
+            <div class="slw-saved-orders" id="slw-saved-orders" data-nonce="<?php echo esc_attr( $saved_carts_nonce ); ?>">
+                <button type="button" class="slw-saved-orders__trigger" id="slw-saved-orders-trigger" aria-haspopup="listbox" aria-expanded="false" <?php echo $has_saved ? '' : 'disabled'; ?>>
+                    <span class="slw-saved-orders__trigger-text"><?php echo $has_saved ? 'Saved Orders' : 'Saved orders show here'; ?></span>
+                    <svg class="slw-saved-orders__chevron" viewBox="0 0 12 8" width="12" height="8" fill="none" aria-hidden="true">
+                        <path d="M1 1.5L6 6.5L11 1.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                <?php if ( $has_saved ) : ?>
+                    <div class="slw-saved-orders__panel" id="slw-saved-orders-panel" role="listbox" hidden>
+                        <ul class="slw-saved-orders__list" id="slw-saved-orders-list">
+                            <?php foreach ( $saved_carts as $slug => $tpl ) :
+                                $item_count = isset( $tpl['items'] ) ? count( $tpl['items'] ) : 0;
+                                $name       = $tpl['name'] ?? 'Untitled';
+                                $created    = $tpl['created'] ?? '';
+                                ?>
+                                <li class="slw-saved-orders__row" data-slug="<?php echo esc_attr( $slug ); ?>">
+                                    <button type="button" class="slw-saved-orders__load" data-slug="<?php echo esc_attr( $slug ); ?>" role="option">
+                                        <span class="slw-saved-orders__name"><?php echo esc_html( $name ); ?></span>
+                                        <span class="slw-saved-orders__meta"><?php echo (int) $item_count; ?> item<?php echo $item_count === 1 ? '' : 's'; ?><?php echo $created ? ', saved ' . esc_html( $created ) : ''; ?></span>
+                                    </button>
+                                    <button type="button" class="slw-saved-orders__del" data-slug="<?php echo esc_attr( $slug ); ?>" aria-label="Delete saved order">&times;</button>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
 
@@ -1083,19 +1091,15 @@ $products = $all_products; // keep for empty check
     position: relative;
     flex-shrink: 0;
 }
-.slw-saved-orders__select {
-    appearance: none;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    padding: 0 38px 0 18px;
+.slw-saved-orders__trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 16px;
     height: 42px;
     border: 1px solid #386174;
     border-radius: 8px;
-    background-color: #386174;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8' fill='none'><path d='M1 1.5L6 6.5L11 1.5' stroke='%23F7F6F3' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/></svg>");
-    background-repeat: no-repeat;
-    background-position: right 14px center;
-    background-size: 12px 8px;
+    background: #386174;
     color: #F7F6F3;
     font-size: 14px;
     font-weight: 700;
@@ -1104,37 +1108,89 @@ $products = $all_products; // keep for empty check
     cursor: pointer;
     min-width: 220px;
     max-width: 320px;
-    transition: background-color 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.1s;
+    transition: background-color 0.15s, border-color 0.15s, transform 0.1s, box-shadow 0.15s;
     box-shadow: 0 2px 6px rgba(56, 97, 116, 0.20);
+    justify-content: space-between;
 }
-.slw-saved-orders__select:hover:not(:disabled) {
-    background-color: #2C4F5E;
+.slw-saved-orders__trigger-text { flex: 1; text-align: left; }
+.slw-saved-orders__chevron { flex-shrink: 0; transition: transform 0.18s; }
+.slw-saved-orders__trigger[aria-expanded="true"] .slw-saved-orders__chevron { transform: rotate(180deg); }
+.slw-saved-orders__trigger:hover:not(:disabled) {
+    background: #2C4F5E;
     border-color: #2C4F5E;
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(56, 97, 116, 0.32);
 }
-.slw-saved-orders__select:focus {
+.slw-saved-orders__trigger:focus {
     outline: none;
     box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.45), 0 2px 6px rgba(56, 97, 116, 0.20);
 }
-.slw-saved-orders__select option {
-    color: #2C2C2C;
-    background: #ffffff;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
-    font-weight: 500;
-}
-.slw-saved-orders__select:disabled {
-    background-color: #FAF8F2;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8' fill='none'><path d='M1 1.5L6 6.5L11 1.5' stroke='%23b9a07c' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/></svg>");
+.slw-saved-orders__trigger:disabled {
+    background: #FAF8F2;
     color: #826a3e;
     border: 1px dashed #D4AF37;
     cursor: not-allowed;
     box-shadow: none;
-    opacity: 1;
 }
-.slw-saved-orders__select:disabled:hover { transform: none; }
+.slw-saved-orders__panel {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    min-width: 280px;
+    max-width: 360px;
+    max-height: 320px;
+    overflow-y: auto;
+    background: #ffffff;
+    border: 1px solid #e0ddd8;
+    border-radius: 10px;
+    box-shadow: 0 12px 32px rgba(30, 42, 48, 0.18);
+    z-index: 30;
+    padding: 6px;
+}
+.slw-saved-orders__panel[hidden] { display: none; }
+.slw-saved-orders__list { list-style: none; margin: 0; padding: 0; }
+.slw-saved-orders__row {
+    display: flex;
+    align-items: stretch;
+    border-radius: 6px;
+    transition: background-color 0.12s;
+    margin-bottom: 2px;
+}
+.slw-saved-orders__row:last-child { margin-bottom: 0; }
+.slw-saved-orders__row:hover { background: #FAF8F2; }
+.slw-saved-orders__load {
+    flex: 1;
+    text-align: left;
+    background: transparent;
+    border: none;
+    padding: 10px 12px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    color: #2C2C2C;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    min-width: 0;
+}
+.slw-saved-orders__name { font-weight: 700; font-size: 13.5px; color: #386174; }
+.slw-saved-orders__meta { font-size: 11.5px; color: #628393; }
+.slw-saved-orders__del {
+    background: transparent;
+    border: none;
+    color: #b27474;
+    font-size: 22px;
+    line-height: 1;
+    padding: 0 14px;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background-color 0.12s, color 0.12s;
+    flex-shrink: 0;
+    align-self: stretch;
+}
+.slw-saved-orders__del:hover { background: #fff0f0; color: #6e3a3a; }
 @media (max-width: 720px) {
-    .slw-saved-orders__select { min-width: 190px; height: 40px; }
+    .slw-saved-orders__trigger { min-width: 190px; height: 40px; }
+    .slw-saved-orders__panel { min-width: 240px; max-width: calc(100vw - 32px); }
 }
 .slw-minimum-note {
     margin-top: 0 !important;
@@ -1492,23 +1548,18 @@ $products = $all_products; // keep for empty check
     transform: none !important;
     box-shadow: none !important;
 }
-/* Ready state: gold-ring + glow on the CTA so customers visibly
-   see when they can check out. Applied via the bar's --met class. */
+/* Ready state: plain brand teal. No gold ring, no deep teal
+   gradient (LV directive 2026-05-30). Simply not-muted vs muted is
+   the only visual cue customers need. */
 .slw-sticky-bar--met .slw-sticky-bar__cta:not(:disabled) {
-    background: linear-gradient(135deg, #386174 0%, #2C4F5E 100%) !important;
+    background: #386174 !important;
     color: #F7F6F3 !important;
-    box-shadow:
-        0 0 0 2px rgba(212, 175, 55, 0.65),
-        0 6px 18px rgba(212, 175, 55, 0.30),
-        0 2px 6px rgba(30, 42, 48, 0.25) !important;
+    box-shadow: 0 2px 6px rgba(30, 42, 48, 0.18) !important;
 }
 .slw-sticky-bar--met .slw-sticky-bar__cta:not(:disabled):hover {
-    background: linear-gradient(135deg, #2C4F5E 0%, #1E3D49 100%) !important;
+    background: #2C4F5E !important;
     transform: translateY(-1px) !important;
-    box-shadow:
-        0 0 0 2px rgba(212, 175, 55, 0.80),
-        0 10px 24px rgba(212, 175, 55, 0.40),
-        0 4px 10px rgba(30, 42, 48, 0.30) !important;
+    box-shadow: 0 4px 12px rgba(30, 42, 48, 0.25) !important;
 }
 /* Clear space at page bottom so the sticky bar doesn't cover content */
 .slw-order-form-wrap { padding-bottom: 120px; }
@@ -2079,10 +2130,24 @@ body.page-wholesale-order .woocommerce-message .restore-item,
         function commitQty(input) {
             var next = Math.max(0, parseInt(input.value, 10) || 0);
             input.value = next;
+            var ckey = input.getAttribute('data-cart-key')     || '';
+            var pid  = input.getAttribute('data-product-id')   || '0';
+            var vid  = input.getAttribute('data-variation-id') || '0';
+            // Optimistic local update so the Order Subtotal + sticky
+            // bar reflect the change instantly. AJAX sync just persists.
+            inCartItems = inCartItems.map(function(ci) {
+                var match = (ckey && ci.cart_key === ckey)
+                    || (String(ci.product_id) === pid && String(ci.variation_id) === vid);
+                if (!match) return ci;
+                if (next === 0) return null;
+                var unit = ci.qty > 0 ? (ci.lineTotal / ci.qty) : 0;
+                return Object.assign({}, ci, { qty: next, lineTotal: unit * next });
+            }).filter(Boolean);
+            updateSubtotal();
             postCartAction('slw_set_cart_qty', {
-                cart_key:     input.getAttribute('data-cart-key')     || '',
-                product_id:   input.getAttribute('data-product-id')   || '0',
-                variation_id: input.getAttribute('data-variation-id') || '0',
+                cart_key:     ckey,
+                product_id:   pid,
+                variation_id: vid,
                 qty:          String(next)
             });
         }
@@ -2421,8 +2486,8 @@ body.page-wholesale-order .woocommerce-message .restore-item,
                                 if (stickyPct) stickyPct.textContent = '· ' + Math.round(pct) + '%';
                             }
                             stickyMsg.textContent = (top && top.type !== 'order')
-                                ? (top.have + ' of ' + top.min + ' ' + top.name + ', add ' + top.add + ' more' + (currentViolations.length > 1 ? ' (+ ' + (currentViolations.length - 1) + ' more rule' + (currentViolations.length === 2 ? '' : 's') + ' to fix)' : ''))
-                                : ((top && top.label) || ('Cart needs attention: ' + currentViolations.length + ' minimum not met. See below.'));
+                                ? ('Need at least ' + top.add + ' more ' + top.name + ' to complete your order' + (currentViolations.length > 1 ? ' (+ ' + (currentViolations.length - 1) + ' more rule' + (currentViolations.length === 2 ? '' : 's') + ' to fix)' : ''))
+                                : ((top && top.label) || ('Cart needs attention. See below.'));
                         } else if (cartTotal >= minimum) {
                             stickyMsg.textContent = 'Above ' + minLabel + '. Ready to check out.';
                         } else if (cartTotal > 0) {
@@ -2452,8 +2517,8 @@ body.page-wholesale-order .woocommerce-message .restore-item,
                         }
                         if (stickyMsg) {
                             stickyMsg.textContent = (topH && topH.type !== 'order')
-                                ? (topH.have + ' of ' + topH.min + ' ' + topH.name + ', add ' + topH.add + ' more' + (currentViolations.length > 1 ? ' (+ ' + (currentViolations.length - 1) + ' more rule' + (currentViolations.length === 2 ? '' : 's') + ' to fix)' : ''))
-                                : ((topH && topH.label) || ('Cart needs attention: ' + currentViolations.length + ' minimum not met. See below.'));
+                                ? ('Need at least ' + topH.add + ' more ' + topH.name + ' to complete your order' + (currentViolations.length > 1 ? ' (+ ' + (currentViolations.length - 1) + ' more rule' + (currentViolations.length === 2 ? '' : 's') + ' to fix)' : ''))
+                                : ((topH && topH.label) || ('Cart needs attention. See below.'));
                         }
                         if (stickyCta) stickyCta.disabled = true;
                     } else {
@@ -2909,41 +2974,112 @@ body.page-wholesale-order .woocommerce-message .restore-item,
     bindCheckout(checkoutBtn);
     bindCheckout(stickyCheckoutBtn);
 
-    // Saved-order picker: applies a previously-saved template to the cart
-    // and reloads so the order form reflects the loaded items.
-    var savedOrdersSelect = document.getElementById('slw-saved-orders-select');
-    if (savedOrdersSelect) {
-        savedOrdersSelect.addEventListener('change', function() {
-            var slug = this.value;
-            if (!slug) return;
-            if (!window.confirm('Load this saved order? Your current cart will be replaced.')) {
-                this.value = '';
+    // Saved-orders custom dropdown: click trigger toggles the panel,
+    // click load loads a saved order, click X deletes it from the
+    // saved-orders list.
+    var savedOrdersWrap    = document.getElementById('slw-saved-orders');
+    var savedOrdersTrigger = document.getElementById('slw-saved-orders-trigger');
+    var savedOrdersPanel   = document.getElementById('slw-saved-orders-panel');
+    var savedOrdersList    = document.getElementById('slw-saved-orders-list');
+    var savedOrdersNonce   = savedOrdersWrap ? (savedOrdersWrap.getAttribute('data-nonce') || '') : '';
+
+    function closePanel() {
+        if (!savedOrdersPanel) return;
+        savedOrdersPanel.hidden = true;
+        if (savedOrdersTrigger) savedOrdersTrigger.setAttribute('aria-expanded', 'false');
+    }
+    function openPanel() {
+        if (!savedOrdersPanel) return;
+        savedOrdersPanel.hidden = false;
+        if (savedOrdersTrigger) savedOrdersTrigger.setAttribute('aria-expanded', 'true');
+    }
+
+    if (savedOrdersTrigger && savedOrdersPanel) {
+        savedOrdersTrigger.addEventListener('click', function(e) {
+            e.preventDefault();
+            if (this.disabled) return;
+            if (savedOrdersPanel.hidden) openPanel(); else closePanel();
+        });
+        document.addEventListener('click', function(e) {
+            if (savedOrdersPanel.hidden) return;
+            if (savedOrdersWrap && savedOrdersWrap.contains(e.target)) return;
+            closePanel();
+        });
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && !savedOrdersPanel.hidden) {
+                closePanel();
+                savedOrdersTrigger.focus();
+            }
+        });
+    }
+
+    if (savedOrdersList) {
+        savedOrdersList.addEventListener('click', function(e) {
+            var delBtn = e.target.closest('.slw-saved-orders__del');
+            if (delBtn) {
+                e.stopPropagation();
+                var dslug = delBtn.getAttribute('data-slug') || '';
+                if (!dslug) return;
+                if (!window.confirm('Delete this saved order? This can\'t be undone.')) return;
+                delBtn.disabled = true;
+                var fd = new FormData();
+                fd.append('action', 'slw_delete_cart');
+                fd.append('nonce', savedOrdersNonce);
+                fd.append('slug', dslug);
+                fetch(ajaxUrl, { method: 'POST', credentials: 'same-origin', body: fd })
+                    .then(function(r) { return r.json(); })
+                    .then(function(json) {
+                        if (json && json.success) {
+                            var row = delBtn.closest('.slw-saved-orders__row');
+                            if (row) row.remove();
+                            // If the list is now empty, disable the
+                            // trigger + close the panel.
+                            if (savedOrdersList.children.length === 0) {
+                                closePanel();
+                                if (savedOrdersTrigger) {
+                                    savedOrdersTrigger.disabled = true;
+                                    var label = savedOrdersTrigger.querySelector('.slw-saved-orders__trigger-text');
+                                    if (label) label.textContent = 'Saved orders show here';
+                                }
+                            }
+                            showMessage('Saved order deleted.', 'success');
+                        } else {
+                            delBtn.disabled = false;
+                            showMessage((json && json.data && json.data.message) || 'Could not delete the saved order.', 'error');
+                        }
+                    })
+                    .catch(function() {
+                        delBtn.disabled = false;
+                        showMessage('Network error deleting the saved order.', 'error');
+                    });
                 return;
             }
-            var savedNonce = this.getAttribute('data-nonce') || '';
-            this.disabled = true;
-            var fd = new FormData();
-            fd.append('action', 'slw_load_cart');
-            fd.append('nonce', savedNonce);
-            fd.append('slug', slug);
-            fetch(ajaxUrl, { method: 'POST', credentials: 'same-origin', body: fd })
-                .then(function(r) { return r.json(); })
-                .then(function(json) {
-                    if (json && json.success) {
-                        showMessage(json.data.message || 'Saved order loaded.', 'success');
-                        setTimeout(function() { window.location.reload(); }, 600);
-                    } else {
-                        var msg = (json && json.data && json.data.message) ? json.data.message : 'Could not load the saved order.';
-                        showMessage(msg, 'error');
-                        savedOrdersSelect.disabled = false;
-                        savedOrdersSelect.value = '';
-                    }
-                })
-                .catch(function() {
-                    showMessage('Network error loading the saved order.', 'error');
-                    savedOrdersSelect.disabled = false;
-                    savedOrdersSelect.value = '';
-                });
+            var loadBtn = e.target.closest('.slw-saved-orders__load');
+            if (loadBtn) {
+                var lslug = loadBtn.getAttribute('data-slug') || '';
+                if (!lslug) return;
+                if (!window.confirm('Load this saved order? Your current cart will be replaced.')) return;
+                loadBtn.disabled = true;
+                var fd2 = new FormData();
+                fd2.append('action', 'slw_load_cart');
+                fd2.append('nonce', savedOrdersNonce);
+                fd2.append('slug', lslug);
+                fetch(ajaxUrl, { method: 'POST', credentials: 'same-origin', body: fd2 })
+                    .then(function(r) { return r.json(); })
+                    .then(function(json) {
+                        if (json && json.success) {
+                            showMessage(json.data.message || 'Saved order loaded.', 'success');
+                            setTimeout(function() { window.location.reload(); }, 600);
+                        } else {
+                            loadBtn.disabled = false;
+                            showMessage((json && json.data && json.data.message) || 'Could not load the saved order.', 'error');
+                        }
+                    })
+                    .catch(function() {
+                        loadBtn.disabled = false;
+                        showMessage('Network error loading the saved order.', 'error');
+                    });
+            }
         });
     }
 
