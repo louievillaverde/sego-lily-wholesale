@@ -2169,17 +2169,18 @@ body.page-wholesale-order .woocommerce-message .restore-item,
     // Direct edit: debounce on input, immediate on blur / Enter
     if (previewListEl) {
         var qtyInputDebounce = null;
-        function commitQty(input) {
+        // Split into two phases:
+        //   updateLocalQty(): instant optimistic UI update, fires on
+        //     EVERY input event so totals + meta + sticky bar respond
+        //     keystroke-by-keystroke (matches how the product-row
+        //     .slw-qty-input listener already works).
+        //   persistQty(): debounced AJAX call to write the new qty to
+        //     the server. Avoids one AJAX call per keystroke.
+        function updateLocalQty(input) {
             var next = Math.max(0, parseInt(input.value, 10) || 0);
-            input.value = next;
             var ckey = input.getAttribute('data-cart-key')     || '';
             var pid  = input.getAttribute('data-product-id')   || '0';
             var vid  = input.getAttribute('data-variation-id') || '0';
-            // Optimistic local update of inCartItems so totals reflect
-            // immediately. updateSubtotal() detects the focused qty
-            // input and skips ONLY the preview-list innerHTML rebuild
-            // while still updating the row total, Order Subtotal, X
-            // items meta, sticky bar, and violations.
             inCartItems = inCartItems.map(function(ci) {
                 var match = (ckey && ci.cart_key === ckey)
                     || (String(ci.product_id) === pid && String(ci.variation_id) === vid);
@@ -2189,24 +2190,46 @@ body.page-wholesale-order .woocommerce-message .restore-item,
                 return Object.assign({}, ci, { qty: next, lineTotal: unit * next });
             }).filter(Boolean);
             updateSubtotal();
+        }
+        function persistQty(input) {
+            var next = Math.max(0, parseInt(input.value, 10) || 0);
+            input.value = next;
             postCartAction('slw_set_cart_qty', {
-                cart_key:     ckey,
-                product_id:   pid,
-                variation_id: vid,
+                cart_key:     input.getAttribute('data-cart-key')     || '',
+                product_id:   input.getAttribute('data-product-id')   || '0',
+                variation_id: input.getAttribute('data-variation-id') || '0',
                 qty:          String(next)
             });
+        }
+        function commitQty(input) {
+            updateLocalQty(input);
+            persistQty(input);
         }
         previewListEl.addEventListener('input', function(e) {
             var input = e.target.closest('.slw-cart-preview__qty-edit');
             if (!input) return;
+            // Instant UI update -- mirrors the product-row qty-input
+            // listener that runs updateSubtotal on every keystroke.
+            updateLocalQty(input);
+            // Debounce only the server persist so we don't fire one
+            // AJAX call per keystroke.
             clearTimeout(qtyInputDebounce);
-            qtyInputDebounce = setTimeout(function() { commitQty(input); }, 600);
+            qtyInputDebounce = setTimeout(function() { persistQty(input); }, 600);
+        });
+        previewListEl.addEventListener('change', function(e) {
+            var input = e.target.closest('.slw-cart-preview__qty-edit');
+            if (!input) return;
+            // Native spinner click fires 'change' (not always 'input')
+            // -- run the same instant update + debounced persist path.
+            updateLocalQty(input);
+            clearTimeout(qtyInputDebounce);
+            qtyInputDebounce = setTimeout(function() { persistQty(input); }, 600);
         });
         previewListEl.addEventListener('blur', function(e) {
             var input = e.target.closest('.slw-cart-preview__qty-edit');
             if (!input) return;
             clearTimeout(qtyInputDebounce);
-            commitQty(input);
+            persistQty(input);
         }, true);
         previewListEl.addEventListener('keydown', function(e) {
             if (e.key !== 'Enter') return;
@@ -2214,7 +2237,7 @@ body.page-wholesale-order .woocommerce-message .restore-item,
             if (!input) return;
             e.preventDefault();
             clearTimeout(qtyInputDebounce);
-            commitQty(input);
+            persistQty(input);
             input.blur();
         });
     }
