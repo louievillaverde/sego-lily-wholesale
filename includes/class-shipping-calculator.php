@@ -209,24 +209,69 @@ class SLW_Shipping_Calculator {
         if ( WC()->session && method_exists( WC()->cart, 'get_cart_from_session' ) ) {
             WC()->cart->get_cart_from_session();
         }
-        // Diagnostic: log what the AJAX context sees vs what the frontend
-        // expected. If the cart appears empty here while the customer
-        // can see items in Cart Preview, the session isn't carrying the
-        // cart across requests (cookie / WC session bug on Holly's site).
-        if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-            $cart_keys = WC()->cart && method_exists( WC()->cart, 'get_cart' ) ? array_keys( WC()->cart->get_cart() ) : array();
-            error_log( sprintf(
-                '[SLW shipping] user=%d session_id=%s cart_keys=%s',
-                get_current_user_id(),
-                WC()->session ? WC()->session->get_customer_id() : 'no-session',
-                wp_json_encode( $cart_keys )
-            ) );
+
+        // If WC()->cart appears empty in AJAX context (session sync
+        // issue on Holly's site), fall back to the items the JS sent.
+        // The frontend's inCartItems was populated server-side from
+        // WC()->cart on page render so we know it's a faithful view of
+        // what the customer has.
+        $cart_is_empty = WC()->cart->is_empty();
+        $js_items_raw  = isset( $_POST['items'] ) ? wp_unslash( $_POST['items'] ) : '';
+        $js_items      = $js_items_raw ? json_decode( $js_items_raw, true ) : array();
+        if ( ! is_array( $js_items ) ) $js_items = array();
+
+        if ( $cart_is_empty && empty( $js_items ) ) {
+            wp_send_json_error( array( 'message' => 'Add items to your cart first.' ) );
         }
-        if ( WC()->cart->is_empty() ) {
-            wp_send_json_error( array( 'message' => 'Add items to your cart first. (If the cart shows items above, this is a session sync issue; reload the page.)' ) );
-        }
-        if ( ! WC()->cart->needs_shipping() ) {
+        if ( ! $cart_is_empty && ! WC()->cart->needs_shipping() ) {
             wp_send_json_error( array( 'message' => 'None of the items in your cart need shipping (all marked as virtual / downloadable).' ) );
+        }
+
+        // WC cart didn't hydrate in this AJAX context (session sync
+        // gap on Holly's site) but the JS handed us the items it
+        // sees. Build a synthetic package and short-circuit straight
+        // to the weight-based estimator so the customer still gets
+        // a useful number from their zip.
+        if ( $cart_is_empty && ! empty( $js_items ) ) {
+            $package = array(
+                'contents'    => array(),
+                'destination' => array(
+                    'country'  => $country,
+                    'state'    => $state,
+                    'postcode' => $zip,
+                ),
+            );
+            foreach ( $js_items as $it ) {
+                if ( ! is_array( $it ) ) continue;
+                $pid = absint( $it['product_id']   ?? 0 );
+                $vid = absint( $it['variation_id'] ?? 0 );
+                $qty = max( 1, absint( $it['quantity'] ?? 1 ) );
+                $product_id = $vid ?: $pid;
+                if ( ! $product_id ) continue;
+                $product = wc_get_product( $product_id );
+                if ( ! $product ) continue;
+                $package['contents'][] = array(
+                    'data'     => $product,
+                    'quantity' => $qty,
+                );
+            }
+            if ( empty( $package['contents'] ) ) {
+                wp_send_json_error( array( 'message' => 'Add items to your cart first.' ) );
+            }
+            $rate_objs = self::weight_based_estimates( $package );
+            $synth_rates = array();
+            foreach ( $rate_objs as $rate_id => $rate ) {
+                $synth_rates[] = array(
+                    'id'       => esc_html( $rate_id ),
+                    'label'    => esc_html( $rate->get_label() ),
+                    'cost'     => html_entity_decode( wp_strip_all_tags( wc_price( $rate->get_cost() ) ) ),
+                    'cost_raw' => (float) $rate->get_cost(),
+                );
+            }
+            wp_send_json_success( array(
+                'rates'   => $synth_rates,
+                'message' => count( $synth_rates ) . ' shipping option(s) found.',
+            ) );
         }
 
         // Seed the customer destination so WC's zone matching has the
