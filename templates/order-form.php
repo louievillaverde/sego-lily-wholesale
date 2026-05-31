@@ -1952,12 +1952,31 @@ body.page-wholesale-order .woocommerce-message .restore-item,
     function refreshCartFromServer(payload) {
         if (!payload || !Array.isArray(payload.items)) return;
         inCartItems = payload.items;
+        recomputeCartLineTotals();
         // Server-computed violations replace any stale client view.
         if (Array.isArray(payload.violations)) {
             window.SLW_DATA = window.SLW_DATA || {};
             window.SLW_DATA.violations = payload.violations;
         }
         updateSubtotal();
+    }
+    // The server payload's lineTotal calls $prod->get_price() which
+    // can return RETAIL for cart line items when WC Subscriptions /
+    // cart context skips the apply_wholesale_price filter. The order
+    // form's product-row data-price IS wholesale (proven correct), so
+    // overwrite lineTotal from priceForItem() whenever we have a
+    // match. Falls back to the server value if no row matches.
+    function recomputeCartLineTotals() {
+        if (!Array.isArray(inCartItems)) return;
+        inCartItems.forEach(function(ci) {
+            var unit = priceForItem(
+                parseInt(ci.product_id, 10)   || 0,
+                parseInt(ci.variation_id, 10) || 0
+            );
+            if (unit > 0) {
+                ci.lineTotal = unit * (parseInt(ci.qty, 10) || 0);
+            }
+        });
     }
     function postCartAction(action, extra) {
         var fd = new FormData();
@@ -2127,81 +2146,70 @@ body.page-wholesale-order .woocommerce-message .restore-item,
         });
     });
 
-    // Direct edit: debounce on input, immediate on blur / Enter
-    if (previewListEl) {
-        var qtyInputDebounce = null;
-        // Split into two phases:
-        //   updateLocalQty(): instant optimistic UI update, fires on
-        //     EVERY input event so totals + meta + sticky bar respond
-        //     keystroke-by-keystroke (matches how the product-row
-        //     .slw-qty-input listener already works).
-        //   persistQty(): debounced AJAX call to write the new qty to
-        //     the server. Avoids one AJAX call per keystroke.
-        function updateLocalQty(input) {
-            var next = Math.max(0, parseInt(input.value, 10) || 0);
-            var ckey = input.getAttribute('data-cart-key')     || '';
-            var pid  = input.getAttribute('data-product-id')   || '0';
-            var vid  = input.getAttribute('data-variation-id') || '0';
-            inCartItems = inCartItems.map(function(ci) {
-                var match = (ckey && ci.cart_key === ckey)
-                    || (String(ci.product_id) === pid && String(ci.variation_id) === vid);
-                if (!match) return ci;
-                if (next === 0) return null;
-                var unit = ci.qty > 0 ? (ci.lineTotal / ci.qty) : 0;
-                return Object.assign({}, ci, { qty: next, lineTotal: unit * next });
-            }).filter(Boolean);
-            updateSubtotal();
-        }
-        function persistQty(input) {
-            var next = Math.max(0, parseInt(input.value, 10) || 0);
-            input.value = next;
-            postCartAction('slw_set_cart_qty', {
-                cart_key:     input.getAttribute('data-cart-key')     || '',
-                product_id:   input.getAttribute('data-product-id')   || '0',
-                variation_id: input.getAttribute('data-variation-id') || '0',
-                qty:          String(next)
-            });
-        }
-        function commitQty(input) {
-            updateLocalQty(input);
-            persistQty(input);
-        }
-        previewListEl.addEventListener('input', function(e) {
-            var input = e.target.closest('.slw-cart-preview__qty-edit');
-            if (!input) return;
-            // Instant UI update -- mirrors the product-row qty-input
-            // listener that runs updateSubtotal on every keystroke.
-            updateLocalQty(input);
-            // Debounce only the server persist so we don't fire one
-            // AJAX call per keystroke.
-            clearTimeout(qtyInputDebounce);
-            qtyInputDebounce = setTimeout(function() { persistQty(input); }, 600);
-        });
-        previewListEl.addEventListener('change', function(e) {
-            var input = e.target.closest('.slw-cart-preview__qty-edit');
-            if (!input) return;
-            // Native spinner click fires 'change' (not always 'input')
-            // -- run the same instant update + debounced persist path.
-            updateLocalQty(input);
-            clearTimeout(qtyInputDebounce);
-            qtyInputDebounce = setTimeout(function() { persistQty(input); }, 600);
-        });
-        previewListEl.addEventListener('blur', function(e) {
-            var input = e.target.closest('.slw-cart-preview__qty-edit');
-            if (!input) return;
-            clearTimeout(qtyInputDebounce);
-            persistQty(input);
-        }, true);
-        previewListEl.addEventListener('keydown', function(e) {
-            if (e.key !== 'Enter') return;
-            var input = e.target.closest('.slw-cart-preview__qty-edit');
-            if (!input) return;
-            e.preventDefault();
-            clearTimeout(qtyInputDebounce);
-            persistQty(input);
-            input.blur();
+    // Cart Preview qty edits: document-level delegation so they fire
+    // regardless of when previewListEl is assigned AND regardless of
+    // updateSubtotal rebuilding the <li> innerHTML. Same pattern the
+    // .slw-cart-preview__remove handler already uses.
+    var qtyInputDebounce = null;
+    function updateLocalQty(input) {
+        var next = Math.max(0, parseInt(input.value, 10) || 0);
+        var ckey = input.getAttribute('data-cart-key')     || '';
+        var pid  = input.getAttribute('data-product-id')   || '0';
+        var vid  = input.getAttribute('data-variation-id') || '0';
+        // Pull unit price from the matching order-form row's
+        // data-price (wholesale, proven correct), not from the boot
+        // payload's lineTotal/qty (which can be retail when WC's
+        // cart-line product object skips the wholesale filter).
+        var unit = priceForItem(parseInt(pid, 10) || 0, parseInt(vid, 10) || 0);
+        inCartItems = inCartItems.map(function(ci) {
+            var match = (ckey && ci.cart_key === ckey)
+                || (String(ci.product_id) === pid && String(ci.variation_id) === vid);
+            if (!match) return ci;
+            if (next === 0) return null;
+            var effUnit = unit > 0 ? unit : (ci.qty > 0 ? (ci.lineTotal / ci.qty) : 0);
+            return Object.assign({}, ci, { qty: next, lineTotal: effUnit * next });
+        }).filter(Boolean);
+        updateSubtotal();
+    }
+    function persistQty(input) {
+        var next = Math.max(0, parseInt(input.value, 10) || 0);
+        input.value = next;
+        postCartAction('slw_set_cart_qty', {
+            cart_key:     input.getAttribute('data-cart-key')     || '',
+            product_id:   input.getAttribute('data-product-id')   || '0',
+            variation_id: input.getAttribute('data-variation-id') || '0',
+            qty:          String(next)
         });
     }
+    document.addEventListener('input', function(e) {
+        var input = e.target.closest && e.target.closest('.slw-cart-preview__qty-edit');
+        if (!input) return;
+        updateLocalQty(input);
+        clearTimeout(qtyInputDebounce);
+        qtyInputDebounce = setTimeout(function() { persistQty(input); }, 600);
+    });
+    document.addEventListener('change', function(e) {
+        var input = e.target.closest && e.target.closest('.slw-cart-preview__qty-edit');
+        if (!input) return;
+        updateLocalQty(input);
+        clearTimeout(qtyInputDebounce);
+        qtyInputDebounce = setTimeout(function() { persistQty(input); }, 600);
+    });
+    document.addEventListener('blur', function(e) {
+        var input = e.target.closest && e.target.closest('.slw-cart-preview__qty-edit');
+        if (!input) return;
+        clearTimeout(qtyInputDebounce);
+        persistQty(input);
+    }, true);
+    document.addEventListener('keydown', function(e) {
+        if (e.key !== 'Enter') return;
+        var input = e.target.closest && e.target.closest('.slw-cart-preview__qty-edit');
+        if (!input) return;
+        e.preventDefault();
+        clearTimeout(qtyInputDebounce);
+        persistQty(input);
+        input.blur();
+    });
     var clearCartBtn = document.getElementById('slw-cart-preview-clear');
     if (clearCartBtn) {
         clearCartBtn.addEventListener('click', function(e) {
@@ -2628,6 +2636,12 @@ body.page-wholesale-order .woocommerce-message .restore-item,
             math.textContent = ' · ' + qty + ' = ' + full + ' case' + (full === 1 ? '' : 's') + ' + ' + leftover + ' loose';
         }
     }
+    // Recompute boot inCartItems lineTotals from order-form row
+    // data-prices (the wholesale-correct source) before the first
+    // render so the Cart Preview, Order Subtotal, and sticky bar all
+    // show wholesale totals -- not the retail figures the server
+    // boot payload can leak in via $prod->get_price() on cart lines.
+    recomputeCartLineTotals();
     updateSubtotal();
 
     // Live search filter. Hides rows that don't match the typed query
