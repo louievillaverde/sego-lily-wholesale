@@ -3,7 +3,7 @@
  * Plugin Name:       Wholesale Portal
  * Plugin URI:        https://github.com/louievillaverde/sego-lily-wholesale
  * Description:       All-in-one B2B wholesale portal for WooCommerce. Customer portal, tiered pricing, application workflow, PDF invoices, email sequences with multi-provider support, NET payment terms, lead capture, trade show tools, and automated order reminders. Built by Lead Piranha.
- * Version:           4.6.121
+ * Version:           4.6.122
  * Author:            Lead Piranha
  * Author URI:        https://leadpiranha.com
  * Requires at least: 6.0
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SLW_VERSION', '4.6.121' );
+define( 'SLW_VERSION', '4.6.122' );
 define( 'SLW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SLW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -644,13 +644,16 @@ function slw_get_true_regular_price( $product ) {
     // The previous MAX-walk-across-siblings logic was a workaround for
     // variable-subscription products where the variation we were pricing
     // might be the recurring rate; it broke size-attribute products
-    // where 2oz and 4oz are sibling variations -- the 2oz variation
-    // would get the 4oz price via MAX, then wholesale = MAX * 0.5
-    // gave the same number for both jars. Reading the variation's
-    // own meta directly fixes this. We only fall back to the MAX walk
-    // when the variation has no per-variation price set at all (the
-    // original subscription-rate-bleed scenario).
-    if ( $product->is_type( 'variation' ) ) {
+    // where 2oz and 4oz are sibling variations.
+    //
+    // CRITICAL: check via instanceof WC_Product_Variation -- get_type()
+    // returns 'subscription_variation' (NOT 'variation') for WC
+    // Subscriptions variable-subscription children, so is_type('variation')
+    // silently returns false on Holly's whole catalog. instanceof catches
+    // the subclass so the per-variation price actually applies.
+    if ( $product instanceof WC_Product_Variation
+         || $product->is_type( 'variation' )
+         || $product->is_type( 'subscription_variation' ) ) {
         $own_raw = get_post_meta( $product_id, '_regular_price', true );
         if ( is_numeric( $own_raw ) && (float) $own_raw > 0 ) {
             return (float) $own_raw;

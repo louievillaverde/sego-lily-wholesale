@@ -206,15 +206,24 @@ class SLW_Shipping_Calculator {
             wp_send_json_error( array( 'message' => 'Enter a zip code to estimate shipping.' ) );
         }
         // Force-hydrate the cart from session before checking is_empty.
-        // In admin-ajax.php WC's cart sometimes lazy-loads later in the
-        // request -- without this, is_empty() returns true for a cart
-        // that actually has items, and the calc returns the misleading
-        // "add items first" error.
         if ( WC()->session && method_exists( WC()->cart, 'get_cart_from_session' ) ) {
             WC()->cart->get_cart_from_session();
         }
+        // Diagnostic: log what the AJAX context sees vs what the frontend
+        // expected. If the cart appears empty here while the customer
+        // can see items in Cart Preview, the session isn't carrying the
+        // cart across requests (cookie / WC session bug on Holly's site).
+        if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+            $cart_keys = WC()->cart && method_exists( WC()->cart, 'get_cart' ) ? array_keys( WC()->cart->get_cart() ) : array();
+            error_log( sprintf(
+                '[SLW shipping] user=%d session_id=%s cart_keys=%s',
+                get_current_user_id(),
+                WC()->session ? WC()->session->get_customer_id() : 'no-session',
+                wp_json_encode( $cart_keys )
+            ) );
+        }
         if ( WC()->cart->is_empty() ) {
-            wp_send_json_error( array( 'message' => 'Add items to your cart first.' ) );
+            wp_send_json_error( array( 'message' => 'Add items to your cart first. (If the cart shows items above, this is a session sync issue; reload the page.)' ) );
         }
         if ( ! WC()->cart->needs_shipping() ) {
             wp_send_json_error( array( 'message' => 'None of the items in your cart need shipping (all marked as virtual / downloadable).' ) );

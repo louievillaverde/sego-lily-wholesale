@@ -148,10 +148,25 @@ class SLW_Category_Minimums {
         }
         $totals = self::sum_cart_by_category();
         if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+            // Capture the cart's actual product->category mapping too,
+            // so we can see whether the configured mins term_ids line
+            // up with what the products are tagged in. If mins={47:6}
+            // but every product has cats=[83, 91, 104] -> mismatch,
+            // products aren't in the category that has the rule.
+            $cart_cats = array();
+            if ( function_exists( 'WC' ) && WC()->cart ) {
+                foreach ( WC()->cart->get_cart() as $ci ) {
+                    $p = $ci['data'] ?? null;
+                    if ( ! $p ) continue;
+                    $pid = method_exists( $p, 'get_parent_id' ) && $p->get_parent_id() ? $p->get_parent_id() : $p->get_id();
+                    $cart_cats[ $pid ] = wc_get_product_term_ids( $pid, 'product_cat' );
+                }
+            }
             error_log( sprintf(
-                '[SLW cat-mins] mins=%s totals=%s',
+                '[SLW cat-mins] mins=%s totals=%s cart_products_cats=%s',
                 wp_json_encode( $mins ),
-                wp_json_encode( $totals )
+                wp_json_encode( $totals ),
+                wp_json_encode( $cart_cats )
             ) );
         }
 
