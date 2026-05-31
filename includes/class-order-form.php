@@ -205,10 +205,52 @@ class SLW_Order_Form {
         if ( class_exists( 'SLW_Category_Minimums' ) ) {
             $violations = (array) SLW_Category_Minimums::get_violations( true );
         }
-        return array(
+
+        // Admin-only diagnostic so we can SEE -- in the browser console
+        // -- what categories the server thinks each cart product is in,
+        // what totals add up per category, and which mins are
+        // configured. Surfaces the same data the WP_DEBUG error_log
+        // captures, but in-band so we can debug without server log
+        // access. Skipped for real wholesale customers (clean payload).
+        $debug = null;
+        if ( current_user_can( 'manage_woocommerce' ) && class_exists( 'SLW_Category_Minimums' ) ) {
+            $cart_lookup = array();
+            if ( function_exists( 'WC' ) && WC()->cart ) {
+                foreach ( WC()->cart->get_cart() as $ci ) {
+                    $p = $ci['data'] ?? null;
+                    if ( ! $p ) continue;
+                    $parent_id = method_exists( $p, 'get_parent_id' ) ? (int) $p->get_parent_id() : 0;
+                    $lookup_id = $parent_id ? $parent_id : $p->get_id();
+                    $direct    = wc_get_product_term_ids( $lookup_id, 'product_cat' );
+                    $all       = $direct;
+                    foreach ( (array) $direct as $tid ) {
+                        $anc = get_ancestors( $tid, 'product_cat' );
+                        if ( ! empty( $anc ) ) $all = array_merge( $all, $anc );
+                    }
+                    $all = array_values( array_unique( array_map( 'intval', $all ) ) );
+                    $cart_lookup[] = array(
+                        'name'       => $p->get_name(),
+                        'lookup_id'  => $lookup_id,
+                        'qty'        => (int) ( $ci['quantity'] ?? 0 ),
+                        'direct'     => array_map( 'intval', (array) $direct ),
+                        'with_ancestors' => $all,
+                    );
+                }
+            }
+            $debug = array(
+                'mins'        => SLW_Category_Minimums::get_minimums(),
+                'totals'      => SLW_Category_Minimums::sum_cart_by_category(),
+                'cart_lookup' => $cart_lookup,
+                'is_wholesale_context' => function_exists( 'slw_is_wholesale_context' ) ? slw_is_wholesale_context() : null,
+            );
+        }
+
+        $payload = array(
             'items'      => $items,
             'violations' => $violations,
         );
+        if ( $debug !== null ) $payload['debug'] = $debug;
+        return $payload;
     }
 
     /**

@@ -1958,6 +1958,13 @@ body.page-wholesale-order .woocommerce-message .restore-item,
             window.SLW_DATA = window.SLW_DATA || {};
             window.SLW_DATA.violations = payload.violations;
         }
+        // Admin diagnostic: surface the server's view of cart->category
+        // term IDs + per-category totals + configured mins so we can
+        // see exactly which product's categories aren't matching the
+        // configured min term_id.
+        if (payload.debug) {
+            console.log('[SLW cat-mins server]', payload.debug);
+        }
         updateSubtotal();
     }
     // The server payload's lineTotal calls $prod->get_price() which
