@@ -1042,6 +1042,10 @@ $products = $all_products; // keep for empty check
         </div>
     </div>
 
+    <p class="slw-of-version" style="text-align:right;color:#a3a39a;font-size:11px;letter-spacing:0.04em;margin:12px 0 0;font-family:ui-monospace,'SF Mono',Menlo,monospace;">
+        Sego Lily Wholesale <?php echo defined( 'SLW_VERSION' ) ? esc_html( 'v' . SLW_VERSION ) : ''; ?>
+    </p>
+
     <?php endif; ?>
 </div>
 
@@ -1885,6 +1889,13 @@ body.page-wholesale-order .woocommerce-message .restore-item,
 
 <script>
 (function() {
+    // Version marker so we can decisively tell whether the live site is
+    // running this build of the plugin or a stale cached copy. Visible
+    // in DevTools Console + as small muted text at the bottom of the
+    // order form. If the version printed isn't the latest GitHub
+    // release tag, the bug fixes haven't actually deployed.
+    console.log('%c[SLW] Sego Lily Wholesale v<?php echo defined( 'SLW_VERSION' ) ? esc_js( SLW_VERSION ) : 'unknown'; ?>',
+        'color:#386174;font-weight:700;background:#F7F6F3;padding:2px 6px;border-radius:3px');
     var ajaxUrl = '<?php echo esc_js( $ajax_url ); ?>';
     var nonce = '<?php echo esc_js( $nonce ); ?>';
     var msgEl = document.getElementById('slw-order-message');
