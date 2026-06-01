@@ -431,7 +431,7 @@ $products = $all_products; // keep for empty check
                 <?php
                 $cat_display = $category_name;
                 if ( strcasecmp( $cat_display, 'Bundles' ) === 0 || strcasecmp( $cat_display, 'Bundle' ) === 0 ) {
-                    $cat_display = 'Variety Sets';
+                    $cat_display = 'Gift Sets';
                 }
                 ?>
                 <h3 style="margin:0;font-size:18px;color:#F7F6F3;font-family:Georgia,'Times New Roman',serif;"><?php echo esc_html( $cat_display ); ?></h3>
@@ -446,12 +446,13 @@ $products = $all_products; // keep for empty check
             <div style="display:flex;align-items:center;gap:12px;">
                 <?php
                 // Pluralize singular category names ("Deodorant" -> "Deodorants").
-                // Display rename: 'Bundles' surfaces as 'Variety Sets' on the
-                // wholesale order form (Holly call ask) without touching the
-                // actual WP category slug.
+                // Display rename: legacy 'Bundles' surfaces as 'Gift Sets' on
+                // the wholesale order form without touching the WP category
+                // slug. Canonical name is 'Gift Sets' (matches WC); the rename
+                // is kept as a no-op safety net for any leftover 'Bundles' tag.
                 $cat_label_for_button = $category_name;
                 if ( strcasecmp( $cat_label_for_button, 'Bundles' ) === 0 || strcasecmp( $cat_label_for_button, 'Bundle' ) === 0 ) {
-                    $cat_label_for_button = 'Variety Sets';
+                    $cat_label_for_button = 'Gift Sets';
                 }
                 $cat_label_plural = preg_match( '/(s|x|z|ch|sh)$/i', $cat_label_for_button )
                     ? $cat_label_for_button
