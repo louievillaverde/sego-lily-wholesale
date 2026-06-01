@@ -84,10 +84,39 @@ class SLW_Category_Minimums {
             $product   = $cart_item['data'];
             if ( ! $product ) continue;
 
-            // For variations, categories live on the parent.
-            $parent_id  = $product->get_parent_id();
-            $lookup_id  = $parent_id ? $parent_id : $product->get_id();
-            $term_ids   = wc_get_product_term_ids( $lookup_id, 'product_cat' );
+            $qty = (int) ( $cart_item['quantity'] ?? 0 );
+            if ( $qty <= 0 ) continue;
+
+            // Probe every ID associated with this cart line, not just
+            // the parent product id, because variation/subscription
+            // setups sometimes assign categories at the variation level
+            // while leaving the parent uncategorized, or vice versa.
+            // Single-id lookups missed those lines and they vanished
+            // from the category total. Union of all candidates fixes
+            // it; if a real wholesale customer adds an item, at least
+            // ONE of these will have the right categories.
+            $candidate_ids = array();
+            if ( ! empty( $cart_item['product_id'] ) ) {
+                $candidate_ids[] = (int) $cart_item['product_id'];
+            }
+            if ( ! empty( $cart_item['variation_id'] ) ) {
+                $candidate_ids[] = (int) $cart_item['variation_id'];
+            }
+            if ( method_exists( $product, 'get_parent_id' ) ) {
+                $pp = (int) $product->get_parent_id();
+                if ( $pp > 0 ) $candidate_ids[] = $pp;
+            }
+            $candidate_ids[] = (int) $product->get_id();
+            $candidate_ids = array_values( array_unique( array_filter( $candidate_ids ) ) );
+
+            $term_ids = array();
+            foreach ( $candidate_ids as $cid ) {
+                $direct = wc_get_product_term_ids( $cid, 'product_cat' );
+                if ( ! empty( $direct ) ) {
+                    $term_ids = array_merge( $term_ids, $direct );
+                }
+            }
+            $term_ids = array_values( array_unique( array_map( 'intval', $term_ids ) ) );
 
             if ( empty( $term_ids ) ) continue;
 
@@ -103,7 +132,6 @@ class SLW_Category_Minimums {
             }
             $all_terms = array_unique( $all_terms );
 
-            $qty = (int) $cart_item['quantity'];
             foreach ( $all_terms as $tid ) {
                 $totals[ $tid ] = ( $totals[ $tid ] ?? 0 ) + $qty;
             }

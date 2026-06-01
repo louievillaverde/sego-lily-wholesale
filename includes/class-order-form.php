@@ -219,21 +219,37 @@ class SLW_Order_Form {
                 foreach ( WC()->cart->get_cart() as $ci ) {
                     $p = $ci['data'] ?? null;
                     if ( ! $p ) continue;
-                    $parent_id = method_exists( $p, 'get_parent_id' ) ? (int) $p->get_parent_id() : 0;
-                    $lookup_id = $parent_id ? $parent_id : $p->get_id();
-                    $direct    = wc_get_product_term_ids( $lookup_id, 'product_cat' );
-                    $all       = $direct;
-                    foreach ( (array) $direct as $tid ) {
-                        $anc = get_ancestors( $tid, 'product_cat' );
-                        if ( ! empty( $anc ) ) $all = array_merge( $all, $anc );
+                    $candidates = array();
+                    if ( ! empty( $ci['product_id'] ) )   $candidates[] = (int) $ci['product_id'];
+                    if ( ! empty( $ci['variation_id'] ) ) $candidates[] = (int) $ci['variation_id'];
+                    if ( method_exists( $p, 'get_parent_id' ) ) {
+                        $pp = (int) $p->get_parent_id();
+                        if ( $pp > 0 ) $candidates[] = $pp;
                     }
-                    $all = array_values( array_unique( array_map( 'intval', $all ) ) );
+                    $candidates[] = (int) $p->get_id();
+                    $candidates = array_values( array_unique( array_filter( $candidates ) ) );
+
+                    $per_id = array();
+                    $union  = array();
+                    foreach ( $candidates as $cid ) {
+                        $direct = (array) wc_get_product_term_ids( $cid, 'product_cat' );
+                        $per_id[ $cid ] = array_map( 'intval', $direct );
+                        $union = array_merge( $union, $direct );
+                    }
+                    $union = array_values( array_unique( array_map( 'intval', $union ) ) );
+                    $with_anc = $union;
+                    foreach ( $union as $tid ) {
+                        $anc = get_ancestors( $tid, 'product_cat' );
+                        if ( ! empty( $anc ) ) $with_anc = array_merge( $with_anc, $anc );
+                    }
+                    $with_anc = array_values( array_unique( array_map( 'intval', $with_anc ) ) );
                     $cart_lookup[] = array(
-                        'name'       => $p->get_name(),
-                        'lookup_id'  => $lookup_id,
-                        'qty'        => (int) ( $ci['quantity'] ?? 0 ),
-                        'direct'     => array_map( 'intval', (array) $direct ),
-                        'with_ancestors' => $all,
+                        'name'           => $p->get_name(),
+                        'qty'            => (int) ( $ci['quantity'] ?? 0 ),
+                        'candidates'     => $candidates,
+                        'terms_per_id'   => $per_id,
+                        'union_direct'   => $union,
+                        'with_ancestors' => $with_anc,
                     );
                 }
             }
