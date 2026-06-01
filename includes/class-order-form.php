@@ -180,6 +180,16 @@ class SLW_Order_Form {
      * order-form.php renders inline on initial load.
      */
     public static function cart_state_payload() {
+        // Force-hydrate the cart from session before reading it. The
+        // AJAX handlers already do this defensively, but this function
+        // is ALSO called inline at page render (boot debug payload) and
+        // from any future caller; without this, a request that hits
+        // cart_state_payload before WC's lazy-load fires would see an
+        // empty cart and return totals=[]+cart_lookup=[] even though
+        // the user's session has items.
+        if ( function_exists( 'WC' ) && WC()->cart && WC()->session && method_exists( WC()->cart, 'get_cart_from_session' ) ) {
+            WC()->cart->get_cart_from_session();
+        }
         $items = array();
         if ( function_exists( 'WC' ) && WC()->cart && ! WC()->cart->is_empty() ) {
             foreach ( WC()->cart->get_cart() as $key => $ci ) {
