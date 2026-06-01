@@ -2648,6 +2648,12 @@ body.page-wholesale-order .woocommerce-message .restore-item,
                 subtotalMetaEl.textContent = itemCount + ' items across ' + lineCount + ' products';
             }
         }
+        // Per-category-section progress badge ("X / 6") needs to
+        // reflect both staged inputs AND items already in the cart.
+        // Defined later in the IIFE; exposed on window for forward-ref.
+        if (typeof window.__slwUpdateCategoryProgress === 'function') {
+            window.__slwUpdateCategoryProgress();
+        }
     }
 
     document.querySelectorAll('.slw-qty-input').forEach(function(input) {
@@ -3461,17 +3467,41 @@ body.page-wholesale-order .woocommerce-message .restore-item,
         });
     });
 
-    // Live category-minimum progress: sum quantities inside each category section
-    // and update the "X / Y" badge in the category header.
+    // Live category-minimum progress: sum quantities inside each
+    // category section AND items already in the cart whose product
+    // belongs to that section's term_id (via productCategories map,
+    // ancestor-walked at boot). Updates the "X / Y" badge in the
+    // category header. Old version summed only staged .slw-qty-input
+    // values and ignored cart items, so the badge would drop to 0/6
+    // as soon as a product was added to the cart (staged qty reset).
     function updateCategoryProgress() {
+        var productCats = (window.SLW_DATA && window.SLW_DATA.productCategories) || {};
+        var cartItems = (typeof inCartItems !== 'undefined' && Array.isArray(inCartItems)) ? inCartItems : [];
         document.querySelectorAll('.slw-category-section').forEach(function(section) {
             var min = parseInt(section.getAttribute('data-category-min')) || 0;
             if (min <= 0) return;
-            var slug = section.getAttribute('data-category');
-            var total = 0;
+            var slug   = section.getAttribute('data-category');
+            var termId = parseInt(section.getAttribute('data-category-term')) || 0;
+
+            var stagedTotal = 0;
             section.querySelectorAll('.slw-qty-input').forEach(function(input) {
-                total += parseInt(input.value) || 0;
+                stagedTotal += parseInt(input.value) || 0;
             });
+
+            var cartTotal = 0;
+            if (termId > 0) {
+                cartItems.forEach(function(ci) {
+                    var pid = parseInt(ci.product_id, 10) || 0;
+                    if (!pid) return;
+                    var terms = productCats[pid];
+                    if (!Array.isArray(terms)) return;
+                    if (terms.indexOf(termId) !== -1) {
+                        cartTotal += parseInt(ci.qty, 10) || 0;
+                    }
+                });
+            }
+
+            var total = stagedTotal + cartTotal;
             var badge = document.querySelector('.slw-cat-progress[data-category="' + slug + '"]');
             if (badge) {
                 badge.textContent = total + ' / ' + min;
@@ -3479,6 +3509,11 @@ body.page-wholesale-order .woocommerce-message .restore-item,
             }
         });
     }
+    // Expose so updateSubtotal (further up the IIFE) can call this
+    // whenever the cart state changes -- otherwise the badge would
+    // only re-render on .slw-qty-input edits and stay stale after
+    // Cart Preview qty changes, removes, clear-cart, or AJAX refresh.
+    window.__slwUpdateCategoryProgress = updateCategoryProgress;
     document.querySelectorAll('.slw-qty-input').forEach(function(input) {
         input.addEventListener('input', updateCategoryProgress);
         input.addEventListener('change', updateCategoryProgress);

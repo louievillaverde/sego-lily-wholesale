@@ -490,7 +490,16 @@ class SLW_Premium_Features {
 
         $existing = get_user_by( 'email', $email );
         if ( $existing ) {
-            if ( ! slw_is_wholesale_user( $existing->ID ) ) {
+            // Check the literal wholesale_customer role, NOT
+            // slw_is_wholesale_user() -- that helper returns true for
+            // any administrator (admins can access wholesale features
+            // without holding the role). If we trust it here, admins
+            // who SHOULD also be added as customers (like staff who
+            // place wholesale orders for themselves) get blocked with
+            // "already a wholesale customer" but never receive the
+            // role, so they never appear on the Customers table.
+            $has_wholesale_role = in_array( 'wholesale_customer', (array) $existing->roles, true );
+            if ( ! $has_wholesale_role ) {
                 $existing->add_role( 'wholesale_customer' );
                 if ( $business )   update_user_meta( $existing->ID, 'slw_business_name', $business );
                 if ( $phone )      update_user_meta( $existing->ID, 'billing_phone', $phone );
@@ -614,9 +623,12 @@ class SLW_Premium_Features {
 
             $existing = get_user_by( 'email', $email );
             if ( $existing ) {
-                // Promote existing user to wholesale
+                // Promote existing user to wholesale. Check the literal
+                // role, not slw_is_wholesale_user() (which is true for
+                // admins) -- otherwise an admin row would be flagged
+                // "already wholesale" and never receive the role.
                 $user = $existing;
-                if ( ! slw_is_wholesale_user( $user->ID ) ) {
+                if ( ! in_array( 'wholesale_customer', (array) $user->roles, true ) ) {
                     $user->add_role( 'wholesale_customer' );
                     $promoted++;
                 } else {
