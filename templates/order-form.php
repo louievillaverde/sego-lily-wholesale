@@ -1003,6 +1003,27 @@ $products = $all_products; // keep for empty check
                 <?php endforeach; ?>
             </ul>
         </div>
+        <?php if ( current_user_can( 'manage_woocommerce' ) ) :
+            // Build the same debug payload that cart_state_payload
+            // returns over AJAX so admins see live data on initial
+            // page load too, not just after the first cart mutation.
+            $boot_debug = null;
+            if ( class_exists( 'SLW_Order_Form' ) && method_exists( 'SLW_Order_Form', 'cart_state_payload' ) ) {
+                $bp = SLW_Order_Form::cart_state_payload();
+                if ( isset( $bp['debug'] ) ) $boot_debug = $bp['debug'];
+            }
+        ?>
+        <div id="slw-admin-debug" style="margin-top:12px;padding:10px 12px;background:#0d2a36;color:#bce0ee;border-radius:4px;font:11px/1.4 ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;word-break:break-all;<?php echo $boot_debug ? '' : 'display:none;'; ?>">
+            <strong style="color:#fff;display:block;margin-bottom:6px;">[admin] cart-mins debug (live)</strong>
+            <span id="slw-admin-debug-body"><?php
+                if ( $boot_debug ) {
+                    echo esc_html( wp_json_encode( $boot_debug, JSON_PRETTY_PRINT ) );
+                    echo "\n\nviolations(returned): ";
+                    echo esc_html( wp_json_encode( $boot_violations, JSON_PRETTY_PRINT ) );
+                }
+            ?></span>
+        </div>
+        <?php endif; ?>
     </div>
     <script>
         window.SLW_DATA = window.SLW_DATA || {};
@@ -1964,6 +1985,18 @@ body.page-wholesale-order .woocommerce-message .restore-item,
         // configured min term_id.
         if (payload.debug) {
             console.log('[SLW cat-mins server]', payload.debug);
+            var dbg = document.getElementById('slw-admin-debug');
+            var dbgBody = document.getElementById('slw-admin-debug-body');
+            if (dbg && dbgBody) {
+                dbg.style.display = 'block';
+                try {
+                    dbgBody.textContent = JSON.stringify(payload.debug, null, 2)
+                        + '\n\nviolations(returned): '
+                        + JSON.stringify(payload.violations, null, 2);
+                } catch (e) {
+                    dbgBody.textContent = '[debug stringify failed: ' + e.message + ']';
+                }
+            }
         }
         updateSubtotal();
     }
