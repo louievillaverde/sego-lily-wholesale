@@ -1004,10 +1004,17 @@ $products = $all_products; // keep for empty check
                 <?php endforeach; ?>
             </ul>
         </div>
-        <?php if ( current_user_can( 'manage_woocommerce' ) ) :
-            // Build the same debug payload that cart_state_payload
-            // returns over AJAX so admins see live data on initial
-            // page load too, not just after the first cart mutation.
+        <?php
+        // Admin cat-mins debug strip is OPT-IN, gated on ?slw_debug=1.
+        // Holly + any logged-in admin browsing normally won't see it.
+        // To turn it back on for diagnosis, append ?slw_debug=1 (or
+        // &slw_debug=1) to the wholesale portal URL. The JS console.log
+        // in refreshCartFromServer is harmless to leave -- no devtools,
+        // no noise.
+        $slw_debug_on = current_user_can( 'manage_woocommerce' )
+            && isset( $_GET['slw_debug'] )
+            && $_GET['slw_debug'] === '1';
+        if ( $slw_debug_on ) :
             $boot_debug = null;
             if ( class_exists( 'SLW_Order_Form' ) && method_exists( 'SLW_Order_Form', 'cart_state_payload' ) ) {
                 $bp = SLW_Order_Form::cart_state_payload();
