@@ -198,51 +198,19 @@ class SLW_Category_Minimums {
             ) );
         }
 
-        // Dedupe: build a map of which products contribute to each
-        // category, AND which products are independently violating
-        // their per-product minimum. If a category has exactly one
-        // contributor AND that contributor is already shouting its
-        // own product-level violation, suppress the category notice
-        // -- fixing the product fixes the category.
-        $cat_contributors = array();
-        $product_violators = array();
-        $product_totals    = array();
-        if ( function_exists( 'WC' ) && WC()->cart ) {
-            foreach ( WC()->cart->get_cart() as $cart_item ) {
-                $product = $cart_item['data'] ?? null;
-                if ( ! $product ) continue;
-                $parent_id = method_exists( $product, 'get_parent_id' ) ? (int) $product->get_parent_id() : 0;
-                $lookup_id = $parent_id ? $parent_id : $product->get_id();
-                $qty       = (int) ( $cart_item['quantity'] ?? 0 );
-                $product_totals[ $lookup_id ] = ( $product_totals[ $lookup_id ] ?? 0 ) + $qty;
-                $term_ids = wc_get_product_term_ids( $lookup_id, 'product_cat' );
-                foreach ( (array) $term_ids as $tid ) {
-                    if ( ! isset( $cat_contributors[ $tid ] ) ) $cat_contributors[ $tid ] = array();
-                    if ( ! in_array( $lookup_id, $cat_contributors[ $tid ], true ) ) {
-                        $cat_contributors[ $tid ][] = $lookup_id;
-                    }
-                }
-            }
-            if ( class_exists( 'SLW_Product_Minimums' ) ) {
-                foreach ( $product_totals as $lookup_id => $qty ) {
-                    $pmin = SLW_Product_Minimums::get_product_minimum( $lookup_id );
-                    if ( $pmin > 0 && $qty < $pmin ) {
-                        $product_violators[ $lookup_id ] = true;
-                    }
-                }
-            }
-        }
+        // (Pre-v4.6.134 there was a "single-contributor dedupe" block
+        // here that suppressed a category violation when its only
+        // contributor was independently violating its per-product
+        // min. That made sense when product mins were enforced. Since
+        // v4.6.115 product mins are no-op, so the dedupe was silently
+        // eating real category violations whenever a product still
+        // had its legacy _slw_min_qty meta set + only one product in
+        // the category. Removed.)
 
         foreach ( $mins as $term_id => $min_qty ) {
             $cart_qty = $totals[ $term_id ] ?? 0;
             if ( $cart_qty <= 0 ) continue;
             if ( $cart_qty < $min_qty ) {
-                $contribs = $cat_contributors[ $term_id ] ?? array();
-                if ( count( $contribs ) === 1 && isset( $product_violators[ $contribs[0] ] ) ) {
-                    // The single contributor is already broadcasting its
-                    // own min violation; don't double-notify.
-                    continue;
-                }
                 $term = get_term( $term_id, 'product_cat' );
                 $cat_name = $term && ! is_wp_error( $term ) ? $term->name : 'this category';
                 // Spell out that the "have X" count is category-scoped,
