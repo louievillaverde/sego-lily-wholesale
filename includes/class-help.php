@@ -137,6 +137,12 @@ class SLW_Help {
                 'button'      => 'Go to Import',
             ),
             array(
+                'title'       => 'Send tracking numbers to your customers',
+                'description' => 'When you ship an order, open it and fill in the Shipment Tracking box (tracking number and carrier). The moment you mark the order Completed, the customer is automatically emailed their tracking number with a link to track the package. There is also a Send button to email tracking for an order you already completed.',
+                'url'         => admin_url( 'admin.php?page=slw-orders' ),
+                'button'      => 'Go to Orders',
+            ),
+            array(
                 'title'       => 'Test the full wholesale flow',
                 'description' => 'Visit your application page as a logged-out user, submit a test application, approve it from the admin, then log in as the test user to verify wholesale pricing and the order form.',
                 'url'         => home_url( '/wholesale-partners' ),
