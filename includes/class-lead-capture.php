@@ -935,7 +935,18 @@ class SLW_Lead_Capture {
                     fd.append('booth_mode', '1');
                     fd.append('name', nameVal);
                     fd.append('email', emailVal);
-                    fd.append('source', urlSrc || (isRetail ? 'retail_booth' : 'wholesale_booth'));
+                    // The booth picker URL/QR carries source=trade_show for event
+                    // attribution, but the per-path source (retail_booth /
+                    // wholesale_booth) is what drives lead routing downstream:
+                    // retail -> WC customer + retail-lead webhook (Mautic routine
+                    // email), wholesale -> application record + Holly's approve/deny
+                    // email. Treat trade_show as "unset" so the chosen path wins.
+                    // Handled in JS (not just the URL) so QR codes already printed
+                    // with source=trade_show route correctly too.
+                    var leadSource = (urlSrc && urlSrc !== 'trade_show')
+                        ? urlSrc
+                        : (isRetail ? 'retail_booth' : 'wholesale_booth');
+                    fd.append('source', leadSource);
                     fd.append('event', urlEvt);
 
                     if (isRetail) {
