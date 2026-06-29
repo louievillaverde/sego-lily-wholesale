@@ -18,7 +18,10 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 class SLW_Webhooks {
 
-    const USER_AGENT = 'Mozilla/5.0 (compatible; AIOS-Mautic/1.0; +https://leadpiranha.com)';
+    // Plain browser User-Agent. The Mautic host's firewall returns 403 to
+    // bot-style UAs (e.g. "compatible; AIOS-Mautic/1.0"), which silently broke
+    // OAuth token requests and all Mautic tagging. A standard browser UA passes.
+    const USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
     public static function init() {
         // Nothing to hook. fire() is called directly by other modules.
