@@ -237,8 +237,8 @@ class SLW_Lead_Capture {
         }
 
         // Pull booth settings
-        $retail_code    = esc_attr( get_option( 'slw_booth_retail_code', 'SEGO15' ) );
-        $retail_offer   = esc_html( get_option( 'slw_booth_retail_offer', '15% off your first order' ) );
+        $retail_code    = esc_attr( get_option( 'slw_booth_retail_code', 'SEGO10' ) );
+        $retail_offer   = esc_html( get_option( 'slw_booth_retail_offer', '10% off your first order' ) );
         $retail_url     = esc_url( get_option( 'slw_booth_retail_url', home_url( '/shop-all' ) ) );
         $wholesale_head = esc_html( get_option( 'slw_booth_wholesale_heading', "Welcome! Here's our wholesale price list" ) );
         $wholesale_offer = esc_html( get_option( 'slw_booth_wholesale_offer', 'Free shipping if you order at the show' ) );

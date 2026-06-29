@@ -4,7 +4,7 @@
  *
  * HelloFresh-style referral program for retail customers:
  *
- * 1. Customer takes trade show quiz and gets SEGO15 (15% off first order)
+ * 1. Customer takes trade show quiz and gets SEGO10 (10% off first order)
  * 2. After their first order completes, plugin generates 3 unique coupon codes
  * 3. Customer shares codes with friends — each code is single-use, 15% off, 90-day expiry
  * 4. First order ($40+) gets a surprise free sample in the box (Ulta-style gift-with-purchase)

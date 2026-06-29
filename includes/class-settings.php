@@ -24,8 +24,8 @@ class SLW_Settings {
         'slw_wholesale_shipping_methods'    => array( 'sanitize' => 'array',               'default' => array() ),
         'slw_retail_shipping_methods'       => array( 'sanitize' => 'array',               'default' => array() ),
         // Booth & Lead Capture
-        'slw_booth_retail_code'             => array( 'sanitize' => 'sanitize_text_field',  'default' => 'SEGO15' ),
-        'slw_booth_retail_offer'            => array( 'sanitize' => 'sanitize_text_field',  'default' => '15% off your first order' ),
+        'slw_booth_retail_code'             => array( 'sanitize' => 'sanitize_text_field',  'default' => 'SEGO10' ),
+        'slw_booth_retail_offer'            => array( 'sanitize' => 'sanitize_text_field',  'default' => '10% off your first order' ),
         'slw_booth_retail_url'              => array( 'sanitize' => 'esc_url_raw',          'default' => '' ),
         'slw_booth_wholesale_heading'       => array( 'sanitize' => 'sanitize_text_field',  'default' => 'Welcome! Here is our wholesale price list' ),
         'slw_booth_wholesale_offer'         => array( 'sanitize' => 'sanitize_text_field',  'default' => 'Free shipping if you order at the show' ),
@@ -217,21 +217,21 @@ class SLW_Settings {
                         <td>
                             <span class="slw-locked-field-wrap" style="display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap;">
                                 <input type="text" id="slw_booth_retail_code" name="slw_booth_retail_code"
-                                       value="<?php echo esc_attr( get_option( 'slw_booth_retail_code', 'SEGO15' ) ); ?>"
+                                       value="<?php echo esc_attr( get_option( 'slw_booth_retail_code', 'SEGO10' ) ); ?>"
                                        class="regular-text slw-locked-field"
                                        data-warning="Changing the retail discount code will invalidate any active codes already shared with customers. Anyone who got the old code will see it fail at checkout. Type RESET to enable editing." readonly />
                                 <button type="button" class="button button-small slw-locked-unlock">Unlock</button>
                             </span>
-                            <p class="description">Discount code shown to retail booth visitors. Default: SEGO15. Should match an active WooCommerce coupon.</p>
+                            <p class="description">Discount code shown to retail booth visitors. Default: SEGO10. Should match an active WooCommerce coupon.</p>
                         </td>
                     </tr>
                     <tr>
                         <th scope="row"><label for="slw_booth_retail_offer">Retail Discount Text</label></th>
                         <td>
                             <input type="text" id="slw_booth_retail_offer" name="slw_booth_retail_offer"
-                                   value="<?php echo esc_attr( get_option( 'slw_booth_retail_offer', '15% off your first order' ) ); ?>"
+                                   value="<?php echo esc_attr( get_option( 'slw_booth_retail_offer', '10% off your first order' ) ); ?>"
                                    class="regular-text" />
-                            <p class="description">Shown as the incentive heading for retail visitors. E.g. "15% off your first order"</p>
+                            <p class="description">Shown as the incentive heading for retail visitors. E.g. "10% off your first order"</p>
                         </td>
                     </tr>
                     <tr>
