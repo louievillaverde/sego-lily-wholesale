@@ -391,7 +391,7 @@ class SLW_Settings {
 
         <div id="slw-unsaved-bar" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#386174;color:#F7F6F3;padding:12px 24px;text-align:center;font-family:Georgia,'Times New Roman',serif;font-size:14px;z-index:99999;box-shadow:0 -2px 8px rgba(0,0,0,0.15);">
             You have unsaved changes.
-            <button type="button" onclick="document.querySelector('form [name=slw_settings_save]').closest('form').submit();" style="margin-left:12px;background:#D4AF37;color:#1E2A30;border:none;padding:6px 18px;border-radius:4px;font-weight:600;cursor:pointer;font-family:inherit;">Save Settings</button>
+            <button type="button" id="slw-unsaved-save" style="margin-left:12px;background:#D4AF37;color:#1E2A30;border:none;padding:6px 18px;border-radius:4px;font-weight:600;cursor:pointer;font-family:inherit;">Save Settings</button>
         </div>
         <?php self::print_lock_handler_script(); ?>
         <script>
@@ -410,6 +410,18 @@ class SLW_Settings {
             }
             form.addEventListener('input', check);
             form.addEventListener('change', check);
+
+            // Submit via the real submit control. form.submit() can't be called
+            // here because WordPress's submit_button() renders an input named
+            // "submit", which clobbers the form's .submit() method.
+            var saveBtn = document.getElementById('slw-unsaved-save');
+            if (saveBtn) {
+                saveBtn.addEventListener('click', function() {
+                    var real = form.querySelector('[type=submit]');
+                    if (real) { real.click(); }
+                    else if (form.requestSubmit) { form.requestSubmit(); }
+                });
+            }
         })();
         </script>
         <?php
