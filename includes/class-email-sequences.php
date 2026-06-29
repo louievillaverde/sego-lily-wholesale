@@ -14,7 +14,10 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 class SLW_Email_Sequences {
 
-    const USER_AGENT = 'Mozilla/5.0 (compatible; AIOS-Mautic/1.0; +https://leadpiranha.com)';
+    // Plain browser User-Agent. The Mautic host's firewall 403s bot-style UAs
+    // (e.g. "compatible; AIOS-Mautic/1.0"), which broke both the token request
+    // and every API call from this module. Mirror class-webhooks.php.
+    const USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
     public static function init() {
         // AJAX handlers
