@@ -148,6 +148,18 @@ class SLW_Help {
                 'url'         => home_url( '/wholesale-partners' ),
                 'button'      => 'View Application Form',
             ),
+            array(
+                'title'       => 'Add, hide, or remove a product scent',
+                'description' => 'You can manage scents yourself. In Products, open the product: use the Attributes tab to add or remove a scent from the selectable options, and the Variations tab to add a new scent variation or take one down. To take a scent down safely, set its variation to Private, which removes it from the store while leaving any active subscription on it intact, rather than deleting it. Removing the scent from the Attributes options hides it from the dropdown.',
+                'url'         => admin_url( 'edit.php?post_type=product' ),
+                'button'      => 'Go to Products',
+            ),
+            array(
+                'title'       => 'Hide a product from wholesale buyers',
+                'description' => 'To keep a product on the retail store but control who sees it in wholesale, open the product and use the "Visible to Wholesale Tiers" field to choose which tiers it shows to. This is per product and does not affect the retail catalog.',
+                'url'         => admin_url( 'edit.php?post_type=product' ),
+                'button'      => 'Go to Products',
+            ),
         );
     }
 
