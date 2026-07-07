@@ -3,7 +3,7 @@
  * Plugin Name:       Wholesale Portal
  * Plugin URI:        https://github.com/louievillaverde/sego-lily-wholesale
  * Description:       All-in-one B2B wholesale portal for WooCommerce. Customer portal, tiered pricing, application workflow, PDF invoices, email sequences with multi-provider support, NET payment terms, lead capture, trade show tools, and automated order reminders. Built by Lead Piranha.
- * Version:           4.6.145
+ * Version:           4.6.146
  * Author:            Lead Piranha
  * Author URI:        https://leadpiranha.com
  * Requires at least: 6.0
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SLW_VERSION', '4.6.145' );
+define( 'SLW_VERSION', '4.6.146' );
 define( 'SLW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SLW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -548,14 +548,19 @@ function slw_is_wholesale_user( $user_id = null ) {
  * admin columns, etc.).
  */
 function slw_is_wholesale_context( $user_id = null ) {
-    // Admin preview mode. Either ?slw_preview=1 in the URL, or auto-applied
-    // when an admin is rendering the wholesale portal (so they don't have to
-    // remember to add the query param). Both gated by manage_woocommerce.
-    if ( current_user_can( 'manage_woocommerce' ) && (
-            isset( $_GET['slw_preview'] ) ||
-            ! empty( $GLOBALS['slw_in_portal_render'] )
-    ) ) {
-        return true;
+    // Admin preview mode. An admin can flip a persistent "View as Wholesale"
+    // toggle (session-backed via ?slw_preview=1, cleared with ?slw_preview=0)
+    // so it sticks across pages including checkout, not just the one URL that
+    // carried the param. Also auto-applied while an admin renders the wholesale
+    // portal. All gated by manage_woocommerce.
+    if ( current_user_can( 'manage_woocommerce' ) ) {
+        if ( isset( $_GET['slw_preview'] ) && function_exists( 'WC' ) && WC() && WC()->session ) {
+            WC()->session->set( 'slw_admin_preview', ( '0' === (string) $_GET['slw_preview'] ) ? 'off' : 'on' );
+        }
+        $admin_preview = ( function_exists( 'WC' ) && WC() && WC()->session ) ? WC()->session->get( 'slw_admin_preview' ) : '';
+        if ( 'on' === $admin_preview || ! empty( $GLOBALS['slw_in_portal_render'] ) ) {
+            return true;
+        }
     }
 
     if ( ! $user_id ) {
@@ -593,6 +598,51 @@ function slw_is_wholesale_context( $user_id = null ) {
     }
     return true; // Approved wholesale customers default to wholesale context
 }
+
+/**
+ * Helper: is the admin persistent wholesale-preview toggle currently ON?
+ */
+function slw_admin_preview_on() {
+    return current_user_can( 'manage_woocommerce' )
+        && function_exists( 'WC' ) && WC() && WC()->session
+        && 'on' === WC()->session->get( 'slw_admin_preview' );
+}
+
+/**
+ * Admin-bar toggle: flip the whole storefront between retail and wholesale
+ * pricing with one click, so an admin can see exactly what a wholesale customer
+ * sees (all the way through checkout) without remembering the ?slw_preview
+ * query param. Front-end only, where prices actually render.
+ */
+add_action( 'admin_bar_menu', function ( $bar ) {
+    if ( is_admin() || ! current_user_can( 'manage_woocommerce' ) ) {
+        return;
+    }
+    $on     = slw_admin_preview_on();
+    $target = esc_url( add_query_arg( 'slw_preview', $on ? '0' : '1' ) );
+    $bar->add_node( array(
+        'id'    => 'slw-preview-toggle',
+        'title' => $on ? 'Viewing: Wholesale (on)' : 'Viewing: Retail',
+        'href'  => $target,
+        'meta'  => array( 'title' => 'Toggle your storefront view between retail and wholesale pricing' ),
+    ) );
+}, 100 );
+
+/**
+ * Persistent banner while an admin is in wholesale preview, so it is always
+ * obvious the on-screen prices are wholesale, not retail. This is the fix for
+ * "the admin view fooled me into thinking pricing was broken."
+ */
+add_action( 'wp_footer', function () {
+    if ( ! slw_admin_preview_on() ) {
+        return;
+    }
+    $off = esc_url( add_query_arg( 'slw_preview', '0' ) );
+    echo '<div style="position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#386174;color:#fff;font:14px/1.4 Georgia,serif;text-align:center;padding:10px 16px;box-shadow:0 -2px 8px rgba(0,0,0,0.15);">'
+        . 'Wholesale preview is ON. These are wholesale prices, exactly what your wholesale customers see. '
+        . '<a href="' . $off . '" style="color:#fff;text-decoration:underline;font-weight:bold;">Switch back to retail</a>'
+        . '</div>';
+} );
 
 /**
  * Helper: get a plugin setting with a fallback default.
