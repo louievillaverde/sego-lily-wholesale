@@ -91,19 +91,21 @@ class SLW_Scent_Availability {
 	}
 
 	/**
-	 * Wholesale units sold per scent over the last 90 days, keyed
-	 * "productID|lowercased-scent". Informs which scents are worth keeping.
+	 * Total units sold per scent over the last 90 days across ALL channels
+	 * (retail + wholesale), keyed "productID|lowercased-scent". This is real
+	 * demand, so discontinue decisions aren't skewed by the (usually small)
+	 * wholesale volume alone. Cached for 6h since it scans orders. Refunded
+	 * orders are excluded by status.
 	 */
-	private static function wholesale_units_by_scent() {
-		$uids = get_users( array( 'role' => 'wholesale_customer', 'fields' => 'ID' ) );
-		if ( empty( $uids ) ) {
-			return array();
+	private static function units_by_scent() {
+		$cached = get_transient( 'slw_scent_units_90d' );
+		if ( is_array( $cached ) ) {
+			return $cached;
 		}
 		$orders = wc_get_orders( array(
-			'customer_id'  => $uids,
 			'limit'        => -1,
 			'status'       => array( 'wc-processing', 'wc-completed', 'wc-on-hold' ),
-			'date_created' => '>=' . ( time() - 90 * DAY_IN_SECONDS ),
+			'date_created' => '>=' . gmdate( 'Y-m-d', time() - 90 * DAY_IN_SECONDS ),
 		) );
 		$map = array();
 		foreach ( $orders as $order ) {
@@ -120,6 +122,7 @@ class SLW_Scent_Availability {
 				$map[ $key ] = ( $map[ $key ] ?? 0 ) + (int) $item->get_quantity();
 			}
 		}
+		set_transient( 'slw_scent_units_90d', $map, 6 * HOUR_IN_SECONDS );
 		return $map;
 	}
 
@@ -127,7 +130,7 @@ class SLW_Scent_Availability {
 	 * Scan variable products and build per-scent status, stock, sizes + sales.
 	 */
 	private static function scan() {
-		$sales    = self::wholesale_units_by_scent();
+		$sales    = self::units_by_scent();
 		$products = wc_get_products( array(
 			'type'   => array( 'variable', 'variable-subscription' ),
 			'limit'  => -1,
@@ -302,7 +305,7 @@ class SLW_Scent_Availability {
 		?>
 		<div class="slw-admin-card" id="slw-scents" style="padding:20px 24px;margin-bottom:24px;">
 			<h2 class="slw-admin-card__heading" style="margin-bottom:8px;">Scent Availability</h2>
-			<p style="color:#628393;margin-bottom:14px;max-width:800px;">Every scent's status, stock, and recent wholesale demand in one place. Discontinuing a scent removes it from <strong>both</strong> retail and wholesale in one click. <span style="color:#c0392b;font-weight:600;">Needs attention</span> = live on wholesale but off retail, or live but out of stock.</p>
+			<p style="color:#628393;margin-bottom:14px;max-width:800px;">Every scent's status, stock, and recent demand in one place. <em>Sold 90d</em> is total units sold across retail and wholesale in the last 90 days (refunds excluded), so keep/discontinue calls reflect real demand. Discontinuing a scent removes it from <strong>both</strong> retail and wholesale in one click. <span style="color:#c0392b;font-weight:600;">Needs attention</span> = live on wholesale but off retail, or live but out of stock.</p>
 			<?php if ( isset( $_GET['slw_scent_updated'] ) ) : ?>
 				<div class="notice notice-success inline" style="margin:0 0 14px;"><p>Scent updated across retail and wholesale.</p></div>
 			<?php endif; ?>
