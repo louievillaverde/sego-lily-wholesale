@@ -177,7 +177,31 @@ class SLW_Wholesale_Orders {
         <div class="wrap slw-wholesale-orders">
             <h1 class="wp-heading-inline">Wholesale Orders</h1>
             <a href="<?php echo esc_url( $export_url ); ?>" class="page-title-action">Export CSV</a>
+            <button type="button" class="page-title-action" onclick="document.getElementById('slw-export-opts').classList.toggle('hidden');">Export options</button>
             <hr class="wp-header-end">
+
+            <div id="slw-export-opts" class="hidden" style="background:#fff;border:1px solid #ccd0d4;border-radius:4px;padding:16px;margin:10px 0;max-width:760px;">
+                <form method="get" action="<?php echo esc_url( admin_url( 'admin.php' ) ); ?>">
+                    <input type="hidden" name="page" value="slw-orders" />
+                    <input type="hidden" name="action" value="export_csv" />
+                    <input type="hidden" name="_wpnonce" value="<?php echo esc_attr( wp_create_nonce( 'slw_export_orders' ) ); ?>" />
+                    <input type="hidden" name="order_status" value="<?php echo esc_attr( $status_filter ); ?>" />
+                    <input type="hidden" name="tier" value="<?php echo esc_attr( $tier_filter ); ?>" />
+                    <input type="hidden" name="s" value="<?php echo esc_attr( $search ); ?>" />
+                    <input type="hidden" name="date_from" value="<?php echo esc_attr( $date_from ); ?>" />
+                    <input type="hidden" name="date_to" value="<?php echo esc_attr( $date_to ); ?>" />
+                    <p style="margin:0 0 8px;font-weight:600;">Columns to include</p>
+                    <div style="display:flex;flex-wrap:wrap;gap:6px 18px;margin-bottom:14px;">
+                        <?php foreach ( self::export_columns() as $col_key => $col_label ) : ?>
+                            <label style="white-space:nowrap;"><input type="checkbox" name="cols[]" value="<?php echo esc_attr( $col_key ); ?>" checked /> <?php echo esc_html( $col_label ); ?></label>
+                        <?php endforeach; ?>
+                    </div>
+                    <p style="margin:0 0 12px;">
+                        <label><input type="checkbox" name="detail" value="1" /> Include line-item breakdown (one row per product, with quantity and unit price)</label>
+                    </p>
+                    <button type="submit" class="button button-primary">Download CSV</button>
+                </form>
+            </div>
 
             <!-- Summary Stats -->
             <div class="slw-orders-summary">
@@ -265,6 +289,7 @@ class SLW_Wholesale_Orders {
                             <th class="column-status" style="width:10%;">Status</th>
                             <th class="column-payment" style="width:13%;">Payment</th>
                             <th class="column-tier" style="width:9%;">Tier</th>
+                            <th class="column-invoice" style="width:8%;">Invoice</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -300,6 +325,10 @@ class SLW_Wholesale_Orders {
                                 <span class="slw-tier-badge slw-tier-badge--<?php echo esc_attr( $tier ); ?>">
                                     <?php echo esc_html( ucfirst( $tier ) ); ?>
                                 </span>
+                            </td>
+                            <td>
+                                <a href="<?php echo esc_url( add_query_arg( array( 'slw_invoice' => $order->get_id(), 'key' => $order->get_order_key() ), home_url( '/' ) ) ); ?>"
+                                   class="button button-small" target="_blank" rel="noopener">Invoice</a>
                             </td>
                         </tr>
                         <?php endforeach; ?>
@@ -442,40 +471,101 @@ class SLW_Wholesale_Orders {
 
         $orders = wc_get_orders( $args );
 
-        $filename = 'wholesale-orders-' . date( 'Y-m-d' ) . '.csv';
+        // Which columns did the admin ask for? (Export options form; falls back to all.)
+        $all_cols = self::export_columns();
+        $sel = ( isset( $_GET['cols'] ) && is_array( $_GET['cols'] ) )
+            ? array_values( array_filter( array_map( 'sanitize_key', $_GET['cols'] ), function ( $k ) use ( $all_cols ) { return isset( $all_cols[ $k ] ); } ) )
+            : array();
+        if ( empty( $sel ) ) {
+            $sel = array_keys( $all_cols );
+        }
+        $detail = ! empty( $_GET['detail'] );
+
+        $filename = 'wholesale-orders-' . date( 'Y-m-d' ) . ( $detail ? '-detailed' : '' ) . '.csv';
         header( 'Content-Type: text/csv; charset=utf-8' );
         header( 'Content-Disposition: attachment; filename=' . $filename );
 
         $out = fopen( 'php://output', 'w' );
-        fputcsv( $out, array(
-            'Order #', 'Date', 'Customer', 'Email', 'Business Name', 'Items',
-            'Subtotal', 'Tax', 'Shipping', 'Total', 'Status', 'Payment Method', 'Tier',
-        ) );
+
+        $head = array();
+        foreach ( $sel as $k ) {
+            $head[] = $all_cols[ $k ];
+        }
+        if ( $detail ) {
+            $head = array_merge( $head, array( 'Product', 'Variation', 'Qty', 'Unit Price', 'Line Total' ) );
+        }
+        fputcsv( $out, $head );
 
         foreach ( $orders as $order ) {
-            $user_id       = $order->get_user_id();
-            $customer_name = trim( $order->get_billing_first_name() . ' ' . $order->get_billing_last_name() );
-            $business_name = $user_id ? get_user_meta( $user_id, 'slw_business_name', true ) : '';
-            $tier          = $user_id && class_exists( 'SLW_Tiers' ) ? SLW_Tiers::get_user_tier( $user_id ) : 'standard';
-            $order_date    = $order->get_date_created();
-
-            fputcsv( $out, array(
-                $order->get_order_number(),
-                $order_date ? $order_date->date_i18n( 'Y-m-d' ) : '',
-                $customer_name,
-                $order->get_billing_email(),
-                $business_name,
-                $order->get_item_count(),
-                $order->get_subtotal(),
-                $order->get_total_tax(),
-                $order->get_shipping_total(),
-                $order->get_total(),
-                wc_get_order_status_name( $order->get_status() ),
-                $order->get_payment_method_title(),
-                ucfirst( $tier ),
-            ) );
+            $base = array();
+            foreach ( $sel as $k ) {
+                $base[] = self::col_value( $k, $order );
+            }
+            if ( $detail ) {
+                // One row per line item, with the order-level columns repeated.
+                foreach ( $order->get_items() as $item ) {
+                    $prod = $item->get_product();
+                    $qty  = $item->get_quantity();
+                    $line = (float) $item->get_total();
+                    $unit = $qty ? $line / $qty : 0;
+                    $variation = ( $prod && $prod->is_type( 'variation' ) ) ? wc_get_formatted_variation( $prod, true ) : '';
+                    fputcsv( $out, array_merge( $base, array(
+                        $item->get_name(),
+                        $variation,
+                        $qty,
+                        number_format( $unit, 2, '.', '' ),
+                        number_format( $line, 2, '.', '' ),
+                    ) ) );
+                }
+            } else {
+                fputcsv( $out, $base );
+            }
         }
 
         fclose( $out );
+    }
+
+    /**
+     * Available order-level export columns (key => CSV header label).
+     */
+    private static function export_columns() {
+        return array(
+            'order'    => 'Order #',
+            'date'     => 'Date',
+            'customer' => 'Customer',
+            'email'    => 'Email',
+            'business' => 'Business Name',
+            'items'    => 'Items',
+            'subtotal' => 'Subtotal',
+            'tax'      => 'Tax',
+            'shipping' => 'Shipping',
+            'total'    => 'Total',
+            'status'   => 'Status',
+            'payment'  => 'Payment Method',
+            'tier'     => 'Tier',
+        );
+    }
+
+    /**
+     * Resolve a single order-level column value for the export.
+     */
+    private static function col_value( $key, $order ) {
+        $uid = $order->get_user_id();
+        switch ( $key ) {
+            case 'order':    return $order->get_order_number();
+            case 'date':     $d = $order->get_date_created(); return $d ? $d->date_i18n( 'Y-m-d' ) : '';
+            case 'customer': return trim( $order->get_billing_first_name() . ' ' . $order->get_billing_last_name() );
+            case 'email':    return $order->get_billing_email();
+            case 'business': return $uid ? get_user_meta( $uid, 'slw_business_name', true ) : '';
+            case 'items':    return $order->get_item_count();
+            case 'subtotal': return $order->get_subtotal();
+            case 'tax':      return $order->get_total_tax();
+            case 'shipping': return $order->get_shipping_total();
+            case 'total':    return $order->get_total();
+            case 'status':   return wc_get_order_status_name( $order->get_status() );
+            case 'payment':  return $order->get_payment_method_title();
+            case 'tier':     return ( $uid && class_exists( 'SLW_Tiers' ) ) ? ucfirst( SLW_Tiers::get_user_tier( $uid ) ) : 'Standard';
+        }
+        return '';
     }
 }
