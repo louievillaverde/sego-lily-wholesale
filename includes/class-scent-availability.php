@@ -2,12 +2,14 @@
 /**
  * Scent Availability
  *
- * One place for the shop owner to see every scent's status across products and
- * discontinue a scent EVERYWHERE in a single click, so a scent taken off retail
- * can't quietly stay orderable on wholesale. It also installs a guardrail: a
- * scent whose variation is still live but is no longer one of the product's
- * selectable options (an "orphan", exactly what let a customer order a
- * discontinued Bourbon Coffee) is made non-purchasable on both sides.
+ * A management view (rendered inside Wholesale > Pricing) for every scent:
+ * status, which channel it sells on, sizes, stock, and recent wholesale demand,
+ * with a one-click discontinue-everywhere. It also installs guardrails so a
+ * scent can't be ordered where it shouldn't be:
+ *   - an "orphan" (variation live but removed from the product's options) is
+ *     non-purchasable on both sides, and
+ *   - a scent set to wholesale-only / retail-only is non-purchasable in the
+ *     other context.
  *
  * @package SegoLilyWholesale
  */
@@ -20,14 +22,11 @@ class SLW_Scent_Availability {
 
 	public static function init() {
 		add_action( 'admin_init', array( __CLASS__, 'handle_actions' ) );
-		// Guardrail: never let an orphaned scent (variation live but removed from
-		// the product's options) be purchased, retail or wholesale.
 		add_filter( 'woocommerce_variation_is_purchasable', array( __CLASS__, 'block_orphaned_variation' ), 20, 2 );
 	}
 
-	/**
-	 * Read the scent value stored on a variation (custom "Scent" attribute).
-	 */
+	/* ---------- attribute helpers ---------- */
+
 	private static function variation_scent( $variation ) {
 		foreach ( (array) $variation->get_attributes() as $ak => $av ) {
 			if ( stripos( (string) $ak, 'scent' ) !== false ) {
@@ -37,9 +36,15 @@ class SLW_Scent_Availability {
 		return '';
 	}
 
-	/**
-	 * The product's current selectable scent options (strings).
-	 */
+	private static function variation_size( $variation ) {
+		foreach ( (array) $variation->get_attributes() as $ak => $av ) {
+			if ( stripos( (string) $ak, 'size' ) !== false ) {
+				return (string) $av;
+			}
+		}
+		return '';
+	}
+
 	private static function product_scent_options( $product ) {
 		foreach ( (array) $product->get_attributes() as $key => $attr ) {
 			$name = is_object( $attr ) ? $attr->get_name() : (string) $key;
@@ -47,13 +52,52 @@ class SLW_Scent_Availability {
 				return is_object( $attr ) ? (array) $attr->get_options() : array();
 			}
 		}
-		return null; // no scent attribute on this product
+		return null;
 	}
 
 	/**
-	 * Guardrail. Block purchase of a variation whose scent is no longer one of
-	 * the parent's options (orphaned / discontinued but still live).
+	 * The product's Size attribute value(s), for single-size products where
+	 * size isn't a per-variation attribute (lip balm, deodorant).
 	 */
+	private static function product_base_size( $product ) {
+		foreach ( (array) $product->get_attributes() as $key => $attr ) {
+			$name = is_object( $attr ) ? $attr->get_name() : (string) $key;
+			if ( stripos( $name, 'size' ) !== false ) {
+				$opts = is_object( $attr ) ? (array) $attr->get_options() : array();
+				return $opts ? implode( ', ', $opts ) : '';
+			}
+		}
+		return '';
+	}
+
+	/* ---------- per-scent channel (both | wholesale | retail) ---------- */
+
+	private static function channel_of( $product, $scent ) {
+		$map = get_post_meta( $product->get_id(), '_slw_scent_channel', true );
+		if ( is_array( $map ) && isset( $map[ strtolower( $scent ) ] ) ) {
+			return $map[ strtolower( $scent ) ];
+		}
+		return 'both';
+	}
+
+	private static function set_channel( $product, $scent, $channel ) {
+		if ( ! in_array( $channel, array( 'both', 'wholesale', 'retail' ), true ) ) {
+			return;
+		}
+		$map = get_post_meta( $product->get_id(), '_slw_scent_channel', true );
+		if ( ! is_array( $map ) ) {
+			$map = array();
+		}
+		if ( 'both' === $channel ) {
+			unset( $map[ strtolower( $scent ) ] );
+		} else {
+			$map[ strtolower( $scent ) ] = $channel;
+		}
+		update_post_meta( $product->get_id(), '_slw_scent_channel', $map );
+	}
+
+	/* ---------- guardrail ---------- */
+
 	public static function block_orphaned_variation( $purchasable, $variation ) {
 		if ( ! $purchasable ) {
 			return $purchasable;
@@ -64,48 +108,57 @@ class SLW_Scent_Availability {
 		}
 		$options = self::product_scent_options( $parent );
 		if ( null === $options ) {
-			return $purchasable; // product has no scent attribute
+			return $purchasable;
 		}
 		$vscent = self::variation_scent( $variation );
 		if ( '' === $vscent ) {
 			return $purchasable;
 		}
+		$in_options = false;
 		foreach ( $options as $o ) {
 			if ( strcasecmp( (string) $o, $vscent ) === 0 ) {
-				return $purchasable; // still a current option
+				$in_options = true;
+				break;
 			}
 		}
-		return false; // orphaned scent -> not purchasable
-	}
-
-	/**
-	 * The size value stored on a variation (custom "Size" attribute).
-	 */
-	private static function variation_size( $variation ) {
-		foreach ( (array) $variation->get_attributes() as $ak => $av ) {
-			if ( stripos( (string) $ak, 'size' ) !== false ) {
-				return (string) $av;
+		if ( ! $in_options ) {
+			return false; // orphaned / discontinued
+		}
+		// Channel enforcement.
+		$channel = self::channel_of( $parent, $vscent );
+		if ( 'both' !== $channel ) {
+			$is_ws = function_exists( 'slw_is_wholesale_context' ) && slw_is_wholesale_context();
+			if ( 'wholesale' === $channel && ! $is_ws ) {
+				return false;
+			}
+			if ( 'retail' === $channel && $is_ws ) {
+				return false;
 			}
 		}
-		return '';
+		return $purchasable;
 	}
 
+	/* ---------- sales (wholesale only) ---------- */
+
 	/**
-	 * Total units sold per scent over the last 90 days across ALL channels
-	 * (retail + wholesale), keyed "productID|lowercased-scent". This is real
-	 * demand, so discontinue decisions aren't skewed by the (usually small)
-	 * wholesale volume alone. Cached for 6h since it scans orders. Refunded
-	 * orders are excluded by status.
+	 * Wholesale units sold per scent (all time), keyed "productID|scent-lower".
+	 * Wholesale-only on purpose: this is the wholesale portal, so demand should
+	 * reflect wholesale accounts, not retail. Cached 6h. Refunds excluded.
 	 */
 	private static function units_by_scent() {
-		$cached = get_transient( 'slw_scent_units_90d' );
+		$cached = get_transient( 'slw_scent_units_ws' );
 		if ( is_array( $cached ) ) {
 			return $cached;
 		}
+		$uids = get_users( array( 'role' => 'wholesale_customer', 'fields' => 'ID' ) );
+		if ( empty( $uids ) ) {
+			set_transient( 'slw_scent_units_ws', array(), 6 * HOUR_IN_SECONDS );
+			return array();
+		}
 		$orders = wc_get_orders( array(
-			'limit'        => -1,
-			'status'       => array( 'wc-processing', 'wc-completed', 'wc-on-hold' ),
-			'date_created' => '>=' . gmdate( 'Y-m-d', time() - 90 * DAY_IN_SECONDS ),
+			'customer_id' => $uids,
+			'limit'       => -1,
+			'status'      => array( 'wc-processing', 'wc-completed', 'wc-on-hold' ),
 		) );
 		$map = array();
 		foreach ( $orders as $order ) {
@@ -122,13 +175,12 @@ class SLW_Scent_Availability {
 				$map[ $key ] = ( $map[ $key ] ?? 0 ) + (int) $item->get_quantity();
 			}
 		}
-		set_transient( 'slw_scent_units_90d', $map, 6 * HOUR_IN_SECONDS );
+		set_transient( 'slw_scent_units_ws', $map, 6 * HOUR_IN_SECONDS );
 		return $map;
 	}
 
-	/**
-	 * Scan variable products and build per-scent status, stock, sizes + sales.
-	 */
+	/* ---------- scan ---------- */
+
 	private static function scan() {
 		$sales    = self::units_by_scent();
 		$products = wc_get_products( array(
@@ -165,6 +217,7 @@ class SLW_Scent_Availability {
 						'in_stock'   => false,
 						'qty'        => null,
 						'sold'       => 0,
+						'channel'    => self::channel_of( $product, $name ),
 					);
 				}
 				if ( 'publish' === $v->get_status() ) {
@@ -186,29 +239,18 @@ class SLW_Scent_Availability {
 			foreach ( $options as $o ) {
 				$o = (string) $o;
 				if ( ! isset( $scents[ $o ] ) ) {
-					$scents[ $o ] = array( 'in_options' => true, 'live' => 0, 'hidden' => 0, 'sizes' => array(), 'in_stock' => false, 'qty' => null, 'sold' => 0 );
+					$scents[ $o ] = array( 'in_options' => true, 'live' => 0, 'hidden' => 0, 'sizes' => array(), 'in_stock' => false, 'qty' => null, 'sold' => 0, 'channel' => self::channel_of( $product, $o ) );
 				}
 			}
 			foreach ( $scents as $name => $s ) {
 				$scents[ $name ]['sold'] = (int) ( $sales[ $product->get_id() . '|' . strtolower( $name ) ] ?? 0 );
 			}
 			ksort( $scents );
-			$out[] = array( 'product' => $product, 'scents' => $scents );
+			$out[] = array( 'product' => $product, 'scents' => $scents, 'base_size' => self::product_base_size( $product ) );
 		}
 		return $out;
 	}
 
-	/**
-	 * Does a scent need attention? (orphaned, or live but out of stock)
-	 */
-	private static function needs_attention( $s ) {
-		list( $code ) = self::status_of( $s );
-		return ( 'orphan' === $code ) || ( 'live' === $code && ! $s['in_stock'] );
-	}
-
-	/**
-	 * live | orphan | off, plus a human label.
-	 */
 	private static function status_of( $s ) {
 		if ( $s['live'] > 0 && ! $s['in_options'] ) {
 			return array( 'orphan', 'Live on wholesale, off retail' );
@@ -218,6 +260,13 @@ class SLW_Scent_Availability {
 		}
 		return array( 'off', 'Discontinued' );
 	}
+
+	private static function needs_attention( $s ) {
+		list( $code ) = self::status_of( $s );
+		return ( 'orphan' === $code ) || ( 'live' === $code && ! $s['in_stock'] );
+	}
+
+	/* ---------- actions ---------- */
 
 	public static function handle_actions() {
 		if ( ! isset( $_GET['page'] ) || 'slw-pricing' !== $_GET['page'] ) {
@@ -236,17 +285,17 @@ class SLW_Scent_Availability {
 		$pid     = absint( $_GET['product'] ?? 0 );
 		$scent   = sanitize_text_field( wp_unslash( $_GET['scent'] ?? '' ) );
 		$product = $pid ? wc_get_product( $pid ) : null;
-		if ( $product && '' !== $scent && in_array( $action, array( 'discontinue', 'restore' ), true ) ) {
-			self::set_scent( $product, $scent, 'restore' === $action );
+		if ( $product && '' !== $scent ) {
+			if ( in_array( $action, array( 'discontinue', 'restore' ), true ) ) {
+				self::set_scent( $product, $scent, 'restore' === $action );
+			} elseif ( 'channel' === $action ) {
+				self::set_channel( $product, $scent, sanitize_key( $_GET['channel'] ?? 'both' ) );
+			}
 		}
 		wp_safe_redirect( admin_url( 'admin.php?page=slw-pricing&slw_scent_updated=1#slw-scents' ) );
 		exit;
 	}
 
-	/**
-	 * Discontinue ($live=false) or restore ($live=true) a scent everywhere:
-	 * flip its variations' status and add/remove it from the product options.
-	 */
 	private static function set_scent( $product, $scent, $live ) {
 		foreach ( $product->get_children() as $vid ) {
 			$v = wc_get_product( $vid );
@@ -282,9 +331,8 @@ class SLW_Scent_Availability {
 		$product->save();
 	}
 
-	/**
-	 * Renders as a section inside the Wholesale > Pricing page (not its own tab).
-	 */
+	/* ---------- render (section inside Wholesale > Pricing) ---------- */
+
 	public static function render_section() {
 		$data = self::scan();
 
@@ -305,9 +353,9 @@ class SLW_Scent_Availability {
 		?>
 		<div class="slw-admin-card" id="slw-scents" style="padding:20px 24px;margin-bottom:24px;">
 			<h2 class="slw-admin-card__heading" style="margin-bottom:8px;">Scent Availability</h2>
-			<p style="color:#628393;margin-bottom:14px;max-width:800px;">Every scent's status, stock, and recent demand in one place. <em>Sold 90d</em> is total units sold across retail and wholesale in the last 90 days (refunds excluded), so keep/discontinue calls reflect real demand. Discontinuing a scent removes it from <strong>both</strong> retail and wholesale in one click. <span style="color:#c0392b;font-weight:600;">Needs attention</span> = live on wholesale but off retail, or live but out of stock.</p>
+			<p style="color:#628393;margin-bottom:14px;max-width:820px;">Every scent's channel, status, stock, and recent demand in one place. <strong>Channel</strong> sets where a scent sells: both, wholesale only, or retail only. <em>Wholesale sold</em> is all-time units to wholesale accounts (refunds excluded). Discontinuing removes a scent from <strong>both</strong> sides in one click. <span style="color:#c0392b;font-weight:600;">Needs attention</span> = live on wholesale but off retail, or live but out of stock.</p>
 			<?php if ( isset( $_GET['slw_scent_updated'] ) ) : ?>
-				<div class="notice notice-success inline" style="margin:0 0 14px;"><p>Scent updated across retail and wholesale.</p></div>
+				<div class="notice notice-success inline" style="margin:0 0 14px;"><p>Scent updated.</p></div>
 			<?php endif; ?>
 			<div style="margin-bottom:6px;">
 				<?php
@@ -324,14 +372,15 @@ class SLW_Scent_Availability {
 				$product = $row['product'];
 				?>
 				<h3 style="margin:20px 0 6px;"><?php echo esc_html( $product->get_name() ); ?></h3>
-				<table class="widefat fixed striped" style="max-width:880px;">
+				<table class="widefat fixed striped" style="max-width:1000px;">
 					<thead><tr>
-						<th style="width:26%;">Scent</th>
-						<th style="width:22%;">Status</th>
-						<th style="width:15%;">Sizes</th>
-						<th style="width:14%;">Stock</th>
-						<th style="width:10%;">Sold 90d</th>
-						<th style="width:13%;">Action</th>
+						<th style="width:20%;">Scent</th>
+						<th style="width:20%;">Status</th>
+						<th style="width:20%;">Channel</th>
+						<th style="width:11%;">Sizes</th>
+						<th style="width:11%;">Stock</th>
+						<th style="width:8%;">WS sold</th>
+						<th style="width:10%;">Action</th>
 					</tr></thead>
 					<tbody>
 					<?php foreach ( $row['scents'] as $name => $s ) :
@@ -354,11 +403,25 @@ class SLW_Scent_Availability {
 								? '<span style="color:#1a764d;">In stock</span>'
 								: '<span style="color:#c0392b;">Out of stock</span>';
 						}
+						$sizes_txt = $s['sizes'] ? implode( ', ', $s['sizes'] ) : $row['base_size'];
+						// channel toggle
+						$channel_html = '<span style="color:#8A9499;">&mdash;</span>';
+						if ( 'off' !== $code ) {
+							$parts = array();
+							foreach ( array( 'both' => 'Both', 'wholesale' => 'WS only', 'retail' => 'Retail only' ) as $ck => $cl ) {
+								$curl   = wp_nonce_url( admin_url( 'admin.php?page=slw-pricing&slw_scent_action=channel&channel=' . $ck . '&product=' . $product->get_id() . '&scent=' . rawurlencode( $name ) ), 'slw_scent_action' );
+								$is_cur = ( $s['channel'] === $ck );
+								$style  = $is_cur ? 'font-weight:700;color:#386174;text-decoration:none;' : 'color:#8A9499;';
+								$parts[] = '<a href="' . esc_url( $curl ) . '" style="' . $style . '">' . esc_html( $cl ) . '</a>';
+							}
+							$channel_html = '<span style="font-size:12px;">' . implode( ' <span style="color:#ccc;">|</span> ', $parts ) . '</span>';
+						}
 						?>
 						<tr<?php echo $attn ? ' style="background:#fdf3f2;"' : ''; ?>>
 							<td><strong><?php echo esc_html( $name ); ?></strong></td>
 							<td><span style="color:<?php echo esc_attr( $color ); ?>;font-weight:600;"><?php echo esc_html( $label ); ?></span></td>
-							<td style="color:#628393;"><?php echo $s['sizes'] ? esc_html( implode( ', ', $s['sizes'] ) ) : '&mdash;'; ?></td>
+							<td><?php echo wp_kses_post( $channel_html ); ?></td>
+							<td style="color:#628393;"><?php echo $sizes_txt ? esc_html( $sizes_txt ) : '&mdash;'; ?></td>
 							<td><?php echo wp_kses_post( $stock_html ); ?></td>
 							<td style="color:#628393;"><?php echo esc_html( $s['sold'] ); ?></td>
 							<td>
