@@ -146,7 +146,7 @@ class SLW_Scent_Availability {
 	}
 
 	public static function handle_actions() {
-		if ( ! isset( $_GET['page'] ) || 'slw-scents' !== $_GET['page'] ) {
+		if ( ! isset( $_GET['page'] ) || 'slw-pricing' !== $_GET['page'] ) {
 			return;
 		}
 		if ( ! isset( $_GET['slw_scent_action'] ) ) {
@@ -165,7 +165,7 @@ class SLW_Scent_Availability {
 		if ( $product && '' !== $scent && in_array( $action, array( 'discontinue', 'restore' ), true ) ) {
 			self::set_scent( $product, $scent, 'restore' === $action );
 		}
-		wp_safe_redirect( admin_url( 'admin.php?page=slw-scents&updated=1' ) );
+		wp_safe_redirect( admin_url( 'admin.php?page=slw-pricing&slw_scent_updated=1#slw-scents' ) );
 		exit;
 	}
 
@@ -208,31 +208,34 @@ class SLW_Scent_Availability {
 		$product->save();
 	}
 
-	public static function render_page() {
+	/**
+	 * Renders as a section inside the Wholesale > Pricing page (not its own tab).
+	 */
+	public static function render_section() {
 		$data = self::scan();
 		?>
-		<div class="wrap">
-			<h1>Scent Availability</h1>
-			<p class="description" style="max-width:760px;">Every scent across your products in one place. Discontinuing a scent here removes it from <strong>both</strong> retail and wholesale in one click, so a scent you stop making can't stay orderable anywhere. Anything flagged <span style="color:#c0392b;font-weight:600;">Live on wholesale, off retail</span> is the exact gap that lets a customer order a discontinued scent.</p>
-			<?php if ( isset( $_GET['updated'] ) ) : ?>
-				<div class="notice notice-success is-dismissible"><p>Scent updated across retail and wholesale.</p></div>
+		<div class="slw-admin-card" id="slw-scents" style="padding:20px 24px;margin-bottom:24px;">
+			<h2 class="slw-admin-card__heading" style="margin-bottom:8px;">Scent Availability</h2>
+			<p style="color:#628393;margin-bottom:16px;max-width:760px;">Discontinuing a scent here removes it from <strong>both</strong> retail and wholesale in one click, so a scent you stop making can't stay orderable anywhere. Anything flagged <span style="color:#c0392b;font-weight:600;">Live on wholesale, off retail</span> is the exact state that lets a customer order a discontinued scent.</p>
+			<?php if ( isset( $_GET['slw_scent_updated'] ) ) : ?>
+				<div class="notice notice-success inline"><p>Scent updated across retail and wholesale.</p></div>
 			<?php endif; ?>
 			<?php if ( empty( $data ) ) : ?>
-				<p>No products with scents found.</p>
+				<p style="color:#628393;">No products with scents found.</p>
 			<?php endif; ?>
 			<?php foreach ( $data as $row ) :
 				$product = $row['product'];
 				?>
-				<h2 style="margin-top:26px;"><?php echo esc_html( $product->get_name() ); ?></h2>
-				<table class="wp-list-table widefat fixed striped" style="max-width:760px;">
-					<thead><tr><th style="width:42%;">Scent</th><th style="width:33%;">Status</th><th style="width:25%;">Action</th></tr></thead>
+				<h3 style="margin:18px 0 6px;"><?php echo esc_html( $product->get_name() ); ?></h3>
+				<table class="widefat fixed striped" style="max-width:680px;">
+					<thead><tr><th style="width:44%;">Scent</th><th style="width:32%;">Status</th><th style="width:24%;">Action</th></tr></thead>
 					<tbody>
 					<?php foreach ( $row['scents'] as $name => $s ) :
 						list( $code, $label ) = self::status_of( $s );
 						$color = 'live' === $code ? '#1a764d' : ( 'orphan' === $code ? '#c0392b' : '#8A9499' );
 						$act   = ( 'off' === $code ) ? 'restore' : 'discontinue';
 						$url   = wp_nonce_url(
-							admin_url( 'admin.php?page=slw-scents&slw_scent_action=' . $act . '&product=' . $product->get_id() . '&scent=' . rawurlencode( $name ) ),
+							admin_url( 'admin.php?page=slw-pricing&slw_scent_action=' . $act . '&product=' . $product->get_id() . '&scent=' . rawurlencode( $name ) ),
 							'slw_scent_action'
 						);
 						?>

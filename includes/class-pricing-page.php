@@ -163,6 +163,8 @@ class SLW_Pricing_Page {
 
                 <?php submit_button( 'Save Pricing Settings' ); ?>
             </form>
+
+            <?php if ( class_exists( 'SLW_Scent_Availability' ) ) { SLW_Scent_Availability::render_section(); } ?>
         </div>
 
         <script>
