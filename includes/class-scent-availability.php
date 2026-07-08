@@ -79,9 +79,55 @@ class SLW_Scent_Availability {
 	}
 
 	/**
-	 * Scan variable products and build per-scent status.
+	 * The size value stored on a variation (custom "Size" attribute).
+	 */
+	private static function variation_size( $variation ) {
+		foreach ( (array) $variation->get_attributes() as $ak => $av ) {
+			if ( stripos( (string) $ak, 'size' ) !== false ) {
+				return (string) $av;
+			}
+		}
+		return '';
+	}
+
+	/**
+	 * Wholesale units sold per scent over the last 90 days, keyed
+	 * "productID|lowercased-scent". Informs which scents are worth keeping.
+	 */
+	private static function wholesale_units_by_scent() {
+		$uids = get_users( array( 'role' => 'wholesale_customer', 'fields' => 'ID' ) );
+		if ( empty( $uids ) ) {
+			return array();
+		}
+		$orders = wc_get_orders( array(
+			'customer_id'  => $uids,
+			'limit'        => -1,
+			'status'       => array( 'wc-processing', 'wc-completed', 'wc-on-hold' ),
+			'date_created' => '>=' . ( time() - 90 * DAY_IN_SECONDS ),
+		) );
+		$map = array();
+		foreach ( $orders as $order ) {
+			foreach ( $order->get_items() as $item ) {
+				$prod = $item->get_product();
+				if ( ! $prod ) {
+					continue;
+				}
+				$scent = self::variation_scent( $prod );
+				if ( '' === $scent ) {
+					continue;
+				}
+				$key         = $item->get_product_id() . '|' . strtolower( $scent );
+				$map[ $key ] = ( $map[ $key ] ?? 0 ) + (int) $item->get_quantity();
+			}
+		}
+		return $map;
+	}
+
+	/**
+	 * Scan variable products and build per-scent status, stock, sizes + sales.
 	 */
 	private static function scan() {
+		$sales    = self::wholesale_units_by_scent();
 		$products = wc_get_products( array(
 			'type'   => array( 'variable', 'variable-subscription' ),
 			'limit'  => -1,
@@ -112,6 +158,10 @@ class SLW_Scent_Availability {
 						'in_options' => isset( $in_options[ strtolower( $name ) ] ),
 						'live'       => 0,
 						'hidden'     => 0,
+						'sizes'      => array(),
+						'in_stock'   => false,
+						'qty'        => null,
+						'sold'       => 0,
 					);
 				}
 				if ( 'publish' === $v->get_status() ) {
@@ -119,17 +169,38 @@ class SLW_Scent_Availability {
 				} else {
 					$scents[ $name ]['hidden']++;
 				}
+				$size = self::variation_size( $v );
+				if ( '' !== $size && ! in_array( $size, $scents[ $name ]['sizes'], true ) ) {
+					$scents[ $name ]['sizes'][] = $size;
+				}
+				if ( $v->is_in_stock() ) {
+					$scents[ $name ]['in_stock'] = true;
+				}
+				if ( $v->managing_stock() ) {
+					$scents[ $name ]['qty'] = (int) ( $scents[ $name ]['qty'] ?? 0 ) + (int) $v->get_stock_quantity();
+				}
 			}
 			foreach ( $options as $o ) {
 				$o = (string) $o;
 				if ( ! isset( $scents[ $o ] ) ) {
-					$scents[ $o ] = array( 'in_options' => true, 'live' => 0, 'hidden' => 0 );
+					$scents[ $o ] = array( 'in_options' => true, 'live' => 0, 'hidden' => 0, 'sizes' => array(), 'in_stock' => false, 'qty' => null, 'sold' => 0 );
 				}
+			}
+			foreach ( $scents as $name => $s ) {
+				$scents[ $name ]['sold'] = (int) ( $sales[ $product->get_id() . '|' . strtolower( $name ) ] ?? 0 );
 			}
 			ksort( $scents );
 			$out[] = array( 'product' => $product, 'scents' => $scents );
 		}
 		return $out;
+	}
+
+	/**
+	 * Does a scent need attention? (orphaned, or live but out of stock)
+	 */
+	private static function needs_attention( $s ) {
+		list( $code ) = self::status_of( $s );
+		return ( 'orphan' === $code ) || ( 'live' === $code && ! $s['in_stock'] );
 	}
 
 	/**
@@ -213,41 +284,86 @@ class SLW_Scent_Availability {
 	 */
 	public static function render_section() {
 		$data = self::scan();
+
+		$t_total = 0; $t_live = 0; $t_off = 0; $t_attn = 0;
+		foreach ( $data as $row ) {
+			foreach ( $row['scents'] as $s ) {
+				$t_total++;
+				list( $code ) = self::status_of( $s );
+				if ( 'off' === $code ) { $t_off++; } else { $t_live++; }
+				if ( self::needs_attention( $s ) ) { $t_attn++; }
+			}
+		}
+		$chip = function ( $label, $value, $color ) {
+			return '<span style="display:inline-block;background:#F7F6F3;border:1px solid #E8E2D6;border-radius:6px;padding:6px 12px;margin:0 8px 8px 0;font-size:13px;">'
+				. '<strong style="color:' . esc_attr( $color ) . ';font-size:16px;">' . esc_html( $value ) . '</strong> '
+				. '<span style="color:#628393;">' . esc_html( $label ) . '</span></span>';
+		};
 		?>
 		<div class="slw-admin-card" id="slw-scents" style="padding:20px 24px;margin-bottom:24px;">
 			<h2 class="slw-admin-card__heading" style="margin-bottom:8px;">Scent Availability</h2>
-			<p style="color:#628393;margin-bottom:16px;max-width:760px;">Discontinuing a scent here removes it from <strong>both</strong> retail and wholesale in one click, so a scent you stop making can't stay orderable anywhere. Anything flagged <span style="color:#c0392b;font-weight:600;">Live on wholesale, off retail</span> is the exact state that lets a customer order a discontinued scent.</p>
+			<p style="color:#628393;margin-bottom:14px;max-width:800px;">Every scent's status, stock, and recent wholesale demand in one place. Discontinuing a scent removes it from <strong>both</strong> retail and wholesale in one click. <span style="color:#c0392b;font-weight:600;">Needs attention</span> = live on wholesale but off retail, or live but out of stock.</p>
 			<?php if ( isset( $_GET['slw_scent_updated'] ) ) : ?>
-				<div class="notice notice-success inline"><p>Scent updated across retail and wholesale.</p></div>
+				<div class="notice notice-success inline" style="margin:0 0 14px;"><p>Scent updated across retail and wholesale.</p></div>
 			<?php endif; ?>
+			<div style="margin-bottom:6px;">
+				<?php
+				echo wp_kses_post( $chip( 'scents', $t_total, '#2C2C2C' ) );
+				echo wp_kses_post( $chip( 'live', $t_live, '#1a764d' ) );
+				echo wp_kses_post( $chip( 'discontinued', $t_off, '#8A9499' ) );
+				echo wp_kses_post( $chip( 'need attention', $t_attn, $t_attn ? '#c0392b' : '#8A9499' ) );
+				?>
+			</div>
 			<?php if ( empty( $data ) ) : ?>
 				<p style="color:#628393;">No products with scents found.</p>
 			<?php endif; ?>
 			<?php foreach ( $data as $row ) :
 				$product = $row['product'];
 				?>
-				<h3 style="margin:18px 0 6px;"><?php echo esc_html( $product->get_name() ); ?></h3>
-				<table class="widefat fixed striped" style="max-width:680px;">
-					<thead><tr><th style="width:44%;">Scent</th><th style="width:32%;">Status</th><th style="width:24%;">Action</th></tr></thead>
+				<h3 style="margin:20px 0 6px;"><?php echo esc_html( $product->get_name() ); ?></h3>
+				<table class="widefat fixed striped" style="max-width:880px;">
+					<thead><tr>
+						<th style="width:26%;">Scent</th>
+						<th style="width:22%;">Status</th>
+						<th style="width:15%;">Sizes</th>
+						<th style="width:14%;">Stock</th>
+						<th style="width:10%;">Sold 90d</th>
+						<th style="width:13%;">Action</th>
+					</tr></thead>
 					<tbody>
 					<?php foreach ( $row['scents'] as $name => $s ) :
 						list( $code, $label ) = self::status_of( $s );
 						$color = 'live' === $code ? '#1a764d' : ( 'orphan' === $code ? '#c0392b' : '#8A9499' );
+						$attn  = self::needs_attention( $s );
 						$act   = ( 'off' === $code ) ? 'restore' : 'discontinue';
 						$url   = wp_nonce_url(
 							admin_url( 'admin.php?page=slw-pricing&slw_scent_action=' . $act . '&product=' . $product->get_id() . '&scent=' . rawurlencode( $name ) ),
 							'slw_scent_action'
 						);
+						if ( 'off' === $code ) {
+							$stock_html = '<span style="color:#8A9499;">&mdash;</span>';
+						} elseif ( null !== $s['qty'] ) {
+							$q  = (int) $s['qty'];
+							$sc = $q <= 0 ? '#c0392b' : ( $q < 6 ? '#b26a00' : '#1a764d' );
+							$stock_html = '<span style="color:' . $sc . ';">' . esc_html( $q ) . ' in stock</span>';
+						} else {
+							$stock_html = $s['in_stock']
+								? '<span style="color:#1a764d;">In stock</span>'
+								: '<span style="color:#c0392b;">Out of stock</span>';
+						}
 						?>
-						<tr>
+						<tr<?php echo $attn ? ' style="background:#fdf3f2;"' : ''; ?>>
 							<td><strong><?php echo esc_html( $name ); ?></strong></td>
 							<td><span style="color:<?php echo esc_attr( $color ); ?>;font-weight:600;"><?php echo esc_html( $label ); ?></span></td>
+							<td style="color:#628393;"><?php echo $s['sizes'] ? esc_html( implode( ', ', $s['sizes'] ) ) : '&mdash;'; ?></td>
+							<td><?php echo wp_kses_post( $stock_html ); ?></td>
+							<td style="color:#628393;"><?php echo esc_html( $s['sold'] ); ?></td>
 							<td>
 								<?php if ( 'off' === $code ) : ?>
 									<a href="<?php echo esc_url( $url ); ?>" class="button button-small">Restore</a>
 								<?php else : ?>
 									<a href="<?php echo esc_url( $url ); ?>" class="button button-small"
-									   onclick="return confirm('Discontinue this scent everywhere? It will be removed from both retail and wholesale.');">Discontinue everywhere</a>
+									   onclick="return confirm('Discontinue this scent everywhere? It will be removed from both retail and wholesale.');">Discontinue</a>
 								<?php endif; ?>
 							</td>
 						</tr>
