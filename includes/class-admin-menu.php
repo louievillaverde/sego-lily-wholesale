@@ -108,6 +108,11 @@ class SLW_Admin_Menu {
             add_submenu_page( 'slw-dashboard', 'Wholesale Pricing', 'Pricing', 'manage_woocommerce', 'slw-pricing', array( 'SLW_Pricing_Page', 'render_page' ) );
         }
 
+        // 4b. Scent Availability (discontinue a scent across retail + wholesale in one click)
+        if ( class_exists( 'SLW_Scent_Availability' ) ) {
+            add_submenu_page( 'slw-dashboard', 'Scent Availability', 'Scents', 'manage_woocommerce', 'slw-scents', array( 'SLW_Scent_Availability', 'render_page' ) );
+        }
+
         // 5. Customers (leads, import, customer groups — consolidates old Leads + Import pages)
         if ( class_exists( 'SLW_Customers_Page' ) ) {
             add_submenu_page( 'slw-dashboard', 'Wholesale Customers', 'Customers', 'manage_woocommerce', 'slw-customers', array( 'SLW_Customers_Page', 'render_page' ) );
