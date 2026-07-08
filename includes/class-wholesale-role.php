@@ -486,6 +486,13 @@ class SLW_Wholesale_Role {
                 </td>
             </tr>
             <tr>
+                <th><label>Order Minimums</label></th>
+                <td>
+                    <label><input type="checkbox" name="slw_min_exempt" value="1" <?php checked( get_user_meta( $user->ID, 'slw_min_exempt', true ) === '1' ); ?> /> Exempt from order minimums</label>
+                    <p class="description">Skip per-product minimum quantities and case-pack requirements for this customer, so their order quantities are honored as-is. Use to grandfather a returning partner onto their original terms (e.g. ordering in 2s) instead of the new-customer minimum. Order-value minimums are not affected.</p>
+                </td>
+            </tr>
+            <tr>
                 <th><label for="slw_resale_certificate_number">Resale Certificate Number</label></th>
                 <td>
                     <input type="text" id="slw_resale_certificate_number" name="slw_resale_certificate_number" value="<?php echo esc_attr( $resale_number ); ?>" class="regular-text" />
@@ -585,6 +592,9 @@ class SLW_Wholesale_Role {
         }
 
         update_user_meta( $user_id, 'slw_resale_cert_verified', ! empty( $_POST['slw_resale_cert_verified'] ) ? '1' : '0' );
+
+        // Per-customer exemption from quantity minimums / case packs (grandfathering).
+        update_user_meta( $user_id, 'slw_min_exempt', ! empty( $_POST['slw_min_exempt'] ) ? '1' : '0' );
 
         // Save NET terms (new dropdown) and keep legacy meta in sync
         $net_terms = absint( $_POST['slw_net_terms'] ?? 0 );

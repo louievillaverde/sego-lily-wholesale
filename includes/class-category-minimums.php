@@ -147,6 +147,10 @@ class SLW_Category_Minimums {
         if ( ! slw_is_wholesale_context() ) {
             return;
         }
+        // Grandfathered customers are exempt from quantity minimums.
+        if ( class_exists( 'SLW_Product_Minimums' ) && SLW_Product_Minimums::user_is_exempt() ) {
+            return;
+        }
         foreach ( self::get_violations() as $msg ) {
             wc_add_notice( $msg, 'error' );
         }

@@ -48,6 +48,20 @@ class SLW_Product_Minimums {
 		return (bool) get_option( 'slw_case_packs_enabled', false );
 	}
 
+	/**
+	 * Whether a customer is exempt from quantity minimums + case packs.
+	 * Set per-customer on the WP user profile (slw_min_exempt), used to
+	 * grandfather returning partners onto their original terms instead of the
+	 * new-customer minimum. Defaults to the current user.
+	 */
+	public static function user_is_exempt( $user_id = 0 ) {
+		$user_id = $user_id ? (int) $user_id : get_current_user_id();
+		if ( ! $user_id ) {
+			return false;
+		}
+		return get_user_meta( $user_id, 'slw_min_exempt', true ) === '1';
+	}
+
 	// ── Product Edit Field ────────────────────────────────────────────────
 
 	/**
@@ -200,6 +214,9 @@ class SLW_Product_Minimums {
 		if ( ! slw_is_wholesale_context() ) {
 			return;
 		}
+		if ( self::user_is_exempt() ) {
+			return;
+		}
 
 		foreach ( WC()->cart->get_cart() as $cart_item ) {
 			$product = $cart_item['data'];
@@ -237,6 +254,9 @@ class SLW_Product_Minimums {
 	 */
 	public static function quantity_input_args( $args, $product ) {
 		if ( ! slw_is_wholesale_context() ) {
+			return $args;
+		}
+		if ( self::user_is_exempt() ) {
 			return $args;
 		}
 
