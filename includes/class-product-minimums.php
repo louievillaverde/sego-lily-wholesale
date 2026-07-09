@@ -31,6 +31,10 @@ class SLW_Product_Minimums {
 		// label is gated inside the renderer)
 		add_action( 'woocommerce_single_product_summary', array( __CLASS__, 'display_case_pack_on_product_page' ), 25 );
 
+		// Product minimums: enforced as a per-product total summed across the
+		// product's variations (mix scents/sizes to hit it), always on.
+		add_action( 'woocommerce_check_cart_items', array( __CLASS__, 'enforce_product_minimums' ) );
+
 		// Case-pack-only hooks: only register when the feature is enabled.
 		if ( self::case_packs_enabled() ) {
 			add_action( 'woocommerce_product_options_general_product_data', array( __CLASS__, 'add_case_pack_field' ), 21 );
@@ -247,10 +251,15 @@ class SLW_Product_Minimums {
 		}
 	}
 
-	// ── Quantity Input Args (updated for case pack step) ──────────────────
+	// ── Quantity Input Args (case pack step only) ─────────────────────────
 
 	/**
-	 * Override quantity_input_args to also set the step attribute for case packs.
+	 * A product minimum is a PER-PRODUCT total, met by mixing that product's
+	 * variations (scents/sizes) to reach it — enforced in enforce_product_minimums.
+	 * So we deliberately do NOT force each quantity field up to the minimum here:
+	 * doing that applied the minimum PER scent and silently bumped a customer's
+	 * entered quantity (e.g. 2 honey -> 6 honey) on the order form and cart.
+	 * Case packs, when enabled, only set the increment step (no silent bumping).
 	 */
 	public static function quantity_input_args( $args, $product ) {
 		if ( ! slw_is_wholesale_context() ) {
@@ -260,34 +269,65 @@ class SLW_Product_Minimums {
 			return $args;
 		}
 
-		$product_id = $product->get_id();
-		$parent_id  = $product->get_parent_id();
-		$lookup_id  = $parent_id ? $parent_id : $product_id;
-
-		// Minimum qty
-		$min = self::get_product_minimum( $lookup_id );
-		if ( $min > 0 ) {
-			$args['min_value'] = $min;
-			if ( isset( $args['input_value'] ) && (int) $args['input_value'] < $min ) {
-				$args['input_value'] = $min;
-			}
-		}
-
-		// Case pack step (only when enabled)
 		if ( self::case_packs_enabled() ) {
-			$case_size = self::get_case_pack_size( $lookup_id );
+			$parent_id = $product->get_parent_id();
+			$case_size = self::get_case_pack_size( $parent_id ? $parent_id : $product->get_id() );
 			if ( $case_size > 0 ) {
 				$args['step'] = $case_size;
-				if ( ! isset( $args['input_value'] ) || (int) $args['input_value'] < $case_size ) {
-					$args['input_value'] = $case_size;
-				}
-				if ( ! isset( $args['min_value'] ) || (int) $args['min_value'] < $case_size ) {
-					$args['min_value'] = $case_size;
-				}
 			}
 		}
 
 		return $args;
+	}
+
+	/**
+	 * Enforce product minimums as a PER-PRODUCT total, summed across the
+	 * product's variations. A minimum set on a variable product (e.g. 6 on
+	 * "Ageless Tallow Butter") is met by any mix of its scents/sizes, so the
+	 * customer is never forced to buy 6 of one scent. Shows a cart notice and
+	 * blocks checkout while a product is under its minimum.
+	 */
+	public static function enforce_product_minimums() {
+		if ( ! slw_is_wholesale_context() || ! WC()->cart ) {
+			return;
+		}
+		if ( self::user_is_exempt() ) {
+			return;
+		}
+
+		// Sum cart quantities by parent product (variations count together).
+		$totals = array();
+		foreach ( WC()->cart->get_cart() as $cart_item ) {
+			$product = $cart_item['data'];
+			if ( ! $product ) {
+				continue;
+			}
+			$parent_id = $product->get_parent_id();
+			$key_id    = $parent_id ? $parent_id : $product->get_id();
+			if ( ! isset( $totals[ $key_id ] ) ) {
+				$named = $parent_id ? wc_get_product( $parent_id ) : $product;
+				$totals[ $key_id ] = array(
+					'qty'  => 0,
+					'name' => $named ? $named->get_name() : $product->get_name(),
+				);
+			}
+			$totals[ $key_id ]['qty'] += (int) $cart_item['quantity'];
+		}
+
+		foreach ( $totals as $key_id => $info ) {
+			$min = self::get_product_minimum( $key_id );
+			if ( $min > 0 && $info['qty'] < $min ) {
+				wc_add_notice(
+					sprintf(
+						'Order at least %d of %s to meet the minimum. You can mix any scents or sizes. You currently have %d.',
+						(int) $min,
+						esc_html( $info['name'] ),
+						(int) $info['qty']
+					),
+					'error'
+				);
+			}
+		}
 	}
 
 	// ── Frontend Product Page Display ─────────────────────────────────────
