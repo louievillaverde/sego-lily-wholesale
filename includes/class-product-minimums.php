@@ -31,10 +31,6 @@ class SLW_Product_Minimums {
 		// label is gated inside the renderer)
 		add_action( 'woocommerce_single_product_summary', array( __CLASS__, 'display_case_pack_on_product_page' ), 25 );
 
-		// Product minimums: enforced as a per-product total summed across the
-		// product's variations (mix scents/sizes to hit it), always on.
-		add_action( 'woocommerce_check_cart_items', array( __CLASS__, 'enforce_product_minimums' ) );
-
 		// Case-pack-only hooks: only register when the feature is enabled.
 		if ( self::case_packs_enabled() ) {
 			add_action( 'woocommerce_product_options_general_product_data', array( __CLASS__, 'add_case_pack_field' ), 21 );
@@ -272,77 +268,26 @@ class SLW_Product_Minimums {
 	}
 
 	/**
-	 * Product-minimum violations, as a PER-PRODUCT total summed across the
-	 * product's variations. A minimum on a variable product (e.g. 6 on "Ageless
-	 * Tallow Butter") is met by any mix of its scents/sizes, so the customer is
-	 * never forced to buy 6 of one scent. Only products the customer has actually
-	 * added are flagged. Structured entries match SLW_Category_Minimums so the
-	 * order-form violations panel + sticky bar render product + category the same.
+	 * Intentionally a no-op. Holly's wholesale minimums are enforced at the
+	 * CATEGORY level (SLW_Category_Minimums: "Tallow Butter" = 6, mix any
+	 * products/scents), which matches how the order form is organized by
+	 * category. Per-product minimums would double-report the same constraint.
+	 * (LV directive 2026-05-30, reconfirmed 2026-07-09 against the 2026-04-29
+	 * Holly call notes.) Kept so callers do not fatal.
+	 *
+	 * The related bug fix stays: the order form no longer forces a typed
+	 * per-scent quantity up to any leftover per-product minimum meta.
 	 */
 	public static function get_violations( $structured = false ) {
-		$out = array();
-		if ( ! slw_is_wholesale_context() || ! WC()->cart ) {
-			return $out;
-		}
-		if ( self::user_is_exempt() ) {
-			return $out;
-		}
-
-		// Sum cart quantities by parent product (variations count together).
-		$totals = array();
-		foreach ( WC()->cart->get_cart() as $cart_item ) {
-			$product = $cart_item['data'];
-			if ( ! $product ) {
-				continue;
-			}
-			$parent_id = $product->get_parent_id();
-			$key_id    = $parent_id ? $parent_id : $product->get_id();
-			if ( ! isset( $totals[ $key_id ] ) ) {
-				$named = $parent_id ? wc_get_product( $parent_id ) : $product;
-				$totals[ $key_id ] = array(
-					'qty'  => 0,
-					'name' => $named ? $named->get_name() : $product->get_name(),
-				);
-			}
-			$totals[ $key_id ]['qty'] += (int) $cart_item['quantity'];
-		}
-
-		foreach ( $totals as $key_id => $info ) {
-			$min = self::get_product_minimum( $key_id );
-			if ( $min > 0 && $info['qty'] > 0 && $info['qty'] < $min ) {
-				$label = sprintf(
-					'%s minimum: %d units. You have %d in your cart. Add %d more (mix any scents or sizes).',
-					$info['name'],
-					(int) $min,
-					(int) $info['qty'],
-					(int) $min - (int) $info['qty']
-				);
-				if ( $structured ) {
-					$out[] = array(
-						'type'  => 'product',
-						'name'  => $info['name'],
-						'have'  => (int) $info['qty'],
-						'min'   => (int) $min,
-						'add'   => (int) $min - (int) $info['qty'],
-						'label' => $label,
-					);
-				} else {
-					$out[] = $label;
-				}
-			}
-		}
-		return $out;
+		return array();
 	}
 
 	/**
-	 * Enforce product minimums at cart validation: an error notice per product
-	 * under its minimum blocks checkout. Same source as the order-form panel so
-	 * the two surfaces always agree.
+	 * Intentionally a no-op (not hooked). See get_violations(): minimums are
+	 * enforced at the category level.
 	 */
 	public static function enforce_product_minimums() {
-		foreach ( self::get_violations( false ) as $msg ) {
-			wc_add_notice( $msg, 'error' );
-		}
+		return;
 	}
 
 	// ── Frontend Product Page Display ─────────────────────────────────────
