@@ -89,6 +89,22 @@ class SLW_Docs {
             ),
 
             array(
+                'slug'  => 'exempt-order-minimums',
+                'topic' => 'getting-started',
+                'title' => 'Exempting a Customer from Minimums',
+                'content' => '<p>Sometimes a customer should not be held to the standard order minimums. A common case: a returning partner who was re-added as a new account inherits the new-customer minimum, when you would rather keep them on their original terms.</p>
+<h4>How to Exempt a Customer</h4>
+<ol>
+<li>Go to <strong>Users</strong> and open that customer for editing.</li>
+<li>Scroll to the <strong>Wholesale Portal</strong> section.</li>
+<li>Tick <strong>Exempt from order minimums</strong> and save.</li>
+</ol>
+<h4>What It Changes</h4>
+<p>Once exempt, that customer skips <strong>per-product minimum quantities</strong>, <strong>case-pack requirements</strong>, and <strong>per-category minimums</strong>, so their order quantities are honored exactly as entered (for example, ordering 2 of an item instead of a 6-unit minimum).</p>
+<p>The exemption is per-customer and defaults to off, so it never affects any other partner. Your dollar-value order minimums (the first-order and reorder thresholds) are separate and still apply.</p>',
+            ),
+
+            array(
                 'slug'  => 'application-form',
                 'topic' => 'getting-started',
                 'title' => 'The Application Form',
