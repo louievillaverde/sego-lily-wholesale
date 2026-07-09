@@ -110,15 +110,6 @@ class SLW_Product_Minimums {
 	}
 
 	/**
-	 * Returns empty -- per-product minimums no longer surface at
-	 * either the order form Cart Preview or /checkout. See
-	 * enforce_minimums() above for rationale.
-	 */
-	public static function get_violations() {
-		return array();
-	}
-
-	/**
 	 * Legacy implementation kept for reference. Not called.
 	 * @internal
 	 */
