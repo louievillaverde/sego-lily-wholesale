@@ -570,10 +570,12 @@ $products = $all_products; // keep for empty check
 
                             $v_step = $v_case_pack > 0 ? $v_case_pack : 1;
                             $v_default = $v_case_pack > 0 ? $v_case_pack : 0;
+                            // Row min is the case-pack step only (or 1). The per-product
+                            // minimum ($v_min_qty) is a TOTAL across this product's variations,
+                            // enforced at checkout (SLW_Product_Minimums::enforce_product_minimums).
+                            // It must NOT become the per-row input min, or the single-Add handler
+                            // silently bumps a typed per-scent quantity up to it (2 honey -> 6 honey).
                             $v_min_input = $v_case_pack > 0 ? $v_case_pack : 0;
-                            if ( $v_min_qty > $v_min_input ) {
-                                $v_min_input = $v_min_qty;
-                            }
 
                             // When a category-wide min is set, the customer can mix scents
                             // freely, so relax the per-row min so they aren't forced to enter
@@ -801,10 +803,9 @@ $products = $all_products; // keep for empty check
                         $min_qty   = class_exists( 'SLW_Product_Minimums' ) ? SLW_Product_Minimums::get_product_minimum( $product->get_id() ) : 0;
                         $step      = $case_pack > 0 ? $case_pack : 1;
                         $default_qty = $case_pack > 0 ? $case_pack : 0;
+                        // Row min = case-pack step only. Per-product minimum is a total across
+                        // the product's items, enforced at checkout, never a per-row floor.
                         $min_input = $case_pack > 0 ? $case_pack : 0;
-                        if ( $min_qty > $min_input ) {
-                            $min_input = $min_qty;
-                        }
 
                         // Category min set: let customer split quantities across products.
                         if ( $category_min_qty > 0 ) {
