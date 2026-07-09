@@ -215,6 +215,12 @@ class SLW_Order_Form {
         if ( class_exists( 'SLW_Category_Minimums' ) ) {
             $violations = (array) SLW_Category_Minimums::get_violations( true );
         }
+        // Per-product minimums (summed across a product's variations) surface in
+        // the same panel + sticky bar so the customer sees "Add 2 more Ageless"
+        // live on the order form, not only as a block at checkout.
+        if ( class_exists( 'SLW_Product_Minimums' ) ) {
+            $violations = array_merge( $violations, (array) SLW_Product_Minimums::get_violations( true ) );
+        }
 
         // Admin-only diagnostic so we can SEE -- in the browser console
         // -- what categories the server thinks each cart product is in,

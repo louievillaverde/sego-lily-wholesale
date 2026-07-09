@@ -281,18 +281,20 @@ class SLW_Product_Minimums {
 	}
 
 	/**
-	 * Enforce product minimums as a PER-PRODUCT total, summed across the
-	 * product's variations. A minimum set on a variable product (e.g. 6 on
-	 * "Ageless Tallow Butter") is met by any mix of its scents/sizes, so the
-	 * customer is never forced to buy 6 of one scent. Shows a cart notice and
-	 * blocks checkout while a product is under its minimum.
+	 * Product-minimum violations, as a PER-PRODUCT total summed across the
+	 * product's variations. A minimum on a variable product (e.g. 6 on "Ageless
+	 * Tallow Butter") is met by any mix of its scents/sizes, so the customer is
+	 * never forced to buy 6 of one scent. Only products the customer has actually
+	 * added are flagged. Structured entries match SLW_Category_Minimums so the
+	 * order-form violations panel + sticky bar render product + category the same.
 	 */
-	public static function enforce_product_minimums() {
+	public static function get_violations( $structured = false ) {
+		$out = array();
 		if ( ! slw_is_wholesale_context() || ! WC()->cart ) {
-			return;
+			return $out;
 		}
 		if ( self::user_is_exempt() ) {
-			return;
+			return $out;
 		}
 
 		// Sum cart quantities by parent product (variations count together).
@@ -316,17 +318,39 @@ class SLW_Product_Minimums {
 
 		foreach ( $totals as $key_id => $info ) {
 			$min = self::get_product_minimum( $key_id );
-			if ( $min > 0 && $info['qty'] < $min ) {
-				wc_add_notice(
-					sprintf(
-						'Order at least %d of %s to meet the minimum. You can mix any scents or sizes. You currently have %d.',
-						(int) $min,
-						esc_html( $info['name'] ),
-						(int) $info['qty']
-					),
-					'error'
+			if ( $min > 0 && $info['qty'] > 0 && $info['qty'] < $min ) {
+				$label = sprintf(
+					'%s minimum: %d units. You have %d in your cart. Add %d more (mix any scents or sizes).',
+					$info['name'],
+					(int) $min,
+					(int) $info['qty'],
+					(int) $min - (int) $info['qty']
 				);
+				if ( $structured ) {
+					$out[] = array(
+						'type'  => 'product',
+						'name'  => $info['name'],
+						'have'  => (int) $info['qty'],
+						'min'   => (int) $min,
+						'add'   => (int) $min - (int) $info['qty'],
+						'label' => $label,
+					);
+				} else {
+					$out[] = $label;
+				}
 			}
+		}
+		return $out;
+	}
+
+	/**
+	 * Enforce product minimums at cart validation: an error notice per product
+	 * under its minimum blocks checkout. Same source as the order-form panel so
+	 * the two surfaces always agree.
+	 */
+	public static function enforce_product_minimums() {
+		foreach ( self::get_violations( false ) as $msg ) {
+			wc_add_notice( $msg, 'error' );
 		}
 	}
 

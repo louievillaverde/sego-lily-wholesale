@@ -996,6 +996,9 @@ $products = $all_products; // keep for empty check
         if ( class_exists( 'SLW_Category_Minimums' ) ) {
             $boot_violations = (array) SLW_Category_Minimums::get_violations( true );
         }
+        if ( class_exists( 'SLW_Product_Minimums' ) ) {
+            $boot_violations = array_merge( $boot_violations, (array) SLW_Product_Minimums::get_violations( true ) );
+        }
         ?>
         <div class="slw-cart-violations" id="slw-cart-violations" <?php echo empty( $boot_violations ) ? 'hidden' : ''; ?>>
             <div class="slw-cart-violations__title">Cart needs attention before checkout</div>
