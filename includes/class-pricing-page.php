@@ -379,6 +379,9 @@ class SLW_Pricing_Page {
         $base_url = admin_url( 'admin.php?page=slw-pricing' );
         $case_packs_on = class_exists( 'SLW_Product_Minimums' ) ? SLW_Product_Minimums::case_packs_enabled() : false;
         ?>
+        <p style="color:#628393;margin-bottom:10px;font-size:13px;line-height:1.5;">
+            <strong>Product Min Qty</strong> sets a minimum for a single product, met by mixing its own scents and sizes (e.g. 6 Ageless = 3 honey + 3 lavender, or 2/2/2). Use this for the butter lines. For a minimum across a whole <em>category</em> (e.g. 4 Gift Sets, any mix of types), use <strong>Category Minimums</strong> lower on this page instead. Set one or the other for the same items, not both, or they double-count.
+        </p>
         <p style="color:#888;margin-bottom:8px;">Showing page <?php echo esc_html( $paged ); ?> of <?php echo esc_html( $total_pages ); ?> (<?php echo esc_html( $total_products ); ?> products)</p>
         <table class="widefat striped" style="border-collapse:collapse;">
             <thead>
@@ -386,7 +389,7 @@ class SLW_Pricing_Page {
                     <th style="text-align:left;padding:10px 12px;">Product</th>
                     <th style="text-align:left;padding:10px 12px;width:100px;">SKU</th>
                     <th style="text-align:left;padding:10px 12px;width:140px;">Wholesale Price</th>
-                    <th style="text-align:left;padding:10px 12px;width:100px;">Min Qty</th>
+                    <th style="text-align:left;padding:10px 12px;width:120px;" title="Minimum for THIS product, met by mixing its scents/sizes (e.g. 6 Ageless). Enforced as a total across the product's variations.">Product Min Qty</th>
                     <?php if ( $case_packs_on ) : ?>
                         <th style="text-align:left;padding:10px 12px;width:120px;">Case Pack</th>
                     <?php endif; ?>

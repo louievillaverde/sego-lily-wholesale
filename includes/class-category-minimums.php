@@ -258,10 +258,10 @@ class SLW_Category_Minimums {
         <div class="slw-admin-card" style="padding:20px 24px;margin-bottom:24px;">
             <h2 class="slw-admin-card__heading" style="margin-bottom:8px;">Category Minimums</h2>
             <p style="color:#628393;margin-bottom:6px;">
-                Set a minimum total quantity for a category. Customers can mix and match items within the category to hit the total, so smaller stores aren't forced to buy 6 of one scent to meet your minimum.
+                Set a minimum total quantity for a whole <strong>category</strong>, met by mixing any products and scents in it. Use this when the minimum spans several products, like Gift Sets.
             </p>
             <p style="color:#628393;margin-bottom:16px;font-size:13px;">
-                Example: set Ageless to 6. A customer can order 3 Honey plus 3 Lavender, or 2/2/2 across three scents, or 6 of one scent. Anything that adds up to 6 works. Leave a row blank for no minimum on that category.
+                Example: set Gift Sets to 4. A customer can order 2 Ageless gift sets plus 2 Renewal gift sets, or 4 of one type. Anything adding up to 4 works. For a minimum on a single product line (e.g. 6 Ageless, mixing its scents), use the <strong>Product Min Qty</strong> column in the pricing table above instead. Leave a row blank for no minimum. Don't set both a category minimum and product minimums on the same items, or they double-count.
             </p>
 
             <?php if ( is_wp_error( $terms ) || empty( $terms ) ) : ?>
