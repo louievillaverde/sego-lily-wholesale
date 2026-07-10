@@ -264,7 +264,7 @@ class SLW_Premium_Features {
             <?php endif; ?>
 
             <!-- Add Single Customer -->
-            <div class="slw-import-section">
+            <div class="slw-import-section" id="slw-add-single">
                 <h2 class="slw-import-section__heading"><span class="dashicons dashicons-admin-users"></span> Add Single Customer</h2>
                 <p class="slw-import-section__desc">Quickly create a wholesale account for an individual customer.</p>
 

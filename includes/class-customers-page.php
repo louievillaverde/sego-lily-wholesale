@@ -581,6 +581,7 @@ class SLW_Customers_Page {
                 <?php endif; ?>
             </form>
             <div style="display: flex; align-items: center; gap: 12px;">
+                <a href="<?php echo esc_url( admin_url( 'admin.php?page=slw-customers&tab=import#slw-add-single' ) ); ?>" class="page-title-action" style="background:#386174;border-color:#386174;color:#fff;">+ Add Customer</a>
                 <a href="<?php echo esc_url( $export_url ); ?>" class="page-title-action">Export CSV</a>
                 <span style="color: #628393; font-size: 13px;">
                     <?php echo esc_html( $total_users ); ?> customer<?php echo $total_users !== 1 ? 's' : ''; ?>
