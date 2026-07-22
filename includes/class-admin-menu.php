@@ -103,6 +103,11 @@ class SLW_Admin_Menu {
             add_submenu_page( 'slw-dashboard', 'Wholesale Orders', 'Orders', 'manage_woocommerce', 'slw-orders', array( 'SLW_Wholesale_Orders', 'render_page' ) );
         }
 
+        // 3b. New Order (place an order on behalf of an existing customer)
+        if ( class_exists( 'SLW_Admin_New_Order' ) ) {
+            add_submenu_page( 'slw-dashboard', 'New Wholesale Order', 'New Order', 'manage_woocommerce', 'slw-new-order', array( 'SLW_Admin_New_Order', 'render_page' ) );
+        }
+
         // 4. Pricing (tiers + pricing rules — consolidates old Tiers page)
         if ( class_exists( 'SLW_Pricing_Page' ) ) {
             add_submenu_page( 'slw-dashboard', 'Wholesale Pricing', 'Pricing', 'manage_woocommerce', 'slw-pricing', array( 'SLW_Pricing_Page', 'render_page' ) );

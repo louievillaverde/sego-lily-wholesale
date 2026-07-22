@@ -712,6 +712,55 @@ class SLW_Wholesale_Role {
     }
 
     /**
+     * Resolve a product's wholesale unit price WITHOUT requiring the current
+     * request to be in wholesale context. Mirrors apply_wholesale_price's
+     * resolution (per-product override -> slw_resolve_wholesale_price filter ->
+     * global % discount off the true MSRP) so admin-created orders (the New
+     * Wholesale Order screen) price lines exactly like the storefront does.
+     *
+     * @param WC_Product $product
+     * @return float Wholesale unit price.
+     */
+    public static function price_for_product( $product ) {
+        if ( ! $product instanceof WC_Product ) {
+            return 0.0;
+        }
+
+        // 1. Per-product override (product, then parent for variations).
+        $override = $product->get_meta( '_slw_wholesale_price' );
+        if ( $override === '' || ! is_numeric( $override ) ) {
+            $parent_id = $product->get_parent_id();
+            if ( $parent_id ) {
+                $override = get_post_meta( $parent_id, '_slw_wholesale_price', true );
+            }
+        }
+        if ( $override !== '' && is_numeric( $override ) && (float) $override >= 0 ) {
+            return round( (float) $override, 2 );
+        }
+
+        // True retail base (subscription-safe MSRP / one-time price).
+        $base_price = function_exists( 'slw_get_true_regular_price' )
+            ? (float) slw_get_true_regular_price( $product )
+            : 0.0;
+        if ( $base_price <= 0 ) {
+            $regular = $product->get_regular_price();
+            $base_price = ( $regular !== '' && is_numeric( $regular ) && (float) $regular > 0 )
+                ? (float) $regular
+                : (float) $product->get_price();
+        }
+
+        // 2. Category / tier override modules (same filter the engine uses).
+        $resolved = apply_filters( 'slw_resolve_wholesale_price', null, $base_price, $product );
+        if ( $resolved !== null && is_numeric( $resolved ) ) {
+            return round( (float) $resolved, 2 );
+        }
+
+        // 3. Global percentage discount.
+        $discount = (float) slw_get_option( 'discount_percent', 50 );
+        return round( $base_price * ( 1 - ( $discount / 100 ) ), 2 );
+    }
+
+    /**
      * Keep the regular price intact so WooCommerce can show the strikethrough
      * comparison (retail price crossed out, wholesale price shown).
      */

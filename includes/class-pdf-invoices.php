@@ -194,7 +194,27 @@ class SLW_PDF_Invoices {
 			wp_send_json_error( 'Order not found.' );
 		}
 
-		$to      = $order->get_billing_email();
+		if ( self::email_invoice( $order ) ) {
+			wp_send_json_success();
+		} else {
+			wp_send_json_error( 'Email failed to send.' );
+		}
+	}
+
+	/**
+	 * Build and send the branded invoice email for an order. Reusable by the
+	 * AJAX "Send invoice" button and by admin-created orders (New Wholesale
+	 * Order, add-shipping-and-resend). Returns whether wp_mail accepted it.
+	 *
+	 * @param WC_Order $order
+	 * @return bool
+	 */
+	public static function email_invoice( $order ) {
+		$to = $order->get_billing_email();
+		if ( ! $to ) {
+			return false;
+		}
+
 		$subject = sprintf(
 			'Invoice %s from %s',
 			self::get_invoice_number( $order ),
@@ -232,10 +252,9 @@ class SLW_PDF_Invoices {
 			$order->add_order_note(
 				sprintf( 'Invoice emailed to %s by %s.', $to, wp_get_current_user()->display_name )
 			);
-			wp_send_json_success();
-		} else {
-			wp_send_json_error( 'Email failed to send.' );
 		}
+
+		return (bool) $sent;
 	}
 
 	/**
