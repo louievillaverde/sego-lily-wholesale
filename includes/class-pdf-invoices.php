@@ -77,11 +77,12 @@ class SLW_PDF_Invoices {
 			wp_die( esc_html__( 'Invalid invoice link.', 'sego-lily-wholesale' ), 403 );
 		}
 
-		// User must be the order owner or an admin
-		$current_user_id = get_current_user_id();
-		if ( $current_user_id !== $order->get_customer_id() && ! current_user_can( 'manage_woocommerce' ) ) {
-			wp_die( esc_html__( 'You do not have permission to view this invoice.', 'sego-lily-wholesale' ), 403 );
-		}
+		// The order key verified above is the bearer token for this invoice,
+		// the same per-order secret WooCommerce uses for its guest
+		// order-received / pay links. A valid key is sufficient authorization,
+		// so a wholesale customer (e.g. on NET terms, opening the emailed link
+		// on a device where they're not logged in) can view their invoice
+		// without hitting a permission wall. Admins hold the key too.
 
 		// Serve the invoice
 		self::render_invoice( $order );
