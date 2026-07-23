@@ -543,6 +543,16 @@ class SLW_Xero_Sync {
 				<p style="color:#b45309;">Add your Xero app's Client ID and Secret below, then Save, and the Connect button appears.</p>
 			<?php endif; ?>
 
+			<?php if ( class_exists( 'SLW_Rest_Stats' ) ) : ?>
+			<hr style="margin:28px 0;border:0;border-top:1px solid #e2e9ec;">
+			<h2>Client portal data feed</h2>
+			<p style="max-width:760px;color:#3a4a52;">Read-only wholesale numbers for your Lead Piranha portal. Paste this key into the portal's environment to light up the live Wholesale panel (orders, revenue, outstanding terms, top accounts).</p>
+			<table class="form-table" role="presentation">
+				<tr><th scope="row">Endpoint</th><td><code><?php echo esc_html( home_url( '/wp-json/slw/v1/stats' ) ); ?></code></td></tr>
+				<tr><th scope="row">Key</th><td><code><?php echo esc_html( SLW_Rest_Stats::get_key() ); ?></code></td></tr>
+			</table>
+			<?php endif; ?>
+
 			<h2 style="margin-top:24px;">Settings</h2>
 			<form method="post" action="<?php echo $post_url; ?>">
 				<?php wp_nonce_field( 'slw_xero_settings' ); ?>
