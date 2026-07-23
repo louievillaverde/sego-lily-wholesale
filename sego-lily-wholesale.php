@@ -3,7 +3,7 @@
  * Plugin Name:       Wholesale Portal
  * Plugin URI:        https://github.com/louievillaverde/sego-lily-wholesale
  * Description:       All-in-one B2B wholesale portal for WooCommerce. Customer portal, tiered pricing, application workflow, PDF invoices, email sequences with multi-provider support, NET payment terms, lead capture, trade show tools, and automated order reminders. Built by Lead Piranha.
- * Version:           4.7.1
+ * Version:           4.8.0
  * Author:            Lead Piranha
  * Author URI:        https://leadpiranha.com
  * Requires at least: 6.0
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-define( 'SLW_VERSION', '4.7.1' );
+define( 'SLW_VERSION', '4.8.0' );
 define( 'SLW_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'SLW_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
@@ -112,6 +112,7 @@ add_action( 'plugins_loaded', function() {
     require_once SLW_PLUGIN_DIR . 'includes/class-mailbox.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-shipment-tracking.php';
     require_once SLW_PLUGIN_DIR . 'includes/class-admin-new-order.php';
+    require_once SLW_PLUGIN_DIR . 'includes/class-xero-sync.php';
 
     // Initialize core modules
     SLW_Wholesale_Role::init();
@@ -167,6 +168,7 @@ add_action( 'plugins_loaded', function() {
     SLW_Customers_Page::init();
     SLW_Shipment_Tracking::init();
     SLW_Admin_New_Order::init();
+    SLW_Xero_Sync::init();
 
     // Enqueue frontend styles on pages that use our shortcodes
     add_action( 'wp_enqueue_scripts', function() {

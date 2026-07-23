@@ -152,6 +152,10 @@ class SLW_Admin_Menu {
         }
 
         // 8. Settings (discounts, minimums, NET terms, invoices — setup task)
+        if ( class_exists( 'SLW_Xero_Sync' ) ) {
+            add_submenu_page( 'slw-dashboard', 'Xero', 'Xero', 'manage_woocommerce', 'slw-xero', array( 'SLW_Xero_Sync', 'render_page' ) );
+        }
+
         add_submenu_page( 'slw-dashboard', 'Wholesale Settings', 'Settings', 'manage_woocommerce', 'slw-settings', array( 'SLW_Settings', 'render_page' ) );
 
         // 9. Help (always last)

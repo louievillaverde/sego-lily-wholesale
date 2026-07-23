@@ -340,17 +340,23 @@ class SLW_PDF_Invoices {
 			);
 		}
 
-		if ( $is_net && in_array( $status, array( 'processing', 'completed' ), true ) ) {
-			return array(
-				'label' => $net_label . ' - Paid',
-				'color' => '#2e7d32',
-				'bg'    => '#e8f5e9',
-			);
-		}
-
+		// NET orders: fulfilment status (processing/completed) does NOT mean
+		// paid, payment is on terms. Only show Paid when a payment has actually
+		// been recorded (WooCommerce sets date_paid on capture or a manual
+		// "mark paid"). Otherwise it stays Unpaid with the due date, so a NET
+		// order that's been shipped never reads as "Paid" when it isn't.
 		if ( $is_net ) {
+			if ( $order->get_date_paid() ) {
+				return array(
+					'label' => $net_label . ' - Paid',
+					'color' => '#2e7d32',
+					'bg'    => '#e8f5e9',
+				);
+			}
+			$due      = $order->get_meta( '_slw_net30_due_date' );
+			$due_nice = $due ? date_i18n( 'M j', strtotime( $due ) ) : '';
 			return array(
-				'label' => $net_label . ' - Unpaid',
+				'label' => $due_nice ? $net_label . ' - Due ' . $due_nice : $net_label . ' - Unpaid',
 				'color' => '#e65100',
 				'bg'    => '#fff8e1',
 			);
