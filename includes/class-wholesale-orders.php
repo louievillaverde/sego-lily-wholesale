@@ -329,6 +329,8 @@ class SLW_Wholesale_Orders {
                             <td>
                                 <a href="<?php echo esc_url( add_query_arg( array( 'slw_invoice' => $order->get_id(), 'key' => $order->get_order_key() ), home_url( '/' ) ) ); ?>"
                                    class="button button-small" target="_blank" rel="noopener">Invoice</a>
+                                <a href="<?php echo esc_url( add_query_arg( array( 'slw_packing_slip' => $order->get_id(), 'key' => $order->get_order_key() ), home_url( '/' ) ) ); ?>"
+                                   class="button button-small" target="_blank" rel="noopener">Packing slip</a>
                             </td>
                         </tr>
                         <?php endforeach; ?>
